@@ -23,6 +23,21 @@ document.body.appendChild(renderer.domElement);
 // --- Controls ---
 const controls = new PointerLockControls(camera, document.body);
 
+// Sensitivity logic
+const sensSlider = document.getElementById('sensitivity');
+const sensValue = document.getElementById('sens-value');
+
+sensSlider.addEventListener('input', (event) => {
+    const val = event.target.value;
+    sensValue.innerText = val;
+    controls.pointerSpeed = parseFloat(val);
+});
+
+// Avoid triggering pointer lock when clicking the settings slider
+document.getElementById('settings').addEventListener('click', (event) => {
+    event.stopPropagation();
+});
+
 instructions.addEventListener('click', () => {
     controls.lock();
 });
@@ -42,6 +57,7 @@ let moveForward = false;
 let moveBackward = false;
 let moveLeft = false;
 let moveRight = false;
+let canJump = false;
 
 let prevTime = performance.now();
 const velocity = new THREE.Vector3();
@@ -64,6 +80,10 @@ const onKeyDown = function (event) {
         case 'ArrowRight':
         case 'KeyD':
             moveRight = true;
+            break;
+        case 'Space':
+            if (canJump === true) velocity.y += 15;
+            canJump = false;
             break;
     }
 };
@@ -128,6 +148,13 @@ function createTarget() {
     target.position.y = 1 + Math.random() * 4; // Between height 1 and 5
     target.position.z = (Math.random() - 0.5) * range;
 
+    // Assign random velocity for movement
+    target.velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 5,
+        0, // Keep them at same height or change this for bouncing targets
+        (Math.random() - 0.5) * 5
+    );
+
     // Ensure it doesn't spawn too close to player start
     if (target.position.length() < 10) {
         target.position.z -= 10;
@@ -185,13 +212,16 @@ function animate() {
     requestAnimationFrame(animate);
 
     const time = performance.now();
+    const delta = (time - prevTime) / 1000;
 
     if (controls.isLocked === true) {
-        const delta = (time - prevTime) / 1000;
 
         // Apply friction/damping
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
+
+        // Apply gravity
+        velocity.y -= 9.8 * 3.0 * delta; // 100.0 = mass
 
         // Determine movement direction
         direction.z = Number(moveForward) - Number(moveBackward);
@@ -206,14 +236,35 @@ function animate() {
         // Apply movement to controls
         controls.moveRight(-velocity.x * delta);
         controls.moveForward(-velocity.z * delta);
+
+        controls.getObject().position.y += (velocity.y * delta); // new behavior
+
+        if (controls.getObject().position.y < 1.6) {
+            velocity.y = 0;
+            controls.getObject().position.y = 1.6;
+            canJump = true;
+        }
     }
 
     prevTime = time;
 
-    // Slowly rotate targets for visual flair
+    // Update targets
     targets.forEach(target => {
+        // Slowly rotate targets for visual flair
         target.rotation.x += 0.01;
         target.rotation.y += 0.01;
+
+        // Move targets
+        target.position.addScaledVector(target.velocity, delta);
+
+        // Bounce targets off invisible boundaries
+        const bounds = 25;
+        if (target.position.x > bounds || target.position.x < -bounds) {
+            target.velocity.x *= -1;
+        }
+        if (target.position.z > bounds || target.position.z < -bounds) {
+            target.velocity.z *= -1;
+        }
     });
 
     renderer.render(scene, camera);
