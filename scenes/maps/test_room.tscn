@@ -1,0 +1,81 @@
+[gd_scene load_steps=5 format=3 uid="uid://map123test"]
+
+[ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
+[ext_resource type="PackedScene" uid="uid://d1v7a3d2e1f" path="res://scenes/enemies/zombie.tscn" id="2_zmb"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
+size = Vector2(800, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
+size = Vector2(20, 600)
+
+[node name="TestRoom" type="Node2D"]
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 800.0
+offset_bottom = 600.0
+color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="Walls" type="StaticBody2D" parent="."]
+collision_mask = 3
+
+[node name="TopWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(400, -10)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="BottomWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(400, 610)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="LeftWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(-10, 300)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="RightWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(810, 300)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="TopWallRect" type="ColorRect" parent="Walls"]
+offset_left = 0.0
+offset_top = -20.0
+offset_right = 800.0
+offset_bottom = 0.0
+color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="BottomWallRect" type="ColorRect" parent="Walls"]
+offset_left = 0.0
+offset_top = 600.0
+offset_right = 800.0
+offset_bottom = 620.0
+color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="LeftWallRect" type="ColorRect" parent="Walls"]
+offset_left = -20.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 600.0
+color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="RightWallRect" type="ColorRect" parent="Walls"]
+offset_left = 800.0
+offset_top = 0.0
+offset_right = 820.0
+offset_bottom = 600.0
+color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="Player" parent="." instance=ExtResource("1_plyr")]
+position = Vector2(400, 300)
+
+[node name="Zombies" type="Node2D" parent="."]
+
+[node name="Zombie1" parent="Zombies" instance=ExtResource("2_zmb")]
+position = Vector2(100, 100)
+
+[node name="Zombie2" parent="Zombies" instance=ExtResource("2_zmb")]
+position = Vector2(700, 100)
+
+[node name="Zombie3" parent="Zombies" instance=ExtResource("2_zmb")]
+position = Vector2(700, 500)
+
+[node name="Zombie4" parent="Zombies" instance=ExtResource("2_zmb")]
+position = Vector2(100, 500)

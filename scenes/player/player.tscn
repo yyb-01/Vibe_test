@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://b8v7a3d2e1f"]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="1_x9y8z"]
+[ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="2_b4c5d"]
+[ext_resource type="Texture2D" uid="uid://d1a2b3c4d5e" path="res://icon.svg" id="3_e6f7g"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_z9x8w"]
+size = Vector2(64, 64)
+
+[node name="Player" type="CharacterBody2D" groups=["player"]]
+collision_layer = 1
+collision_mask = 3
+script = ExtResource("1_x9y8z")
+current_weapon = ExtResource("2_b4c5d")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("3_e6f7g")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_z9x8w")
+
+[node name="Camera2D" type="Camera2D" parent="."]

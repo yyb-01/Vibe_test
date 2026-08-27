@@ -1,0 +1,56 @@
+class_name Zombie
+extends CharacterBody2D
+
+@export var max_health: int = 30
+@export var move_speed: float = 100.0
+@export var attack_damage: int = 10
+@export var attack_range: float = 50.0
+@export var attack_cooldown: float = 1.0
+
+var health: int
+var player: Node2D = null
+var can_attack: bool = true
+
+func _ready() -> void:
+	health = max_health
+
+	# Attempt to find player in the scene
+	player = get_tree().get_first_node_in_group("player")
+
+func _physics_process(delta: float) -> void:
+	if not player:
+		# Try to find player again if not found initially
+		player = get_tree().get_first_node_in_group("player")
+		return
+
+	var distance_to_player := global_position.distance_to(player.global_position)
+	var dir_to_player := global_position.direction_to(player.global_position)
+
+	look_at(player.global_position)
+
+	if distance_to_player > attack_range:
+		velocity = dir_to_player * move_speed
+		move_and_slide()
+	else:
+		_attack_player()
+
+func _attack_player() -> void:
+	if can_attack and player.has_method("take_damage"):
+		can_attack = false
+		player.take_damage(attack_damage)
+
+		var timer := get_tree().create_timer(attack_cooldown)
+		timer.timeout.connect(func() -> void: can_attack = true)
+
+func take_damage(amount: int) -> void:
+	health -= amount
+	# Simple visual feedback
+	modulate = Color.RED
+	var timer := get_tree().create_timer(0.1)
+	timer.timeout.connect(func() -> void: modulate = Color.WHITE)
+
+	if health <= 0:
+		die()
+
+func die() -> void:
+	queue_free()
