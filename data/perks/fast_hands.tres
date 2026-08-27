@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_a1b2c")
 id = "fast_hands"
-perk_name = "Fast Hands"
-description = "Reload time reduced by 25%"
+perk_name = "빠른 손놀림"
+description = "재장전 시간 25% 감소"
 damage_mult = 1.0
 speed_mult = 1.0
 reload_speed_mult = 0.75

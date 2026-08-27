@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_a1b2c")
 id = "piercing_rounds"
-perk_name = "Piercing Rounds"
-description = "Bullets pierce through 1 additional enemy"
+perk_name = "철갑탄"
+description = "탄환 관통 수 +1"
 damage_mult = 1.0
 speed_mult = 1.0
 reload_speed_mult = 1.0

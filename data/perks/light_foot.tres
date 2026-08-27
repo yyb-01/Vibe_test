@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_a1b2c")
 id = "light_foot"
-perk_name = "Light Foot"
-description = "Movement speed increased by 15%"
+perk_name = "가벼운 발걸음"
+description = "이동 속도 15% 증가"
 damage_mult = 1.0
 speed_mult = 1.15
 reload_speed_mult = 1.0

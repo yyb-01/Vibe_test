@@ -123,8 +123,8 @@ func take_damage(amount: int) -> void:
 
 func die() -> void:
 	print("Player died!")
-	# Restart scene for now
-	get_tree().reload_current_scene()
+	# Use call_deferred to safely change scenes without crashing during physics steps
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/main_menu.tscn")
 
 func heal(amount: int) -> void:
 	health += amount

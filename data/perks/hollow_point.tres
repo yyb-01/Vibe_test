@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_a1b2c")
 id = "hollow_point"
-perk_name = "Hollow Point"
-description = "Increases damage by 20%"
+perk_name = "할로우 포인트"
+description = "피해량 20% 증가"
 damage_mult = 1.2
 speed_mult = 1.0
 reload_speed_mult = 1.0

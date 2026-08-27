@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_a1b2c")
 id = "heavy_caliber"
-perk_name = "Heavy Caliber"
-description = "Damage +40%, Movement Speed -10%"
+perk_name = "대구경 탄환"
+description = "피해량 40% 증가, 이동속도 10% 감소"
 damage_mult = 1.4
 speed_mult = 0.9
 reload_speed_mult = 1.0
