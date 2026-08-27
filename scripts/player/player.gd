@@ -48,27 +48,12 @@ func _handle_movement() -> void:
 	move_and_slide()
 
 func _handle_auto_shooting() -> void:
-	if not current_weapon or not can_shoot:
-		return
+	# Always aim at the mouse cursor
+	look_at(get_global_mouse_position())
 
-	var target = _get_closest_enemy()
-	if target:
-		look_at(target.global_position)
-		_shoot(target.global_position)
-
-func _get_closest_enemy() -> Node2D:
-	var enemies = get_tree().get_nodes_in_group("enemies")
-	var closest: Node2D = null
-	var min_dist = INF
-
-	for enemy in enemies:
-		var dist = global_position.distance_to(enemy.global_position)
-		# Add a maximum range logic here if desired, e.g., if dist < 800.0:
-		if dist < min_dist:
-			min_dist = dist
-			closest = enemy
-
-	return closest
+	# Auto fire at the aimed direction if ready
+	if current_weapon and can_shoot:
+		_shoot(get_global_mouse_position())
 
 func _shoot(target_pos: Vector2) -> void:
 	can_shoot = false

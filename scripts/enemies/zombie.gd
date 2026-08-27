@@ -81,6 +81,9 @@ func _attack_player() -> void:
 		timer.timeout.connect(func() -> void: can_attack = true)
 
 func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
+	if health <= 0:
+		return
+
 	health -= amount
 
 	# Camera Shake

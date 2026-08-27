@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n74su4i0vp88"
-path="res://.godot/imported/zombie.png-f35207ad286f7c7f806634d04ac98143.ctex"
+uid="uid://hlo3i2iu1n0y"
+path="res://.godot/imported/player.svg-f09623975381ae29591bb437465213fc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/graphics/zombie.png"
-dest_files=["res://.godot/imported/zombie.png-f35207ad286f7c7f806634d04ac98143.ctex"]
+source_file="res://assets/graphics/player.svg"
+dest_files=["res://.godot/imported/player.svg-f09623975381ae29591bb437465213fc.ctex"]
 
 [params]
 
@@ -32,3 +32,6 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
+svg/scale=1.0
+editor/scale_with_editor_scale=false
+editor/convert_colors_with_editor_theme=false
