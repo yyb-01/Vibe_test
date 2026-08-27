@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/wave_manager.gd" id="2_wvmgr"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(800, 20)
@@ -69,7 +70,7 @@ position = Vector2(400, 300)
 
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
 
-[node name="PerkSelection" parent="." instance=preload("res://scenes/ui/perk_selection.tscn")]
+[node name="PerkSelection" parent="." instance=ExtResource("4_perk")]
 
 [node name="WaveManager" type="Node" parent="."]
 script = ExtResource("2_wvmgr")

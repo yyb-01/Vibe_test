@@ -9,4 +9,4 @@ signal zombie_count_changed(remaining_zombies: int)
 signal zombie_died(zombie_pos: Vector2)
 
 signal perk_selection_requested()
-signal perk_selected(perk: PerkData)
+signal perk_selected(perk: Resource)
