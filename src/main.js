@@ -35,7 +35,7 @@ controls.addEventListener('unlock', () => {
     instructions.style.display = 'flex';
 });
 
-scene.add(controls.getObject());
+scene.add(camera);
 
 // --- Movement Logic ---
 let moveForward = false;
