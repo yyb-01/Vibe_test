@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_x9y8z"]
 [ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="2_b4c5d"]
-[ext_resource type="Texture2D" uid="uid://d1a2b3c4d5e" path="res://icon.svg" id="3_e6f7g"]
+[ext_resource type="Texture2D" uid="uid://t1p2l3a4y5e" path="res://assets/graphics/player.png" id="3_e6f7g"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_z9x8w"]
-size = Vector2(64, 64)
+size = Vector2(48, 48)
 
 [node name="Player" type="CharacterBody2D" groups=["player"]]
 collision_layer = 1
@@ -14,7 +14,8 @@ script = ExtResource("1_x9y8z")
 current_weapon = ExtResource("2_b4c5d")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-scale = Vector2(0.5, 0.5)
+rotation = 1.5708
+scale = Vector2(0.2, 0.2)
 texture = ExtResource("3_e6f7g")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

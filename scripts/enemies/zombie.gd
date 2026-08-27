@@ -4,7 +4,7 @@ extends CharacterBody2D
 @export var max_health: int = 30
 @export var move_speed: float = 100.0
 @export var attack_damage: int = 10
-@export var attack_range: float = 50.0
+@export var attack_range: float = 75.0
 @export var attack_cooldown: float = 1.0
 
 var health: int
@@ -34,10 +34,11 @@ func _physics_process(delta: float) -> void:
 
 	look_at(player.global_position)
 
-	if distance_to_player > attack_range:
+	if distance_to_player > attack_range * 0.9:
 		velocity = dir_to_player * move_speed
 		move_and_slide()
-	else:
+
+	if distance_to_player <= attack_range:
 		_attack_player()
 
 func _attack_player() -> void:
