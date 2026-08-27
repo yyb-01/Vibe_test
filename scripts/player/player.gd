@@ -6,9 +6,9 @@ extends CharacterBody2D
 @export var current_weapon: WeaponData
 
 var health: int
-var current_ammo: int = 0
-var reserve_ammo: int = 36
-const MAX_RESERVE_AMMO: int = 120
+var current_exp: int = 0
+var required_exp: int = 50
+var current_level: int = 1
 
 # Perk Multipliers
 var damage_mult: float = 1.0
@@ -16,7 +16,6 @@ var speed_mult: float = 1.0
 var reload_mult: float = 1.0
 var pierce_add: int = 0
 
-var is_reloading: bool = false
 var can_shoot: bool = true
 var fire_timer: Timer
 
@@ -32,83 +31,60 @@ func _ready() -> void:
 	add_child(fire_timer)
 	fire_timer.timeout.connect(_on_fire_timer_timeout)
 
-	if current_weapon:
-		current_ammo = current_weapon.magazine_size
-
 	# Delay emitting signals slightly so HUD is ready
 	call_deferred("_update_ui")
 
 func _update_ui() -> void:
 	EventBus.player_health_changed.emit(health, max_health)
-	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
+	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 
 func _physics_process(_delta: float) -> void:
 	_handle_movement()
-	_handle_aiming()
-	_handle_shooting()
-	_handle_reloading()
+	_handle_auto_shooting()
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	velocity = input_dir * (move_speed * speed_mult)
 	move_and_slide()
 
-func _handle_aiming() -> void:
-	look_at(get_global_mouse_position())
-
-func _handle_shooting() -> void:
-	if not current_weapon:
+func _handle_auto_shooting() -> void:
+	if not current_weapon or not can_shoot:
 		return
 
-	if Input.is_action_just_pressed("shoot") and can_shoot and not is_reloading:
-		if current_ammo > 0:
-			_shoot()
-		else:
-			_start_reload()
+	var target = _get_closest_enemy()
+	if target:
+		look_at(target.global_position)
+		_shoot(target.global_position)
 
-func _handle_reloading() -> void:
-	if Input.is_action_just_pressed("reload") and not is_reloading and current_ammo < current_weapon.magazine_size and reserve_ammo > 0:
-		_start_reload()
+func _get_closest_enemy() -> Node2D:
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	var closest: Node2D = null
+	var min_dist = INF
 
-func _shoot() -> void:
+	for enemy in enemies:
+		var dist = global_position.distance_to(enemy.global_position)
+		# Add a maximum range logic here if desired, e.g., if dist < 800.0:
+		if dist < min_dist:
+			min_dist = dist
+			closest = enemy
+
+	return closest
+
+func _shoot(target_pos: Vector2) -> void:
 	can_shoot = false
-	current_ammo -= 1
-	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
 
 	var bullet: Bullet = BULLET_SCENE.instantiate()
 	bullet.global_position = global_position
-	# Add a slight offset to spawn outside the player body if necessary, or let collision layer handle it
-	# For simplicity, using mouse direction
-	var dir := (get_global_mouse_position() - global_position).normalized()
+
+	var dir := (target_pos - global_position).normalized()
 	bullet.direction = dir
 	bullet.damage = int(current_weapon.damage * damage_mult)
 	bullet.pierce_count = pierce_add
 
-	# Add to main scene tree
 	get_tree().current_scene.add_child(bullet)
 
-	fire_timer.start(current_weapon.fire_rate)
-
-func _start_reload() -> void:
-	if reserve_ammo <= 0:
-		return
-
-	is_reloading = true
-	print("Reloading...")
-	var actual_reload_time := current_weapon.reload_time * reload_mult
-	var reload_timer := get_tree().create_timer(actual_reload_time)
-	reload_timer.timeout.connect(_on_reload_finished)
-
-func _on_reload_finished() -> void:
-	var ammo_needed: int = current_weapon.magazine_size - current_ammo
-	var ammo_to_load: int = min(ammo_needed, reserve_ammo)
-
-	current_ammo += ammo_to_load
-	reserve_ammo -= ammo_to_load
-
-	is_reloading = false
-	print("Reload complete!")
-	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
+	var actual_fire_rate = current_weapon.fire_rate * reload_mult
+	fire_timer.start(actual_fire_rate)
 
 func _on_fire_timer_timeout() -> void:
 	can_shoot = true
@@ -123,7 +99,6 @@ func take_damage(amount: int) -> void:
 
 func die() -> void:
 	print("Player died!")
-	# Use call_deferred to safely change scenes without crashing during physics steps
 	get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/main_menu.tscn")
 
 func heal(amount: int) -> void:
@@ -133,12 +108,19 @@ func heal(amount: int) -> void:
 	EventBus.player_health_changed.emit(health, max_health)
 	print("Player healed! Health: ", health)
 
-func add_ammo(amount: int) -> void:
-	reserve_ammo += amount
-	if reserve_ammo > MAX_RESERVE_AMMO:
-		reserve_ammo = MAX_RESERVE_AMMO
-	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
-	print("Got ammo! Reserve: ", reserve_ammo)
+func add_exp(amount: int) -> void:
+	current_exp += amount
+	if current_exp >= required_exp:
+		_level_up()
+	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
+
+func _level_up() -> void:
+	current_level += 1
+	current_exp -= required_exp
+	required_exp = int(float(required_exp) * 1.2) # Exponential exp curve
+
+	EventBus.level_up.emit()
+	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 
 func apply_perk(perk: PerkData) -> void:
 	print("Applying perk: ", perk.perk_name)

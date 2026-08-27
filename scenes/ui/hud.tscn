@@ -42,33 +42,31 @@ text = "HP"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="AmmoLabel" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+[node name="ExpBar" type="ProgressBar" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+modulate = Color(0, 0.5, 1, 1)
+custom_minimum_size = Vector2(300, 25)
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "Ammo: 12 / 36"
+size_flags_vertical = 4
+step = 1.0
+value = 0.0
+show_percentage = false
 
-[node name="WaveInfoBox" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 20
-
-[node name="WaveLabel" type="Label" parent="MarginContainer/VBoxContainer/WaveInfoBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Wave: 1"
-
-[node name="ZombieCountLabel" type="Label" parent="MarginContainer/VBoxContainer/WaveInfoBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Zombies: 0"
-
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="LevelLabel" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer/ExpBar"]
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+text = "Lv 1"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="CountdownLabel" type="Label" parent="CenterContainer"]
+[node name="WaveInfoBox" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "Next Wave in: 3.0"
+theme_override_constants/separation = 20
+
+[node name="TimeLabel" type="Label" parent="MarginContainer/VBoxContainer/WaveInfoBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Time: 00:00"

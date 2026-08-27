@@ -16,9 +16,9 @@ var available_perks: Array[PerkData] = [
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	EventBus.perk_selection_requested.connect(_on_perk_selection_requested)
+	EventBus.level_up.connect(_on_level_up)
 
-func _on_perk_selection_requested() -> void:
+func _on_level_up() -> void:
 	# Pause game
 	get_tree().paused = true
 	visible = true

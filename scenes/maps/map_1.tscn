@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://map123test"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
-[ext_resource type="Script" path="res://scripts/managers/wave_manager.gd" id="2_wvmgr"]
+[ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 
@@ -74,7 +74,7 @@ position = Vector2(400, 300)
 
 [node name="PerkSelection" parent="." instance=ExtResource("4_perk")]
 
-[node name="WaveManager" type="Node" parent="."]
+[node name="SpawnManager" type="Node" parent="."]
 script = ExtResource("2_wvmgr")
 spawn_points = Array[NodePath]([NodePath("../SpawnPoints/Spawn1"), NodePath("../SpawnPoints/Spawn2"), NodePath("../SpawnPoints/Spawn3"), NodePath("../SpawnPoints/Spawn4")])
 
