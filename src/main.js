@@ -237,11 +237,11 @@ function animate() {
         controls.moveRight(-velocity.x * delta);
         controls.moveForward(-velocity.z * delta);
 
-        controls.getObject().position.y += (velocity.y * delta); // new behavior
+        camera.position.y += (velocity.y * delta); // new behavior
 
-        if (controls.getObject().position.y < 1.6) {
+        if (camera.position.y < 1.6) {
             velocity.y = 0;
-            controls.getObject().position.y = 1.6;
+            camera.position.y = 1.6;
             canJump = true;
         }
     }
