@@ -11,11 +11,17 @@ var health: int
 var player: Node2D = null
 var can_attack: bool = true
 
+const DROP_ITEM_SCENE: PackedScene = preload("res://scenes/items/drop_item.tscn")
+
 func _ready() -> void:
 	health = max_health
 
 	# Attempt to find player in the scene
 	player = get_tree().get_first_node_in_group("player")
+
+func set_stats(new_max_health: int) -> void:
+	max_health = new_max_health
+	health = max_health
 
 func _physics_process(delta: float) -> void:
 	if not player:
@@ -53,4 +59,20 @@ func take_damage(amount: int) -> void:
 		die()
 
 func die() -> void:
+	EventBus.zombie_died.emit(global_position)
+	_attempt_drop_item()
 	queue_free()
+
+func _attempt_drop_item() -> void:
+	# 35% chance to drop item
+	if randf() <= 0.35:
+		var item := DROP_ITEM_SCENE.instantiate() as DropItem
+
+		# 30% health kit, 70% ammo box
+		if randf() <= 0.30:
+			item.type = DropItem.ItemType.HEALTH_KIT
+		else:
+			item.type = DropItem.ItemType.AMMO_BOX
+
+		item.global_position = global_position
+		get_tree().current_scene.call_deferred("add_child", item)

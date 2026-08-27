@@ -7,6 +7,9 @@ extends CharacterBody2D
 
 var health: int
 var current_ammo: int = 0
+var reserve_ammo: int = 36
+const MAX_RESERVE_AMMO: int = 120
+
 var is_reloading: bool = false
 var can_shoot: bool = true
 var fire_timer: Timer
@@ -23,6 +26,13 @@ func _ready() -> void:
 
 	if current_weapon:
 		current_ammo = current_weapon.magazine_size
+
+	# Delay emitting signals slightly so HUD is ready
+	call_deferred("_update_ui")
+
+func _update_ui() -> void:
+	EventBus.player_health_changed.emit(health, max_health)
+	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
 
 func _physics_process(_delta: float) -> void:
 	_handle_movement()
@@ -49,12 +59,13 @@ func _handle_shooting() -> void:
 			_start_reload()
 
 func _handle_reloading() -> void:
-	if Input.is_action_just_pressed("reload") and not is_reloading and current_ammo < current_weapon.magazine_size:
+	if Input.is_action_just_pressed("reload") and not is_reloading and current_ammo < current_weapon.magazine_size and reserve_ammo > 0:
 		_start_reload()
 
 func _shoot() -> void:
 	can_shoot = false
 	current_ammo -= 1
+	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
 
 	var bullet: Bullet = BULLET_SCENE.instantiate()
 	bullet.global_position = global_position
@@ -70,15 +81,24 @@ func _shoot() -> void:
 	fire_timer.start(current_weapon.fire_rate)
 
 func _start_reload() -> void:
+	if reserve_ammo <= 0:
+		return
+
 	is_reloading = true
 	print("Reloading...")
 	var reload_timer := get_tree().create_timer(current_weapon.reload_time)
 	reload_timer.timeout.connect(_on_reload_finished)
 
 func _on_reload_finished() -> void:
-	current_ammo = current_weapon.magazine_size
+	var ammo_needed: int = current_weapon.magazine_size - current_ammo
+	var ammo_to_load: int = min(ammo_needed, reserve_ammo)
+
+	current_ammo += ammo_to_load
+	reserve_ammo -= ammo_to_load
+
 	is_reloading = false
 	print("Reload complete!")
+	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
 
 func _on_fire_timer_timeout() -> void:
 	can_shoot = true
@@ -86,6 +106,8 @@ func _on_fire_timer_timeout() -> void:
 func take_damage(amount: int) -> void:
 	health -= amount
 	print("Player took damage! Health: ", health)
+	EventBus.player_health_changed.emit(health, max_health)
+
 	if health <= 0:
 		die()
 
@@ -93,3 +115,17 @@ func die() -> void:
 	print("Player died!")
 	# Restart scene for now
 	get_tree().reload_current_scene()
+
+func heal(amount: int) -> void:
+	health += amount
+	if health > max_health:
+		health = max_health
+	EventBus.player_health_changed.emit(health, max_health)
+	print("Player healed! Health: ", health)
+
+func add_ammo(amount: int) -> void:
+	reserve_ammo += amount
+	if reserve_ammo > MAX_RESERVE_AMMO:
+		reserve_ammo = MAX_RESERVE_AMMO
+	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
+	print("Got ammo! Reserve: ", reserve_ammo)

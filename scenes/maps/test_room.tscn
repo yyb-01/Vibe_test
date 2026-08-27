@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://map123test"]
+[gd_scene load_steps=7 format=3 uid="uid://map123test"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
-[ext_resource type="PackedScene" uid="uid://d1v7a3d2e1f" path="res://scenes/enemies/zombie.tscn" id="2_zmb"]
+[ext_resource type="Script" path="res://scripts/managers/wave_manager.gd" id="2_wvmgr"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(800, 20)
@@ -66,16 +67,22 @@ color = Color(0.5, 0.5, 0.5, 1)
 [node name="Player" parent="." instance=ExtResource("1_plyr")]
 position = Vector2(400, 300)
 
-[node name="Zombies" type="Node2D" parent="."]
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
 
-[node name="Zombie1" parent="Zombies" instance=ExtResource("2_zmb")]
-position = Vector2(100, 100)
+[node name="WaveManager" type="Node" parent="."]
+script = ExtResource("2_wvmgr")
+spawn_points = Array[NodePath]([NodePath("../SpawnPoints/Spawn1"), NodePath("../SpawnPoints/Spawn2"), NodePath("../SpawnPoints/Spawn3"), NodePath("../SpawnPoints/Spawn4")])
 
-[node name="Zombie2" parent="Zombies" instance=ExtResource("2_zmb")]
-position = Vector2(700, 100)
+[node name="SpawnPoints" type="Node2D" parent="."]
 
-[node name="Zombie3" parent="Zombies" instance=ExtResource("2_zmb")]
-position = Vector2(700, 500)
+[node name="Spawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(50, 50)
 
-[node name="Zombie4" parent="Zombies" instance=ExtResource("2_zmb")]
-position = Vector2(100, 500)
+[node name="Spawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(750, 50)
+
+[node name="Spawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(750, 550)
+
+[node name="Spawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(50, 550)
