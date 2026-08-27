@@ -19,6 +19,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	position += direction * speed * delta
+	rotation = direction.angle()
 
 func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):

@@ -1,8 +1,10 @@
 [gd_scene load_steps=3 format=3 uid="uid://cx6i2t2j3a2v"]
 
 [ext_resource type="Script" path="res://scripts/weapons/bullet.gd" id="1_a1b2c"]
+[ext_resource type="Texture2D" uid="uid://bull3t123" path="res://assets/graphics/bullet.svg" id="2_bull"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_a1b2c"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_a1b2c"]
+size = Vector2(16, 8)
 radius = 4.0
 
 [node name="Bullet" type="Area2D"]
@@ -10,12 +12,8 @@ collision_layer = 4
 collision_mask = 3
 script = ExtResource("1_a1b2c")
 
-[node name="ColorRect" type="ColorRect" parent="."]
-offset_left = -4.0
-offset_top = -4.0
-offset_right = 4.0
-offset_bottom = 4.0
-color = Color(1, 1, 0, 1)
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_bull")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_a1b2c")
+shape = SubResource("RectangleShape2D_a1b2c")

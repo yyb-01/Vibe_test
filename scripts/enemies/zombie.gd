@@ -12,6 +12,7 @@ var player: Node2D = null
 var can_attack: bool = true
 
 const DROP_ITEM_SCENE: PackedScene = preload("res://scenes/items/drop_item.tscn")
+const BLOOD_IMPACT_SCENE: PackedScene = preload("res://scenes/effects/blood_impact.tscn")
 
 func _ready() -> void:
 	health = max_health
@@ -51,10 +52,20 @@ func _attack_player() -> void:
 
 func take_damage(amount: int) -> void:
 	health -= amount
+
+	# Spawn blood particles
+	var blood := BLOOD_IMPACT_SCENE.instantiate() as CPUParticles2D
+	blood.global_position = global_position
+	get_tree().current_scene.add_child(blood)
+
 	# Simple visual feedback
+	var original_modulate = modulate
 	modulate = Color.RED
 	var timer := get_tree().create_timer(0.1)
-	timer.timeout.connect(func() -> void: modulate = Color.WHITE)
+	timer.timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			modulate = original_modulate
+	)
 
 	if health <= 0:
 		die()
