@@ -10,6 +10,12 @@ var current_ammo: int = 0
 var reserve_ammo: int = 36
 const MAX_RESERVE_AMMO: int = 120
 
+# Perk Multipliers
+var damage_mult: float = 1.0
+var speed_mult: float = 1.0
+var reload_mult: float = 1.0
+var pierce_add: int = 0
+
 var is_reloading: bool = false
 var can_shoot: bool = true
 var fire_timer: Timer
@@ -18,6 +24,8 @@ const BULLET_SCENE: PackedScene = preload("res://scenes/weapons/bullet.tscn")
 
 func _ready() -> void:
 	health = max_health
+
+	EventBus.perk_selected.connect(apply_perk)
 
 	fire_timer = Timer.new()
 	fire_timer.one_shot = true
@@ -42,7 +50,7 @@ func _physics_process(_delta: float) -> void:
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	velocity = input_dir * move_speed
+	velocity = input_dir * (move_speed * speed_mult)
 	move_and_slide()
 
 func _handle_aiming() -> void:
@@ -73,7 +81,8 @@ func _shoot() -> void:
 	# For simplicity, using mouse direction
 	var dir := (get_global_mouse_position() - global_position).normalized()
 	bullet.direction = dir
-	bullet.damage = current_weapon.damage
+	bullet.damage = int(current_weapon.damage * damage_mult)
+	bullet.pierce_count = pierce_add
 
 	# Add to main scene tree
 	get_tree().current_scene.add_child(bullet)
@@ -86,7 +95,8 @@ func _start_reload() -> void:
 
 	is_reloading = true
 	print("Reloading...")
-	var reload_timer := get_tree().create_timer(current_weapon.reload_time)
+	var actual_reload_time := current_weapon.reload_time * reload_mult
+	var reload_timer := get_tree().create_timer(actual_reload_time)
 	reload_timer.timeout.connect(_on_reload_finished)
 
 func _on_reload_finished() -> void:
@@ -129,3 +139,15 @@ func add_ammo(amount: int) -> void:
 		reserve_ammo = MAX_RESERVE_AMMO
 	EventBus.ammo_changed.emit(current_ammo, reserve_ammo)
 	print("Got ammo! Reserve: ", reserve_ammo)
+
+func apply_perk(perk: PerkData) -> void:
+	print("Applying perk: ", perk.perk_name)
+	damage_mult *= perk.damage_mult
+	speed_mult *= perk.speed_mult
+	reload_mult *= perk.reload_speed_mult
+	pierce_add += perk.pierce_add
+
+	if perk.max_hp_add > 0:
+		max_health += perk.max_hp_add
+		health += perk.max_hp_add
+		EventBus.player_health_changed.emit(health, max_health)

@@ -7,3 +7,6 @@ signal wave_started(wave_number: int)
 signal wave_cleared(next_wave_delay: float)
 signal zombie_count_changed(remaining_zombies: int)
 signal zombie_died(zombie_pos: Vector2)
+
+signal perk_selection_requested()
+signal perk_selected(perk: PerkData)

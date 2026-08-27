@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PerkData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/perk_data.gd" id="1_a1b2c"]
+
+[resource]
+script = ExtResource("1_a1b2c")
+id = "heavy_caliber"
+perk_name = "Heavy Caliber"
+description = "Damage +40%, Movement Speed -10%"
+damage_mult = 1.4
+speed_mult = 0.9
+reload_speed_mult = 1.0
+pierce_add = 0
+max_hp_add = 0
