@@ -6,13 +6,22 @@ var speed: float = 0.0
 var target: Node2D = null
 var magnet_range: float = 150.0
 
+var float_tween: Tween
+
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
+	reset()
 
-	# Initial floating animation
-	var tween = create_tween().set_loops()
-	tween.tween_property($Sprite2D, "position:y", -5.0, 1.0).as_relative().set_trans(Tween.TRANS_SINE)
-	tween.tween_property($Sprite2D, "position:y", 5.0, 1.0).as_relative().set_trans(Tween.TRANS_SINE)
+func reset() -> void:
+	speed = 0.0
+	target = get_tree().get_first_node_in_group("player")
+	$Sprite2D.position.y = 0
+
+	if float_tween:
+		float_tween.kill()
+	float_tween = create_tween().set_loops()
+	float_tween.tween_property($Sprite2D, "position:y", -5.0, 1.0).as_relative().set_trans(Tween.TRANS_SINE)
+	float_tween.tween_property($Sprite2D, "position:y", 5.0, 1.0).as_relative().set_trans(Tween.TRANS_SINE)
 
 func _physics_process(delta: float) -> void:
 	if not target:
@@ -30,4 +39,4 @@ func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):
 		if body.has_method("add_exp"):
 			body.add_exp(exp_amount)
-		queue_free()
+		ObjectPoolManager.release(self)

@@ -58,15 +58,12 @@ func _handle_auto_shooting() -> void:
 func _shoot(target_pos: Vector2) -> void:
 	can_shoot = false
 
-	var bullet: Bullet = BULLET_SCENE.instantiate()
-	bullet.global_position = global_position
-
-	var dir := (target_pos - global_position).normalized()
-	bullet.direction = dir
-	bullet.damage = int(current_weapon.damage * damage_mult)
-	bullet.pierce_count = pierce_add
-
-	get_tree().current_scene.add_child(bullet)
+	var bullet = ObjectPoolManager.acquire("bullet", global_position)
+	if bullet:
+		var dir := (target_pos - global_position).normalized()
+		bullet.direction = dir
+		bullet.damage = int(current_weapon.damage * damage_mult)
+		bullet.pierce_count = pierce_add
 
 	var actual_fire_rate = current_weapon.fire_rate * reload_mult
 	fire_timer.start(actual_fire_rate)

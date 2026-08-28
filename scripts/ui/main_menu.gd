@@ -10,4 +10,9 @@ func _ready() -> void:
 
 func _load_map(path: String) -> void:
 	get_tree().paused = false
+
+	# Clear Autoload states before launching a new game
+	ObjectPoolManager.clear()
+	SpatialGrid.clear()
+
 	get_tree().change_scene_to_file(path)

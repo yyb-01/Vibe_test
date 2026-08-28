@@ -13,57 +13,62 @@ var time_elapsed: float = 0.0
 var base_spawn_delay: float = 2.0
 var min_spawn_delay: float = 0.2
 
-var spawn_timer: Timer
+var spawn_debt: float = 0.0
 
 func _ready() -> void:
-	spawn_timer = Timer.new()
-	spawn_timer.one_shot = true
-	spawn_timer.timeout.connect(_spawn_zombie)
-	add_child(spawn_timer)
-
 	for path in spawn_points:
 		var node := get_node(path) as Node2D
 		if node:
 			spawn_points_nodes.append(node)
 
-	# Start engine
-	spawn_timer.start(base_spawn_delay)
+	# Pre-register pools
+	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, get_tree().current_scene, 200)
+	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, get_tree().current_scene, 100)
+	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, get_tree().current_scene, 50)
+	ObjectPoolManager.register_pool("exp_gem", preload("res://scenes/items/exp_gem.tscn"), get_tree().current_scene, 300)
+	ObjectPoolManager.register_pool("bullet", preload("res://scenes/weapons/bullet.tscn"), get_tree().current_scene, 50)
+	ObjectPoolManager.register_pool("damage_number", preload("res://scenes/ui/effects/damage_number.tscn"), get_tree().current_scene, 100)
+	ObjectPoolManager.register_pool("blood_impact", preload("res://scenes/effects/blood_impact.tscn"), get_tree().current_scene, 100)
 
 func _process(delta: float) -> void:
 	time_elapsed += delta
+
+	var speed_up_factor = clampf(time_elapsed / 300.0, 0.0, 1.0)
+	var current_delay = lerpf(base_spawn_delay, min_spawn_delay, speed_up_factor)
+
+	# Spawn debt allows us to spawn multiple per frame if delay < delta
+	var spawn_rate = 1.0 / current_delay
+	spawn_debt += spawn_rate * delta
+
+	while spawn_debt >= 1.0:
+		_spawn_zombie()
+		spawn_debt -= 1.0
 
 func _spawn_zombie() -> void:
 	if spawn_points_nodes.size() > 0:
 		var sp := spawn_points_nodes[randi() % spawn_points_nodes.size()]
 
-		var scene_to_spawn: PackedScene = ZOMBIE_BASE
+		var pool_id: String = "zombie_base"
 		var hp_multiplier: float = 1.0 + (time_elapsed / 60.0) * 0.5 # 50% extra hp per minute
 
 		if time_elapsed > 120.0:
-			# After 2 minutes, all variants can spawn
 			var r := randf()
 			if r < 0.15:
-				scene_to_spawn = ZOMBIE_TANK
+				pool_id = "zombie_tank"
 			elif r < 0.4:
-				scene_to_spawn = ZOMBIE_RUNNER
+				pool_id = "zombie_runner"
 		elif time_elapsed > 60.0:
-			# After 1 minute, runners start spawning
 			if randf() < 0.25:
-				scene_to_spawn = ZOMBIE_RUNNER
-
-		var zombie := scene_to_spawn.instantiate() as Zombie
-		zombie.max_health = int(float(zombie.max_health) * hp_multiplier)
-		zombie.global_position = sp.global_position
+				pool_id = "zombie_runner"
 
 		# Offset slightly around spawn point to prevent immediate stacking
-		var offset := Vector2(randf_range(-20, 20), randf_range(-20, 20))
-		zombie.global_position += offset
+		var offset := Vector2(randf_range(-40, 40), randf_range(-40, 40))
+		var final_pos = sp.global_position + offset
 
-		get_tree().current_scene.add_child(zombie)
+		var zombie = ObjectPoolManager.acquire(pool_id, final_pos)
+		if not zombie: return
+		zombie.set_meta("pool_id", pool_id)
 
-	# Calculate next spawn time based on elapsed time (gets faster as time goes on)
-	var speed_up_factor = time_elapsed / 300.0 # Reaches max speed at 5 minutes
-	speed_up_factor = clampf(speed_up_factor, 0.0, 1.0)
-
-	var current_delay = lerpf(base_spawn_delay, min_spawn_delay, speed_up_factor)
-	spawn_timer.start(current_delay)
+		# We must re-assign max health manually since the pool object might have been dirty
+		if zombie.has_method("set_scaled_max_health"):
+			zombie.set_scaled_max_health(hp_multiplier)

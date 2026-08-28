@@ -7,12 +7,9 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_z9x8w"]
 radius = 20.0
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_soft"]
-radius = 30.0
-
 [node name="ZombieRunner" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
-collision_mask = 7
+collision_mask = 5
 script = ExtResource("1_a2b3c")
 max_health = 20
 move_speed = 180.0
@@ -25,11 +22,4 @@ modulate = Color(1, 0.4, 0.4, 1)
 texture = ExtResource("2_e6f7g")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_z9x8w")
-
-[node name="SoftCollision" type="Area2D" parent="."]
-collision_layer = 16
-collision_mask = 16
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SoftCollision"]
-shape = SubResource("CircleShape2D_soft")
+shape = SubResource("CircleShape2D_z9x8w")

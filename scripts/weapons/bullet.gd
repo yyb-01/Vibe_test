@@ -6,18 +6,23 @@ var damage: int = 0
 var direction: Vector2 = Vector2.ZERO
 var pierce_count: int = 0
 
+var life_time: float = 0.0
+
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
+	reset()
 
-	# Destroy bullet after some time to prevent infinite travel
-	var timer := Timer.new()
-	timer.wait_time = 2.0
-	timer.one_shot = true
-	timer.autostart = true
-	timer.timeout.connect(queue_free)
-	add_child(timer)
+func reset() -> void:
+	life_time = 0.0
+	direction = Vector2.ZERO
+	pierce_count = 0
 
 func _physics_process(delta: float) -> void:
+	life_time += delta
+	if life_time >= 2.0:
+		ObjectPoolManager.release(self)
+		return
+
 	position += direction * speed * delta
 	rotation = direction.angle()
 
@@ -31,7 +36,7 @@ func _on_body_entered(body: Node2D) -> void:
 		# Handle Pierce
 		pierce_count -= 1
 		if pierce_count < 0:
-			queue_free()
+			ObjectPoolManager.release(self)
 	else:
 		# Hit a non-damageable body (e.g. Wall)
-		queue_free()
+		ObjectPoolManager.release(self)

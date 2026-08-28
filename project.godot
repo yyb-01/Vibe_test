@@ -18,6 +18,8 @@ config/icon="res://icon.svg"
 [autoload]
 
 EventBus="*res://scripts/autoloads/event_bus.gd"
+ObjectPoolManager="*res://scripts/autoloads/object_pool_manager.gd"
+SpatialGrid="*res://scripts/autoloads/spatial_grid.gd"
 
 [rendering]
 

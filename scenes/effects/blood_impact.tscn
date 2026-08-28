@@ -23,8 +23,3 @@ scale_amount_min = 2.0
 scale_amount_max = 6.0
 scale_amount_curve = SubResource("Curve_blood")
 color = Color(0.6, 0.0, 0.0, 1)
-
-[node name="Timer" type="Timer" parent="."]
-wait_time = 1.0
-one_shot = true
-autostart = true
