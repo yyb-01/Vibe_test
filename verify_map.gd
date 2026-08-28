@@ -32,8 +32,11 @@ func _process(delta: float) -> bool:
             quit(1)
             return true
 
-        var enemies = get_nodes_in_group("enemies")
-        if enemies.size() == 0:
+        var active_enemy_count := 0
+        for enemy in get_nodes_in_group("enemies"):
+            if enemy is CanvasItem and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.visible:
+                active_enemy_count += 1
+        if active_enemy_count == 0:
             push_error("Assertion failed: No zombies spawned")
             quit(1)
             return true

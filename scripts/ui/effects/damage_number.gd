@@ -3,7 +3,11 @@ extends Node2D
 
 @onready var label: Label = $Label
 
-var amount: int = 0
+var amount: int = 0:
+	set(value):
+		amount = value
+		if is_node_ready():
+			label.text = str(amount)
 var is_critical: bool = false
 
 func _ready() -> void:

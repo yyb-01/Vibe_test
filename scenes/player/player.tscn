@@ -1,7 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://b8v7a3d2e1f"]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_x9y8z"]
-[ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="2_b4c5d"]
 [ext_resource type="Texture2D" uid="uid://t1p2l3a4svg" path="res://assets/graphics/player.svg" id="3_e6f7g"]
 [ext_resource type="Script" path="res://scripts/player/camera_shake.gd" id="4_cam"]
 
@@ -12,7 +11,6 @@ radius = 20.0
 collision_layer = 1
 collision_mask = 3
 script = ExtResource("1_x9y8z")
-current_weapon = ExtResource("2_b4c5d")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 10

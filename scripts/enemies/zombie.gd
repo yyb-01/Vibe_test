@@ -14,15 +14,18 @@ var health: int
 var player: Node2D = null
 var can_attack: bool = true
 var knockback: Vector2 = Vector2.ZERO
+var is_dying: bool = false
 
 var base_max_health: int
 var base_scale: Vector2
+var base_sprite_modulate: Color
 var walk_time: float = 0.0
 var previous_pos: Vector2
 
 func _ready() -> void:
 	base_max_health = max_health
 	base_scale = sprite.scale
+	base_sprite_modulate = sprite.modulate
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
 	reset()
@@ -32,8 +35,13 @@ func reset() -> void:
 	health = max_health
 	can_attack = true
 	knockback = Vector2.ZERO
-	sprite.modulate.a = 1.0
+	is_dying = false
+	collision_layer = 2
+	collision_mask = 5
+	modulate = Color.WHITE
+	sprite.modulate = base_sprite_modulate
 	sprite.scale = base_scale
+	walk_time = 0.0
 
 	if sprite.material is ShaderMaterial:
 		sprite.material.set_shader_parameter("active", false)
@@ -105,7 +113,7 @@ func _attack_player() -> void:
 		timer.timeout.connect(func() -> void: can_attack = true)
 
 func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
-	if health <= 0:
+	if health <= 0 or is_dying:
 		return
 
 	health -= amount
@@ -139,6 +147,11 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 		die()
 
 func die() -> void:
+	if is_dying:
+		return
+	is_dying = true
+	health = 0
+
 	EventBus.zombie_died.emit(global_position)
 	SpatialGrid.remove(self)
 

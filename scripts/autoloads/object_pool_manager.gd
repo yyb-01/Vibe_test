@@ -19,8 +19,14 @@ func register_pool(pool_id: String, scene: PackedScene, parent: Node, initial_si
 		var instance = scene.instantiate()
 		instance.set_meta("pool_id", pool_id)
 		instance.process_mode = Node.PROCESS_MODE_DISABLED
-		instance.visible = false
+		if instance is CanvasItem:
+			instance.visible = false
 		parent.add_child(instance)
+		# Pool warm-up runs _ready(), so remove any spatial registration made there.
+		if instance.is_in_group("enemies"):
+			SpatialGrid.remove(instance)
+		elif instance.has_method("get_exp_amount"):
+			SpatialGrid.remove_item(instance)
 		_pools[pool_id]["free"].append(instance)
 
 func acquire(pool_id: String, global_pos: Vector2) -> Node:
@@ -52,7 +58,8 @@ func acquire(pool_id: String, global_pos: Vector2) -> Node:
 		instance.global_position = global_pos
 
 	instance.process_mode = Node.PROCESS_MODE_INHERIT
-	instance.visible = true
+	if instance is CanvasItem:
+		instance.visible = true
 	if instance.has_node("CollisionShape2D"):
 		instance.get_node("CollisionShape2D").disabled = false
 	# also for exp gems, check Area2D
@@ -76,7 +83,8 @@ func release(instance: Node) -> void:
 	var free_list: Array = _pools[pool_id]["free"]
 	if not free_list.has(instance):
 		instance.process_mode = Node.PROCESS_MODE_DISABLED
-		instance.visible = false
+		if instance is CanvasItem:
+			instance.visible = false
 		if instance.has_node("CollisionShape2D"):
 			instance.get_node("CollisionShape2D").disabled = true
 		if instance is Area2D:

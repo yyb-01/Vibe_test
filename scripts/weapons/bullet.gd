@@ -5,6 +5,7 @@ extends Area2D
 var damage: int = 0
 var direction: Vector2 = Vector2.ZERO
 var pierce_count: int = 0
+var hit_targets: Array[Node] = []
 
 var life_time: float = 0.0
 
@@ -16,6 +17,7 @@ func reset() -> void:
 	life_time = 0.0
 	direction = Vector2.ZERO
 	pierce_count = 0
+	hit_targets.clear()
 
 func _physics_process(delta: float) -> void:
 	life_time += delta
@@ -29,8 +31,11 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):
 		return
+	if hit_targets.has(body):
+		return
 
 	if body.has_method("take_damage"):
+		hit_targets.append(body)
 		body.take_damage(damage, direction)
 
 		# Handle Pierce

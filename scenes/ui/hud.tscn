@@ -72,6 +72,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Time: 00:00"
 
+[node name="ModeLabel" type="Label" parent="MarginContainer/VBoxContainer/WaveInfoBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "AUTO [F]"
+
 [node name="InventoryBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 10

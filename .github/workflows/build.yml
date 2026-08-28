@@ -1,6 +1,7 @@
 name: Build Windows Executable
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -43,12 +44,15 @@ jobs:
           rm -f Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip Godot_v${GODOT_VERSION}-stable_export_templates.tpz
 
       - name: Import Assets (Headless Run)
-        run: godot --headless --editor --quit
+        run: godot --headless --editor --quit --path "${PROJECT_PATH}"
+
+      - name: Verify Map Loading and Spawning
+        run: godot --headless --path "${PROJECT_PATH}" --script verify_map.gd
 
       - name: Export Windows Executable
         run: |
           mkdir -p build/windows
-          godot --headless --export-release "Windows Desktop" build/windows/zombie_survival.exe
+          godot --headless --path "${PROJECT_PATH}" --export-release "Windows Desktop" build/windows/zombie_survival.exe
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4

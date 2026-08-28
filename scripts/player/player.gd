@@ -18,8 +18,7 @@ var damage_mult: float = 1.0
 var speed_mult: float = 1.0
 var reload_mult: float = 1.0
 var pierce_add: int = 0
-
-const BULLET_SCENE: PackedScene = preload("res://scenes/weapons/bullet.tscn")
+var auto_fire_enabled: bool = true
 
 func _ready() -> void:
 	# Initialize default starting weapon
@@ -33,7 +32,8 @@ func _ready() -> void:
 
 	health = max_health
 
-	EventBus.perk_selected.connect(apply_perk)
+	if not EventBus.perk_selected.is_connected(apply_perk):
+		EventBus.perk_selected.connect(apply_perk)
 
 	# Delay emitting signals slightly so HUD is ready
 	call_deferred("_update_ui")
@@ -44,21 +44,30 @@ func _update_ui() -> void:
 
 func _physics_process(_delta: float) -> void:
 	_handle_movement()
-	_handle_auto_shooting()
+	_handle_shooting()
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	velocity = input_dir * (move_speed * speed_mult)
 	move_and_slide()
 
-func _handle_auto_shooting() -> void:
+func _handle_shooting() -> void:
 	# Always aim at the mouse cursor
 	look_at(get_global_mouse_position())
+	if not auto_fire_enabled and not Input.is_action_pressed("shoot"):
+		return
 
 	# Iterate over all weapons and attempt to fire
 	var target_pos = get_global_mouse_position()
 	for weapon in weapons:
 		weapon.fire(self, target_pos)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_auto_fire"):
+		auto_fire_enabled = not auto_fire_enabled
+	if event.is_action_pressed("reload"):
+		for weapon in weapons:
+			weapon.reload(self)
 
 func add_weapon(weapon_script: Script, data: WeaponData) -> void:
 	if weapons.size() >= max_weapons:
@@ -70,16 +79,19 @@ func add_weapon(weapon_script: Script, data: WeaponData) -> void:
 	EventBus.inventory_updated.emit(weapons, passives)
 
 func take_damage(amount: int) -> void:
+	if health <= 0:
+		return
+
 	health -= amount
-	print("Player took damage! Health: ", health)
+	EventBus.camera_shake_requested.emit()
 	EventBus.player_health_changed.emit(health, max_health)
 
 	if health <= 0:
 		die()
 
 func die() -> void:
-	print("Player died!")
-	get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/main_menu.tscn")
+	set_physics_process(false)
+	EventBus.game_over.emit(false)
 
 func heal(amount: int) -> void:
 	health += amount
@@ -90,7 +102,7 @@ func heal(amount: int) -> void:
 
 func add_exp(amount: int) -> void:
 	current_exp += amount
-	if current_exp >= required_exp:
+	while current_exp >= required_exp:
 		_level_up()
 	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 

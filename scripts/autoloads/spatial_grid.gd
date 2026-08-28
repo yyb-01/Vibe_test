@@ -5,24 +5,29 @@ const CELL_SIZE: int = 128
 # Key: Vector2i (grid cell coordinates)
 # Value: Array of Nodes (Zombies)
 var grid: Dictionary = {}
+var entity_cells: Dictionary = {}
 
 func clear() -> void:
 	grid.clear()
+	entity_cells.clear()
 	item_grid.clear()
 
 func insert(entity: Node2D) -> void:
+	remove(entity)
 	var cell := _get_cell(entity.global_position)
 	if not grid.has(cell):
 		grid[cell] = []
 	grid[cell].append(entity)
+	entity_cells[entity] = cell
 
 func remove(entity: Node2D) -> void:
-	var cell := _get_cell(entity.global_position)
+	var cell: Vector2i = entity_cells.get(entity, _get_cell(entity.global_position))
 	if grid.has(cell):
 		grid[cell].erase(entity)
+	entity_cells.erase(entity)
 
 func update_entity(entity: Node2D, old_pos: Vector2, new_pos: Vector2) -> void:
-	var old_cell := _get_cell(old_pos)
+	var old_cell: Vector2i = entity_cells.get(entity, _get_cell(old_pos))
 	var new_cell := _get_cell(new_pos)
 
 	if old_cell != new_cell:
@@ -31,6 +36,7 @@ func update_entity(entity: Node2D, old_pos: Vector2, new_pos: Vector2) -> void:
 		if not grid.has(new_cell):
 			grid[new_cell] = []
 		grid[new_cell].append(entity)
+		entity_cells[entity] = new_cell
 
 func get_nearby_entities(pos: Vector2) -> Array:
 	var cell := _get_cell(pos)
@@ -52,6 +58,7 @@ func _get_cell(pos: Vector2) -> Vector2i:
 var item_grid: Dictionary = {}
 
 func insert_item(item: Node2D) -> void:
+	remove_item(item)
 	var cell := _get_cell(item.global_position)
 	if not item_grid.has(cell):
 		item_grid[cell] = []
@@ -60,8 +67,7 @@ func insert_item(item: Node2D) -> void:
 	_check_cluster(cell)
 
 func remove_item(item: Node2D) -> void:
-	var cell := _get_cell(item.global_position)
-	if item_grid.has(cell):
+	for cell in item_grid.keys():
 		item_grid[cell].erase(item)
 
 func _check_cluster(cell: Vector2i) -> void:

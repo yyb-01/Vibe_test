@@ -19,6 +19,9 @@ var boss_spawned: bool = false
 
 func _ready() -> void:
 	get_tree().paused = false # Absolute guarantee on map load
+	var pool_parent := get_tree().current_scene
+	if not is_instance_valid(pool_parent):
+		pool_parent = get_parent()
 
 	for path in spawn_points:
 		var node := get_node(path) as Node2D
@@ -26,13 +29,13 @@ func _ready() -> void:
 			spawn_points_nodes.append(node)
 
 	# Pre-register pools
-	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, get_tree().current_scene, 200)
-	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, get_tree().current_scene, 100)
-	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, get_tree().current_scene, 50)
-	ObjectPoolManager.register_pool("exp_gem", preload("res://scenes/items/exp_gem.tscn"), get_tree().current_scene, 300)
-	ObjectPoolManager.register_pool("bullet", preload("res://scenes/weapons/bullet.tscn"), get_tree().current_scene, 50)
-	ObjectPoolManager.register_pool("damage_number", preload("res://scenes/ui/effects/damage_number.tscn"), get_tree().current_scene, 100)
-	ObjectPoolManager.register_pool("blood_impact", preload("res://scenes/effects/blood_impact.tscn"), get_tree().current_scene, 100)
+	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, pool_parent, 200)
+	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, pool_parent, 100)
+	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, pool_parent, 50)
+	ObjectPoolManager.register_pool("exp_gem", preload("res://scenes/items/exp_gem.tscn"), pool_parent, 300)
+	ObjectPoolManager.register_pool("bullet", preload("res://scenes/weapons/bullet.tscn"), pool_parent, 50)
+	ObjectPoolManager.register_pool("damage_number", preload("res://scenes/ui/effects/damage_number.tscn"), pool_parent, 100)
+	ObjectPoolManager.register_pool("blood_impact", preload("res://scenes/effects/blood_impact.tscn"), pool_parent, 100)
 
 func _process(delta: float) -> void:
 	time_elapsed += delta

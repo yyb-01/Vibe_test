@@ -4,6 +4,7 @@ extends CanvasLayer
 @onready var hp_bar: ProgressBar = $MarginContainer/VBoxContainer/HBoxContainer/HPBar
 @onready var exp_bar: ProgressBar = $MarginContainer/VBoxContainer/HBoxContainer/ExpBar
 @onready var time_label: Label = $MarginContainer/VBoxContainer/WaveInfoBox/TimeLabel
+@onready var mode_label: Label = $MarginContainer/VBoxContainer/WaveInfoBox/ModeLabel
 @onready var weapons_label: Label = $MarginContainer/VBoxContainer/InventoryBox/WeaponsLabel
 @onready var passives_label: Label = $MarginContainer/VBoxContainer/InventoryBox/PassivesLabel
 
@@ -19,6 +20,9 @@ func _process(delta: float) -> void:
 	var minutes := int(time_elapsed) / 60
 	var seconds := int(time_elapsed) % 60
 	time_label.text = "Time: %02d:%02d" % [minutes, seconds]
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if player:
+		mode_label.text = "AUTO [F]" if player.auto_fire_enabled else "MANUAL [LMB]"
 
 func _on_player_health_changed(current_hp: int, max_hp: int) -> void:
 	hp_bar.max_value = max_hp
