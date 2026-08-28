@@ -6,10 +6,12 @@ on:
     branches:
       - main
       - master
+      - init-godot-project-16440751361188237273
   pull_request:
     branches:
       - main
       - master
+      - init-godot-project-16440751361188237273
 
 env:
   GODOT_VERSION: "4.2.2"
