@@ -40,9 +40,17 @@ func _process(delta: float) -> void:
 	var spawn_rate = 1.0 / current_delay
 	spawn_debt += spawn_rate * delta
 
-	while spawn_debt >= 1.0:
-		_spawn_zombie()
+	var spawns_this_frame: int = 0
+	const MAX_SPAWNS_PER_FRAME: int = 20
+
+	while spawn_debt >= 1.0 and spawns_this_frame < MAX_SPAWNS_PER_FRAME:
 		spawn_debt -= 1.0
+		spawns_this_frame += 1
+		_spawn_zombie()
+
+	# If we hit the cap, clamp debt so we don't spiral infinitely behind
+	if spawn_debt > MAX_SPAWNS_PER_FRAME * 2.0:
+		spawn_debt = float(MAX_SPAWNS_PER_FRAME)
 
 func _spawn_zombie() -> void:
 	if spawn_points_nodes.size() > 0:
