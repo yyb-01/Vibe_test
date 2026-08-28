@@ -1,0 +1,124 @@
+[gd_scene load_steps=8 format=3 uid="uid://map222cross"]
+
+[ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
+[ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
+[ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
+size = Vector2(1000, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
+size = Vector2(20, 1000)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_pillar"]
+size = Vector2(200, 200)
+
+[node name="Map2" type="Node2D"]
+
+[node name="Background" type="ColorRect" parent="."]
+offset_left = -5000.0
+offset_top = -5000.0
+offset_right = 5000.0
+offset_bottom = 5000.0
+color = Color(0.15, 0.1, 0.1, 1)
+
+[node name="Walls" type="StaticBody2D" parent="."]
+collision_mask = 3
+
+[node name="TopWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(500, -10)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="BottomWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(500, 1010)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="LeftWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(-10, 500)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="RightWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1010, 500)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="CenterPillar1" type="CollisionShape2D" parent="Walls"]
+position = Vector2(250, 250)
+shape = SubResource("RectangleShape2D_pillar")
+
+[node name="CenterPillar2" type="CollisionShape2D" parent="Walls"]
+position = Vector2(750, 250)
+shape = SubResource("RectangleShape2D_pillar")
+
+[node name="CenterPillar3" type="CollisionShape2D" parent="Walls"]
+position = Vector2(250, 750)
+shape = SubResource("RectangleShape2D_pillar")
+
+[node name="CenterPillar4" type="CollisionShape2D" parent="Walls"]
+position = Vector2(750, 750)
+shape = SubResource("RectangleShape2D_pillar")
+
+[node name="Visuals" type="Node2D" parent="Walls"]
+
+[node name="P1" type="ColorRect" parent="Walls/Visuals"]
+offset_left = 150.0
+offset_top = 150.0
+offset_right = 350.0
+offset_bottom = 350.0
+color = Color(0.3, 0.2, 0.2, 1)
+
+[node name="P2" type="ColorRect" parent="Walls/Visuals"]
+offset_left = 650.0
+offset_top = 150.0
+offset_right = 850.0
+offset_bottom = 350.0
+color = Color(0.3, 0.2, 0.2, 1)
+
+[node name="P3" type="ColorRect" parent="Walls/Visuals"]
+offset_left = 150.0
+offset_top = 650.0
+offset_right = 350.0
+offset_bottom = 850.0
+color = Color(0.3, 0.2, 0.2, 1)
+
+[node name="P4" type="ColorRect" parent="Walls/Visuals"]
+offset_left = 650.0
+offset_top = 650.0
+offset_right = 850.0
+offset_bottom = 850.0
+color = Color(0.3, 0.2, 0.2, 1)
+
+[node name="Player" parent="." instance=ExtResource("1_plyr")]
+position = Vector2(500, 500)
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+
+[node name="PerkSelection" parent="." instance=ExtResource("4_perk")]
+
+[node name="GameOverUI" parent="." instance=ExtResource("5_govr")]
+
+[node name="SpawnManager" type="Node" parent="."]
+script = ExtResource("2_wvmgr")
+spawn_points = Array[NodePath]([NodePath("../SpawnPoints/Spawn1"), NodePath("../SpawnPoints/Spawn2"), NodePath("../SpawnPoints/Spawn3"), NodePath("../SpawnPoints/Spawn4"), NodePath("../SpawnPoints/Spawn5"), NodePath("../SpawnPoints/Spawn6")])
+spawn_bounds = Rect2(50, 50, 900, 900)
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="Spawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(500, 50)
+
+[node name="Spawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(950, 500)
+
+[node name="Spawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(500, 950)
+
+[node name="Spawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(50, 500)
+
+[node name="Spawn5" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(50, 50)
+
+[node name="Spawn6" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(950, 950)

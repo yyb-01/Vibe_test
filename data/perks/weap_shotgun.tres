@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponUpgradeData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_upgrade_data.gd" id="1_a1"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_shotgun.gd" id="2_w1"]
+[ext_resource type="Script" path="res://scripts/resources/weapon_data.gd" id="3_dw"]
+
+[sub_resource type="Resource" id="Resource_shotgun"]
+script = ExtResource("3_dw")
+weapon_name = "Shotgun"
+damage = 10
+fire_rate = 0.8
+magazine_size = 1
+reload_time = 0.0
+
+[resource]
+script = ExtResource("1_a1")
+weapon_id = "shotgun"
+weapon_name = "산탄총 (Shotgun)"
+description = "전방으로 여러 발의 탄환을 흩뿌립니다."
+weapon_script = ExtResource("2_w1")
+weapon_data = SubResource("Resource_shotgun")

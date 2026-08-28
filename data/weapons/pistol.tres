@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_data.gd" id="1_a1b2c"]
+
+[resource]
+script = ExtResource("1_a1b2c")
+weapon_name = "Pistol"
+damage = 15
+fire_rate = 0.25
+magazine_size = 12
+reload_time = 1.5
