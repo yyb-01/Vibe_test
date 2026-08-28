@@ -9,3 +9,7 @@ signal level_up()
 signal perk_selection_requested()
 signal perk_selected(perk: Resource)
 signal camera_shake_requested()
+
+signal gold_changed(total_gold: int)
+signal game_over(is_victory: bool)
+signal inventory_updated(weapons: Array, passives: Array)

@@ -3,7 +3,10 @@ extends CharacterBody2D
 
 @export var max_health: int = 100
 @export var move_speed: float = 200.0
-@export var current_weapon: WeaponData
+var weapons: Array[Weapon] = []
+var max_weapons: int = 6
+var passives: Array[PerkData] = []
+var max_passives: int = 6
 
 var health: int
 var current_exp: int = 0
@@ -16,20 +19,21 @@ var speed_mult: float = 1.0
 var reload_mult: float = 1.0
 var pierce_add: int = 0
 
-var can_shoot: bool = true
-var fire_timer: Timer
-
 const BULLET_SCENE: PackedScene = preload("res://scenes/weapons/bullet.tscn")
 
 func _ready() -> void:
+	# Initialize default starting weapon
+	var starting_weap_data = preload("res://data/perks/weap_pistol.tres")
+	add_weapon(starting_weap_data.weapon_script, starting_weap_data.weapon_data)
+
+	# Apply meta-progression
+	max_health += SaveManager.upgrade_max_hp * 20
+	damage_mult += SaveManager.upgrade_damage * 0.1
+	speed_mult += SaveManager.upgrade_speed * 0.05
+
 	health = max_health
 
 	EventBus.perk_selected.connect(apply_perk)
-
-	fire_timer = Timer.new()
-	fire_timer.one_shot = true
-	add_child(fire_timer)
-	fire_timer.timeout.connect(_on_fire_timer_timeout)
 
 	# Delay emitting signals slightly so HUD is ready
 	call_deferred("_update_ui")
@@ -51,25 +55,19 @@ func _handle_auto_shooting() -> void:
 	# Always aim at the mouse cursor
 	look_at(get_global_mouse_position())
 
-	# Auto fire at the aimed direction if ready
-	if current_weapon and can_shoot:
-		_shoot(get_global_mouse_position())
+	# Iterate over all weapons and attempt to fire
+	var target_pos = get_global_mouse_position()
+	for weapon in weapons:
+		weapon.fire(self, target_pos)
 
-func _shoot(target_pos: Vector2) -> void:
-	can_shoot = false
-
-	var bullet = ObjectPoolManager.acquire("bullet", global_position)
-	if bullet:
-		var dir := (target_pos - global_position).normalized()
-		bullet.direction = dir
-		bullet.damage = int(current_weapon.damage * damage_mult)
-		bullet.pierce_count = pierce_add
-
-	var actual_fire_rate = current_weapon.fire_rate * reload_mult
-	fire_timer.start(actual_fire_rate)
-
-func _on_fire_timer_timeout() -> void:
-	can_shoot = true
+func add_weapon(weapon_script: Script, data: WeaponData) -> void:
+	if weapons.size() >= max_weapons:
+		return
+	var w = weapon_script.new()
+	w.data = data
+	add_child(w)
+	weapons.append(w)
+	EventBus.inventory_updated.emit(weapons, passives)
 
 func take_damage(amount: int) -> void:
 	health -= amount
@@ -106,6 +104,7 @@ func _level_up() -> void:
 
 func apply_perk(perk: PerkData) -> void:
 	print("Applying perk: ", perk.perk_name)
+	passives.append(perk)
 	damage_mult *= perk.damage_mult
 	speed_mult *= perk.speed_mult
 	reload_mult *= perk.reload_speed_mult
@@ -115,3 +114,5 @@ func apply_perk(perk: PerkData) -> void:
 		max_health += perk.max_hp_add
 		health += perk.max_hp_add
 		EventBus.player_health_changed.emit(health, max_health)
+
+	EventBus.inventory_updated.emit(weapons, passives)

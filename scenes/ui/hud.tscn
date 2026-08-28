@@ -70,3 +70,17 @@ theme_override_constants/separation = 20
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Time: 00:00"
+
+[node name="InventoryBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="WeaponsLabel" type="Label" parent="MarginContainer/VBoxContainer/InventoryBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.701961, 0.701961, 0.701961, 1)
+text = "Weapons:"
+
+[node name="PassivesLabel" type="Label" parent="MarginContainer/VBoxContainer/InventoryBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.701961, 0.701961, 0.701961, 1)
+text = "Passives:"

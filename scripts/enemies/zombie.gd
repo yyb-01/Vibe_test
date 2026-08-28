@@ -142,8 +142,14 @@ func die() -> void:
 	EventBus.zombie_died.emit(global_position)
 	SpatialGrid.remove(self)
 
-	# Spawn EXP Gem
-	ObjectPoolManager.acquire("exp_gem", global_position)
+	if has_meta("is_boss") and get_meta("is_boss"):
+		SaveManager.add_gold(1000)
+		EventBus.game_over.emit(true)
+	else:
+		# Standard drop
+		ObjectPoolManager.acquire("exp_gem", global_position)
+		if randf() < 0.05:
+			SaveManager.add_gold(10)
 
 	# Fade out logic without immediately blocking process so tween can finish
 	collision_layer = 0

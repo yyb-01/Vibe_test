@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponUpgradeData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_upgrade_data.gd" id="1_a1"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_pistol.gd" id="2_w1"]
+[ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="3_d1"]
+
+[resource]
+script = ExtResource("1_a1")
+weapon_id = "pistol"
+weapon_name = "권총 (Pistol)"
+description = "기본적인 단발 사격 무기입니다."
+weapon_script = ExtResource("2_w1")
+weapon_data = ExtResource("3_d1")

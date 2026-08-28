@@ -8,6 +8,7 @@ var grid: Dictionary = {}
 
 func clear() -> void:
 	grid.clear()
+	item_grid.clear()
 
 func insert(entity: Node2D) -> void:
 	var cell := _get_cell(entity.global_position)
@@ -46,3 +47,40 @@ func get_nearby_entities(pos: Vector2) -> Array:
 
 func _get_cell(pos: Vector2) -> Vector2i:
 	return Vector2i(int(floor(pos.x / CELL_SIZE)), int(floor(pos.y / CELL_SIZE)))
+
+# Clustering logic for items
+var item_grid: Dictionary = {}
+
+func insert_item(item: Node2D) -> void:
+	var cell := _get_cell(item.global_position)
+	if not item_grid.has(cell):
+		item_grid[cell] = []
+	item_grid[cell].append(item)
+
+	_check_cluster(cell)
+
+func remove_item(item: Node2D) -> void:
+	var cell := _get_cell(item.global_position)
+	if item_grid.has(cell):
+		item_grid[cell].erase(item)
+
+func _check_cluster(cell: Vector2i) -> void:
+	if not item_grid.has(cell): return
+	var cell_items = item_grid[cell]
+
+	var exp_gems = []
+	for item in cell_items:
+		if is_instance_valid(item) and item.has_method("get_exp_amount"):
+			exp_gems.append(item)
+
+	if exp_gems.size() > 20:
+		var total_exp = 0
+		var pos = exp_gems[0].global_position
+		for gem in exp_gems:
+			total_exp += gem.get_exp_amount()
+			item_grid[cell].erase(gem)
+			ObjectPoolManager.release(gem)
+
+		var new_gem = ObjectPoolManager.acquire("exp_gem", pos)
+		if new_gem:
+			new_gem.set_exp_amount(total_exp)

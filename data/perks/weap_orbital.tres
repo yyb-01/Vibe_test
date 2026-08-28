@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponUpgradeData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_upgrade_data.gd" id="1_a1"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_orbital.gd" id="2_w1"]
+[ext_resource type="Script" path="res://scripts/resources/weapon_data.gd" id="3_dw"]
+
+[sub_resource type="Resource" id="Resource_orbital"]
+script = ExtResource("3_dw")
+weapon_name = "Orbital"
+damage = 25
+fire_rate = 0.5
+magazine_size = 1
+reload_time = 0.0
+
+[resource]
+script = ExtResource("1_a1")
+weapon_id = "orbital"
+weapon_name = "보호막 (Orbital)"
+description = "플레이어 주위를 도는 보호막을 생성합니다."
+weapon_script = ExtResource("2_w1")
+weapon_data = SubResource("Resource_orbital")

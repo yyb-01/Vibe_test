@@ -14,6 +14,7 @@ var base_spawn_delay: float = 2.0
 var min_spawn_delay: float = 0.2
 
 var spawn_debt: float = 0.0
+var boss_spawned: bool = false
 
 func _ready() -> void:
 	for path in spawn_points:
@@ -33,6 +34,13 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	time_elapsed += delta
 
+	if time_elapsed >= 300.0 and not boss_spawned: # 5 Minutes
+		_spawn_boss()
+		return
+
+	if boss_spawned:
+		return # Stop normal spawns during boss fight
+
 	var speed_up_factor = clampf(time_elapsed / 300.0, 0.0, 1.0)
 	var current_delay = lerpf(base_spawn_delay, min_spawn_delay, speed_up_factor)
 
@@ -51,6 +59,17 @@ func _process(delta: float) -> void:
 	# If we hit the cap, clamp debt so we don't spiral infinitely behind
 	if spawn_debt > MAX_SPAWNS_PER_FRAME * 2.0:
 		spawn_debt = float(MAX_SPAWNS_PER_FRAME)
+
+func _spawn_boss() -> void:
+	boss_spawned = true
+	var sp := spawn_points_nodes[0]
+	var boss = ObjectPoolManager.acquire("zombie_tank", sp.global_position)
+	if boss:
+		boss.set_meta("pool_id", "zombie_tank")
+		boss.set_meta("is_boss", true)
+		boss.set_scaled_max_health(50.0) # Massive HP multiplier
+		boss.scale = Vector2(3.0, 3.0)
+		boss.modulate = Color.RED
 
 func _spawn_zombie() -> void:
 	if spawn_points_nodes.size() > 0:
