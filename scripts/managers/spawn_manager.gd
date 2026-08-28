@@ -17,6 +17,8 @@ var spawn_debt: float = 0.0
 var boss_spawned: bool = false
 
 func _ready() -> void:
+	get_tree().paused = false # Absolute guarantee on map load
+
 	for path in spawn_points:
 		var node := get_node(path) as Node2D
 		if node:
@@ -49,12 +51,14 @@ func _process(delta: float) -> void:
 	spawn_debt += spawn_rate * delta
 
 	var spawns_this_frame: int = 0
-	const MAX_SPAWNS_PER_FRAME: int = 20
+	const MAX_SPAWNS_PER_FRAME: int = 10
 
 	while spawn_debt >= 1.0 and spawns_this_frame < MAX_SPAWNS_PER_FRAME:
 		spawn_debt -= 1.0
 		spawns_this_frame += 1
-		_spawn_zombie()
+		if not _spawn_zombie():
+			# Pool exhausted or error, break loop early to prevent spin-lock
+			break
 
 	# If we hit the cap, clamp debt so we don't spiral infinitely behind
 	if spawn_debt > MAX_SPAWNS_PER_FRAME * 2.0:
@@ -71,7 +75,7 @@ func _spawn_boss() -> void:
 		boss.scale = Vector2(3.0, 3.0)
 		boss.modulate = Color.RED
 
-func _spawn_zombie() -> void:
+func _spawn_zombie() -> bool:
 	if spawn_points_nodes.size() > 0:
 		var sp := spawn_points_nodes[randi() % spawn_points_nodes.size()]
 
@@ -93,9 +97,14 @@ func _spawn_zombie() -> void:
 		var final_pos = sp.global_position + offset
 
 		var zombie = ObjectPoolManager.acquire(pool_id, final_pos)
-		if not zombie: return
+		if not zombie:
+			return false # Failed to acquire from pool
+
 		zombie.set_meta("pool_id", pool_id)
 
 		# We must re-assign max health manually since the pool object might have been dirty
 		if zombie.has_method("set_scaled_max_health"):
 			zombie.set_scaled_max_health(hp_multiplier)
+
+		return true
+	return false

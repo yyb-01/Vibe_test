@@ -21,6 +21,9 @@ func save_data() -> void:
 	config.save(SAVE_PATH)
 
 func load_data() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return # Safe fallback to default values
+
 	var config = ConfigFile.new()
 	if config.load(SAVE_PATH) == OK:
 		gold = config.get_value("Meta", "gold", 0)
