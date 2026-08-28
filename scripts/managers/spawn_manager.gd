@@ -93,6 +93,11 @@ func _spawn_zombie() -> bool:
 				pool_id = "zombie_runner"
 
 		# Offset slightly around spawn point to prevent immediate stacking
+		# Safety check for player instance
+		var player = get_tree().get_first_node_in_group("player")
+		if not is_instance_valid(player):
+			return false
+
 		var offset := Vector2(randf_range(-40, 40), randf_range(-40, 40))
 		var final_pos = sp.global_position + offset
 

@@ -41,7 +41,8 @@ func _update_orbitals() -> void:
 		rect.position = Vector2(-10, -10)
 		area.add_child(rect)
 
-		parent_player.add_child(area)
+		# Add to the global scene tree rather than the player, to prevent tree traversal/hierarchy crashes
+		get_tree().current_scene.call_deferred("add_child", area)
 		orbitals.append(area)
 
 func _process(delta: float) -> void:
@@ -58,7 +59,8 @@ func _process(delta: float) -> void:
 		var o = orbitals[i]
 		if is_instance_valid(o):
 			var a = angle + (i * TAU / orbitals.size())
-			o.position = Vector2(cos(a), sin(a)) * radius
+			# Sync to global position instead of relying on local player offset
+			o.global_position = player.global_position + Vector2(cos(a), sin(a)) * radius
 
 			if cooldown_timer <= 0:
 				var bodies = o.get_overlapping_bodies()

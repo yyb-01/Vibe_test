@@ -21,4 +21,5 @@ texture = ExtResource("3_e6f7g")
 shape = SubResource("RectangleShape2D_z9x8w")
 
 [node name="Camera2D" type="Camera2D" parent="."]
+enabled = true
 script = ExtResource("4_cam")
