@@ -2,12 +2,28 @@ extends SceneTree
 
 const SPAWN_WAIT_SECONDS := 3.0
 var elapsed := 0.0
-var map_scene = preload("res://scenes/maps/map_1.tscn")
+var map_scene: PackedScene
 var map_instance: Node
 
 func _initialize() -> void:
     print("Starting map load test...")
     var root = get_root()
+
+    # SceneTree scripts do not instantiate project autoloads automatically.
+    # Create the same singleton nodes before loading scenes that reference them.
+    var autoloads := {
+        "EventBus": "res://scripts/autoloads/event_bus.gd",
+        "ObjectPoolManager": "res://scripts/autoloads/object_pool_manager.gd",
+        "SpatialGrid": "res://scripts/autoloads/spatial_grid.gd",
+        "SaveManager": "res://scripts/autoloads/save_manager.gd",
+        "AudioManager": "res://scripts/autoloads/audio_manager.gd"
+    }
+    for singleton_name in autoloads:
+        var singleton = load(autoloads[singleton_name]).new()
+        singleton.name = singleton_name
+        root.add_child(singleton)
+
+    map_scene = load("res://scenes/maps/map_1.tscn") as PackedScene
     map_instance = map_scene.instantiate()
     root.add_child(map_instance)
 

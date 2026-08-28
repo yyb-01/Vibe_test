@@ -28,7 +28,10 @@ func _ready() -> void:
 		if node:
 			spawn_points_nodes.append(node)
 
-	# Pre-register pools
+	# Wait until the map has finished adding its children before warming pools.
+	call_deferred("_register_pools", pool_parent)
+
+func _register_pools(pool_parent: Node) -> void:
 	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, pool_parent, 200)
 	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, pool_parent, 100)
 	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, pool_parent, 50)
