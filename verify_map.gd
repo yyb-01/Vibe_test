@@ -1,6 +1,7 @@
 extends SceneTree
 
-var frames_to_wait = 300
+const SPAWN_WAIT_SECONDS := 3.0
+var elapsed := 0.0
 var map_scene = preload("res://scenes/maps/map_1.tscn")
 var map_instance: Node
 
@@ -11,8 +12,8 @@ func _initialize() -> void:
     root.add_child(map_instance)
 
 func _process(delta: float) -> bool:
-    frames_to_wait -= 1
-    if frames_to_wait <= 0:
+    elapsed += delta
+    if elapsed >= SPAWN_WAIT_SECONDS:
         print("Checking verification assertions...")
         var players = get_nodes_in_group("player")
         if players.size() == 0:
