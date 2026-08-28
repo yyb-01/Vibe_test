@@ -2,6 +2,7 @@ class_name SpawnManager
 extends Node
 
 @export var spawn_points: Array[NodePath]
+@export var spawn_bounds: Rect2 = Rect2(0, 0, 1000, 1000)
 
 const ZOMBIE_BASE: PackedScene = preload("res://scenes/enemies/zombie.tscn")
 const ZOMBIE_RUNNER: PackedScene = preload("res://scenes/enemies/zombie_runner.tscn")
@@ -100,6 +101,10 @@ func _spawn_zombie() -> bool:
 
 		var offset := Vector2(randf_range(-40, 40), randf_range(-40, 40))
 		var final_pos = sp.global_position + offset
+
+		# Clamp to safe playable area bounds
+		final_pos.x = clampf(final_pos.x, spawn_bounds.position.x, spawn_bounds.position.x + spawn_bounds.size.x)
+		final_pos.y = clampf(final_pos.y, spawn_bounds.position.y, spawn_bounds.position.y + spawn_bounds.size.y)
 
 		var zombie = ObjectPoolManager.acquire(pool_id, final_pos)
 		if not zombie:

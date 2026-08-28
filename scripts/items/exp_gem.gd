@@ -49,10 +49,9 @@ func _physics_process(delta: float) -> void:
 
 	var dist = global_position.distance_to(target.global_position)
 	if dist < magnet_range or speed > 0:
-		# Magnet effect accelerates as it gets closer
-		speed += 800.0 * delta
-		var dir = global_position.direction_to(target.global_position)
-		position += dir * speed * delta
+		# Magnet effect accelerates smoothly as it gets closer
+		speed += 1200.0 * delta
+		global_position = global_position.move_toward(target.global_position, speed * delta)
 
 func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):

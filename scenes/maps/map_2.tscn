@@ -101,6 +101,7 @@ position = Vector2(500, 500)
 [node name="SpawnManager" type="Node" parent="."]
 script = ExtResource("2_wvmgr")
 spawn_points = Array[NodePath]([NodePath("../SpawnPoints/Spawn1"), NodePath("../SpawnPoints/Spawn2"), NodePath("../SpawnPoints/Spawn3"), NodePath("../SpawnPoints/Spawn4"), NodePath("../SpawnPoints/Spawn5"), NodePath("../SpawnPoints/Spawn6")])
+spawn_bounds = Rect2(50, 50, 900, 900)
 
 [node name="SpawnPoints" type="Node2D" parent="."]
 
