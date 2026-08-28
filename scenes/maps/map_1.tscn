@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
+[ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(800, 20)
@@ -73,6 +74,8 @@ position = Vector2(400, 300)
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
 
 [node name="PerkSelection" parent="." instance=ExtResource("4_perk")]
+
+[node name="GameOverUI" parent="." instance=ExtResource("5_govr")]
 
 [node name="SpawnManager" type="Node" parent="."]
 script = ExtResource("2_wvmgr")
