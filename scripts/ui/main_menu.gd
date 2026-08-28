@@ -9,4 +9,5 @@ func _ready() -> void:
 	map_2_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_2.tscn"))
 
 func _load_map(path: String) -> void:
+	get_tree().paused = false
 	get_tree().change_scene_to_file(path)
