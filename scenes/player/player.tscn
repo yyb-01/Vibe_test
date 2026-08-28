@@ -15,10 +15,11 @@ script = ExtResource("1_x9y8z")
 current_weapon = ExtResource("2_b4c5d")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 10
 texture = ExtResource("3_e6f7g")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_z9x8w")
+shape = SubResource("CircleShape2D_z9x8w")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 enabled = true

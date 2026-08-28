@@ -17,6 +17,7 @@ attack_damage = 5
 attack_range = 45.0
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 5
 material = ExtResource("2_mat")
 modulate = Color(1, 0.4, 0.4, 1)
 texture = ExtResource("2_e6f7g")

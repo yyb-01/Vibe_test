@@ -39,3 +39,10 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	for p in passives:
 		p_text += p.perk_name + ", "
 	passives_label.text = p_text
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		get_tree().paused = false
+		ObjectPoolManager.clear()
+		SpatialGrid.clear()
+		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")

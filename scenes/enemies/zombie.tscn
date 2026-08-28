@@ -14,6 +14,7 @@ script = ExtResource("1_a2b3c")
 attack_range = 45.0
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 5
 material = ExtResource("2_mat")
 texture = ExtResource("2_e6f7g")
 

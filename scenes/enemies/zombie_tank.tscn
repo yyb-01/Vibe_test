@@ -18,6 +18,7 @@ attack_range = 60.0
 knockback_resistance = 0.8
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 5
 material = ExtResource("2_mat")
 modulate = Color(0.6, 0.4, 0.8, 1)
 scale = Vector2(1.5, 1.5)

@@ -53,6 +53,13 @@ func acquire(pool_id: String, global_pos: Vector2) -> Node:
 
 	instance.process_mode = Node.PROCESS_MODE_INHERIT
 	instance.visible = true
+	if instance.has_node("CollisionShape2D"):
+		instance.get_node("CollisionShape2D").disabled = false
+	# also for exp gems, check Area2D
+	if instance is Area2D:
+		for child in instance.get_children():
+			if child is CollisionShape2D:
+				child.disabled = false
 
 	if instance.has_method("reset"):
 		instance.reset()
@@ -70,4 +77,10 @@ func release(instance: Node) -> void:
 	if not free_list.has(instance):
 		instance.process_mode = Node.PROCESS_MODE_DISABLED
 		instance.visible = false
+		if instance.has_node("CollisionShape2D"):
+			instance.get_node("CollisionShape2D").disabled = true
+		if instance is Area2D:
+			for child in instance.get_children():
+				if child is CollisionShape2D:
+					child.disabled = true
 		free_list.append(instance)
