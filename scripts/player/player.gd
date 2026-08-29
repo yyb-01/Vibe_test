@@ -21,10 +21,15 @@ var pierce_add: int = 0
 var auto_fire_enabled: bool = true
 var character_id: String = "scavenger"
 var active_synergies: Array[String] = []
+var walk_time: float = 0.0
+var sprite_base_scale: Vector2
+var sprite_base_position: Vector2
 
 @onready var sprite: Sprite2D = $Sprite2D
 
 func _ready() -> void:
+	sprite_base_scale = sprite.scale
+	sprite_base_position = sprite.position
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
 	character_id = SaveManager.selected_character
@@ -56,6 +61,22 @@ func _update_ui() -> void:
 func _physics_process(_delta: float) -> void:
 	_handle_movement()
 	_handle_shooting()
+	_animate_topdown_body(_delta)
+
+func _animate_topdown_body(delta: float) -> void:
+	var moving := velocity.length() > 8.0
+	if moving:
+		walk_time += delta * 9.0
+		var step := sin(walk_time)
+		var bob := absf(step)
+		sprite.position = sprite_base_position + Vector2(0.0, -bob * 2.2)
+		sprite.rotation = step * 0.025
+		sprite.scale = sprite_base_scale * Vector2(1.0 + bob * 0.025, 1.0 - bob * 0.02)
+	else:
+		walk_time = lerpf(walk_time, 0.0, minf(delta * 8.0, 1.0))
+		sprite.position = sprite.position.lerp(sprite_base_position, minf(delta * 10.0, 1.0))
+		sprite.rotation = lerpf(sprite.rotation, 0.0, minf(delta * 10.0, 1.0))
+		sprite.scale = sprite.scale.lerp(sprite_base_scale, minf(delta * 10.0, 1.0))
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
