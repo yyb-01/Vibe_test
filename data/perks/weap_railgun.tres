@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponUpgradeData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_upgrade_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_railgun.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/resources/weapon_data.gd" id="3_weapon"]
+
+[sub_resource type="Resource" id="Resource_railgun"]
+script = ExtResource("3_weapon")
+weapon_name = "Railgun"
+damage = 42
+fire_rate = 1.25
+magazine_size = 1
+reload_time = 1.0
+
+[resource]
+script = ExtResource("1_data")
+weapon_id = "railgun"
+weapon_name = "레일건 (Railgun)"
+description = "느리지만 긴 관통선으로 다수의 적을 관통합니다."
+weapon_script = ExtResource("2_script")
+weapon_data = SubResource("Resource_railgun")

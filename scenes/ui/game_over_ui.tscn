@@ -1,6 +1,30 @@
-[gd_scene load_steps=2 format=3 uid="uid://ci3d4m5h6b7o"]
+[gd_scene load_steps=4 format=3 uid="uid://ci3d4m5h6b7o"]
 
 [ext_resource type="Script" path="res://scripts/ui/game_over_ui.gd" id="1_a2b3c"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_retry"]
+bg_color = Color(0.12, 0.34, 0.3, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.47, 1, 0.78, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_return"]
+bg_color = Color(0.08, 0.13, 0.16, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.4, 0.52, 0.55, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="GameOverUI" type="CanvasLayer"]
 process_mode = 3
@@ -50,4 +74,15 @@ custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 24
-text = "Return to Main Menu"
+theme_override_styles/normal = SubResource("StyleBoxFlat_return")
+theme_override_styles/hover = SubResource("StyleBoxFlat_retry")
+text = "메인 화면으로"
+
+[node name="RetryButton" type="Button" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_retry")
+theme_override_styles/hover = SubResource("StyleBoxFlat_retry")
+text = "다시 도전하기"

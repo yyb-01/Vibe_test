@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://b8v7a3d2e1f"]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_x9y8z"]
-[ext_resource type="Texture2D" uid="uid://t1p2l3a4svg" path="res://assets/graphics/player.svg" id="3_e6f7g"]
+[ext_resource type="Texture2D" path="res://assets/graphics/player_topdown.svg" id="3_e6f7g"]
 [ext_resource type="Script" path="res://scripts/player/camera_shake.gd" id="4_cam"]
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="5_mat"]
 

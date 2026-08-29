@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="PerkData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/perk_data.gd" id="1_perk"]
+
+[resource]
+script = ExtResource("1_perk")
+id = "executioner"
+perk_name = "처형 프로토콜"
+description = "모든 무기 피해량 +10%. 강한 적을 빠르게 정리합니다."
+damage_mult = 1.10

@@ -8,6 +8,8 @@ const ZOMBIE_BASE: PackedScene = preload("res://scenes/enemies/zombie.tscn")
 const ZOMBIE_RUNNER: PackedScene = preload("res://scenes/enemies/zombie_runner.tscn")
 const ZOMBIE_TANK: PackedScene = preload("res://scenes/enemies/zombie_tank.tscn")
 const ZOMBIE_SPITTER: PackedScene = preload("res://scenes/enemies/zombie_spitter.tscn")
+const ZOMBIE_BOMBER: PackedScene = preload("res://scenes/enemies/zombie_bomber.tscn")
+const ZOMBIE_BLOATER: PackedScene = preload("res://scenes/enemies/zombie_bloater.tscn")
 
 var spawn_points_nodes: Array[Node2D] = []
 var time_elapsed: float = 0.0
@@ -16,7 +18,9 @@ var base_spawn_delay: float = 1.8
 var min_spawn_delay: float = 0.35
 
 const WAVE_DURATION: float = 30.0
+const MAX_ACTIVE_ENEMIES: int = 220
 var current_wave: int = 1
+var last_announced_wave: int = 1
 
 var spawn_debt: float = 0.0
 var boss_spawned: bool = false
@@ -40,6 +44,8 @@ func _register_pools(pool_parent: Node) -> void:
 	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, pool_parent, 100)
 	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, pool_parent, 50)
 	ObjectPoolManager.register_pool("zombie_spitter", ZOMBIE_SPITTER, pool_parent, 50)
+	ObjectPoolManager.register_pool("zombie_bomber", ZOMBIE_BOMBER, pool_parent, 50)
+	ObjectPoolManager.register_pool("zombie_bloater", ZOMBIE_BLOATER, pool_parent, 50)
 	ObjectPoolManager.register_pool("exp_gem", preload("res://scenes/items/exp_gem.tscn"), pool_parent, 300)
 	ObjectPoolManager.register_pool("bullet", preload("res://scenes/weapons/bullet.tscn"), pool_parent, 50)
 	ObjectPoolManager.register_pool("acid_projectile", preload("res://scenes/weapons/acid_projectile.tscn"), pool_parent, 50)
@@ -50,6 +56,11 @@ func _register_pools(pool_parent: Node) -> void:
 func _process(delta: float) -> void:
 	time_elapsed += delta
 	current_wave = int(time_elapsed / WAVE_DURATION) + 1
+	if current_wave > last_announced_wave:
+		last_announced_wave = current_wave
+		EventBus.wave_started.emit(current_wave)
+		if current_wave > 2:
+			SaveManager.add_gold(5 + current_wave * 2)
 
 	if time_elapsed >= 300.0 and not boss_spawned: # 5 Minutes
 		_spawn_boss()
@@ -92,6 +103,8 @@ func _spawn_boss() -> void:
 		boss.modulate = Color.RED
 
 func _spawn_zombie() -> bool:
+	if _get_active_enemy_count() >= MAX_ACTIVE_ENEMIES:
+		return false
 	if spawn_points_nodes.size() > 0:
 		var sp := spawn_points_nodes[randi() % spawn_points_nodes.size()]
 
@@ -100,17 +113,25 @@ func _spawn_zombie() -> bool:
 
 		if current_wave >= 7:
 			var r := randf()
-			if r < 0.18:
+			if r < 0.10:
+				pool_id = "zombie_bomber"
+			elif r < 0.18:
+				pool_id = "zombie_bloater"
+			elif r < 0.30:
 				pool_id = "zombie_tank"
-			elif r < 0.38:
+			elif r < 0.50:
 				pool_id = "zombie_spitter"
-			elif r < 0.68:
+			elif r < 0.75:
 				pool_id = "zombie_runner"
 		elif current_wave >= 4:
 			var r := randf()
-			if r < 0.15:
+			if r < 0.08:
+				pool_id = "zombie_bomber"
+			elif r < 0.14:
+				pool_id = "zombie_bloater"
+			elif r < 0.24:
 				pool_id = "zombie_spitter"
-			elif r < 0.45:
+			elif r < 0.48:
 				pool_id = "zombie_runner"
 
 		# Offset slightly around spawn point to prevent immediate stacking
@@ -140,3 +161,10 @@ func _spawn_zombie() -> bool:
 
 		return true
 	return false
+
+func _get_active_enemy_count() -> int:
+	var count := 0
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy is CanvasItem and is_instance_valid(enemy) and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.visible:
+			count += 1
+	return count

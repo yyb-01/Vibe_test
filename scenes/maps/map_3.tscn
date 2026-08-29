@@ -1,0 +1,243 @@
+[gd_scene load_steps=19 format=3 uid="uid://map333flood"]
+
+[ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
+[ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
+[ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
+[ext_resource type="Texture2D" path="res://assets/graphics/floor.svg" id="6_floor"]
+[ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
+[ext_resource type="Texture2D" path="res://assets/graphics/barricade.svg" id="8_barricade"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wreck.svg" id="9_wreck"]
+[ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="10_toxic"]
+[ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wall.svg" id="12_wall"]
+[ext_resource type="PackedScene" path="res://scenes/world/supply_cache.tscn" id="13_cache"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
+size = Vector2(3600, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
+size = Vector2(20, 2200)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_cover"]
+size = Vector2(720, 28)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gate"]
+size = Vector2(28, 520)
+
+[node name="FloodedDistrict" type="Node2D"]
+
+[node name="Background" type="ColorRect" parent="."]
+z_index = -11
+offset_right = 3600.0
+offset_bottom = 2200.0
+mouse_filter = 2
+color = Color(0.025, 0.075, 0.09, 1)
+
+[node name="FloorTexture" type="TextureRect" parent="."]
+z_index = -10
+offset_right = 3600.0
+offset_bottom = 2200.0
+mouse_filter = 2
+texture_repeat = 2
+texture = ExtResource("6_floor")
+expand_mode = 1
+stretch_mode = 1
+modulate = Color(0.78, 0.94, 0.9, 1)
+
+[node name="Walls" type="StaticBody2D" parent="."]
+collision_mask = 3
+
+[node name="TopWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1800, -10)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="BottomWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1800, 2210)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="LeftWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(-10, 1100)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="RightWall" type="CollisionShape2D" parent="Walls"]
+position = Vector2(3610, 1100)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="NorthCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1120, 610)
+shape = SubResource("RectangleShape2D_cover")
+
+[node name="SouthCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(2480, 1590)
+shape = SubResource("RectangleShape2D_cover")
+
+[node name="CanalGate" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1800, 1100)
+shape = SubResource("RectangleShape2D_gate")
+
+[node name="TopWallArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(1800, 0)
+scale = Vector2(18.75, 0.5)
+texture = ExtResource("12_wall")
+
+[node name="BottomWallArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(1800, 2200)
+scale = Vector2(18.75, 0.5)
+texture = ExtResource("12_wall")
+
+[node name="LeftWallArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(0, 1100)
+rotation = 1.5708
+scale = Vector2(11.45, 0.5)
+texture = ExtResource("12_wall")
+
+[node name="RightWallArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(3600, 1100)
+rotation = 1.5708
+scale = Vector2(11.45, 0.5)
+texture = ExtResource("12_wall")
+
+[node name="CoverNorthArt" type="ColorRect" parent="Walls"]
+offset_left = 760.0
+offset_top = 596.0
+offset_right = 1480.0
+offset_bottom = 624.0
+mouse_filter = 2
+color = Color(0.16, 0.32, 0.32, 1)
+
+[node name="CoverSouthArt" type="ColorRect" parent="Walls"]
+offset_left = 2120.0
+offset_top = 1576.0
+offset_right = 2840.0
+offset_bottom = 1604.0
+mouse_filter = 2
+color = Color(0.16, 0.32, 0.32, 1)
+
+[node name="CanalGateArt" type="ColorRect" parent="Walls"]
+offset_left = 1786.0
+offset_top = 840.0
+offset_right = 1814.0
+offset_bottom = 1360.0
+mouse_filter = 2
+color = Color(0.12, 0.28, 0.3, 1)
+
+[node name="TopDownDecoration" type="Node2D" parent="."]
+z_index = -2
+
+[node name="WreckA" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(420, 420)
+rotation = 0.35
+texture = ExtResource("9_wreck")
+
+[node name="WreckB" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(3170, 1760)
+rotation = -2.4
+scale = Vector2(0.85, 0.85)
+texture = ExtResource("9_wreck")
+
+[node name="WreckC" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(3020, 430)
+rotation = 2.7
+scale = Vector2(0.7, 0.7)
+texture = ExtResource("9_wreck")
+
+[node name="ToxicPoolA" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(800, 350)
+scale = Vector2(0.82, 0.82)
+texture = ExtResource("10_toxic")
+
+[node name="ToxicPoolB" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(2720, 1840)
+scale = Vector2(0.95, 0.95)
+texture = ExtResource("10_toxic")
+
+[node name="ToxicPoolC" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(1250, 1830)
+scale = Vector2(0.65, 0.65)
+texture = ExtResource("10_toxic")
+
+[node name="BarricadeA" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(1800, 320)
+rotation = 0.05
+texture = ExtResource("8_barricade")
+
+[node name="BarricadeB" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(1800, 1880)
+rotation = 3.1
+texture = ExtResource("8_barricade")
+
+[node name="DebrisA" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(380, 1700)
+rotation = -0.3
+texture = ExtResource("11_debris")
+
+[node name="DebrisB" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(3250, 820)
+rotation = 0.6
+texture = ExtResource("11_debris")
+
+[node name="DebrisC" type="Sprite2D" parent="TopDownDecoration"]
+position = Vector2(2250, 380)
+rotation = -0.8
+scale = Vector2(0.75, 0.75)
+texture = ExtResource("11_debris")
+
+[node name="Player" parent="." instance=ExtResource("1_plyr")]
+position = Vector2(1800, 1100)
+
+[node name="Camera2D" parent="Player"]
+limit_left = 0
+limit_top = 0
+limit_right = 3600
+limit_bottom = 2200
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0
+
+[node name="Survivor" parent="." instance=ExtResource("7_survivor")]
+position = Vector2(520, 420)
+
+[node name="SupplyCache" parent="." instance=ExtResource("13_cache")]
+position = Vector2(3060, 1780)
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+
+[node name="PerkSelection" parent="." instance=ExtResource("4_perk")]
+
+[node name="GameOverUI" parent="." instance=ExtResource("5_govr")]
+
+[node name="SpawnManager" type="Node" parent="."]
+script = ExtResource("2_wvmgr")
+spawn_points = Array[NodePath]([NodePath("../SpawnPoints/Spawn1"), NodePath("../SpawnPoints/Spawn2"), NodePath("../SpawnPoints/Spawn3"), NodePath("../SpawnPoints/Spawn4"), NodePath("../SpawnPoints/Spawn5"), NodePath("../SpawnPoints/Spawn6"), NodePath("../SpawnPoints/Spawn7"), NodePath("../SpawnPoints/Spawn8")])
+spawn_bounds = Rect2(80, 80, 3440, 2040)
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="Spawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(100, 100)
+
+[node name="Spawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1800, 100)
+
+[node name="Spawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(3500, 100)
+
+[node name="Spawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(3500, 1100)
+
+[node name="Spawn5" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(3500, 2100)
+
+[node name="Spawn6" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1800, 2100)
+
+[node name="Spawn7" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(100, 2100)
+
+[node name="Spawn8" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(100, 1100)

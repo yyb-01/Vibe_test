@@ -5,6 +5,7 @@ extends CanvasLayer
 @onready var gold_label: Label = $CenterContainer/VBoxContainer/GoldLabel
 @onready var summary_label: Label = $CenterContainer/VBoxContainer/SummaryLabel
 @onready var return_btn: Button = $CenterContainer/VBoxContainer/ReturnButton
+@onready var retry_btn: Button = $CenterContainer/VBoxContainer/RetryButton
 var summary_recorded: bool = false
 
 func _ready() -> void:
@@ -12,6 +13,7 @@ func _ready() -> void:
 	visible = false
 	EventBus.game_over.connect(_on_game_over)
 	return_btn.pressed.connect(_on_return_pressed)
+	retry_btn.pressed.connect(_on_retry_pressed)
 
 func _on_game_over(is_victory: bool) -> void:
 	get_tree().paused = true
@@ -32,7 +34,7 @@ func _on_game_over(is_victory: bool) -> void:
 
 	gold_label.text = "Total Gold: " + str(SaveManager.gold)
 	var total_seconds := int(summary.get("time", 0.0))
-	summary_label.text = "생존 %02d:%02d  ·  처치 %d  ·  웨이브 %02d  ·  구조 %d" % [total_seconds / 60, total_seconds % 60, int(summary.get("kills", 0)), int(summary.get("wave", 1)), int(summary.get("survivors_rescued", 0))]
+	summary_label.text = "생존 %02d:%02d  ·  처치 %d  ·  웨이브 %02d  ·  구조 %d  ·  보급 %d  ·  엘리트 %d" % [total_seconds / 60, total_seconds % 60, int(summary.get("kills", 0)), int(summary.get("wave", 1)), int(summary.get("survivors_rescued", 0)), int(summary.get("supply_caches_opened", 0)), int(summary.get("elite_kills", 0))]
 	SaveManager.save_data()
 
 func _on_return_pressed() -> void:
@@ -40,3 +42,15 @@ func _on_return_pressed() -> void:
 	ObjectPoolManager.clear()
 	SpatialGrid.clear()
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+func _on_retry_pressed() -> void:
+	var map_id := RunStats.map_id
+	var map_path := "res://scenes/maps/%s.tscn" % map_id
+	if not ResourceLoader.exists(map_path):
+		map_id = "map_1"
+		map_path = "res://scenes/maps/map_1.tscn"
+	get_tree().paused = false
+	ObjectPoolManager.clear()
+	SpatialGrid.clear()
+	RunStats.start_run(map_id)
+	get_tree().change_scene_to_file(map_path)

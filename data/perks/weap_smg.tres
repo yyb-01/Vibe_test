@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponUpgradeData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_upgrade_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_smg.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/resources/weapon_data.gd" id="3_weapon"]
+
+[sub_resource type="Resource" id="Resource_smg"]
+script = ExtResource("3_weapon")
+weapon_name = "SMG"
+damage = 7
+fire_rate = 0.12
+magazine_size = 24
+reload_time = 1.6
+
+[resource]
+script = ExtResource("1_data")
+weapon_id = "smg"
+weapon_name = "기관단총 (SMG)"
+description = "빠른 연사로 약한 적 무리를 녹입니다."
+weapon_script = ExtResource("2_script")
+weapon_data = SubResource("Resource_smg")

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponUpgradeData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_upgrade_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_burst.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/resources/weapon_data.gd" id="3_weapon"]
+
+[sub_resource type="Resource" id="Resource_burst"]
+script = ExtResource("3_weapon")
+weapon_name = "Burst Rifle"
+damage = 13
+fire_rate = 0.55
+magazine_size = 6
+reload_time = 1.2
+
+[resource]
+script = ExtResource("1_data")
+weapon_id = "burst"
+weapon_name = "점사 소총 (Burst)"
+description = "세 발의 집중 사격으로 중거리 적을 제압합니다."
+weapon_script = ExtResource("2_script")
+weapon_data = SubResource("Resource_burst")

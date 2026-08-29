@@ -1,0 +1,206 @@
+[gd_scene load_steps=17 format=3 uid="uid://map444lab"]
+
+[ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
+[ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
+[ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
+[ext_resource type="Texture2D" path="res://assets/graphics/floor.svg" id="6_floor"]
+[ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
+[ext_resource type="PackedScene" path="res://scenes/world/supply_cache.tscn" id="8_cache"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wall.svg" id="9_wall"]
+[ext_resource type="Texture2D" path="res://assets/graphics/lab_console.svg" id="10_console"]
+[ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
+[ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="12_toxic"]
+
+[sub_resource type="RectangleShape2D" id="WallHorizontal"]
+size = Vector2(4200, 20)
+
+[sub_resource type="RectangleShape2D" id="WallVertical"]
+size = Vector2(20, 2600)
+
+[sub_resource type="RectangleShape2D" id="LabWing"]
+size = Vector2(980, 34)
+
+[sub_resource type="RectangleShape2D" id="LabWingVertical"]
+size = Vector2(34, 620)
+
+[node name="UndergroundLab" type="Node2D"]
+
+[node name="Background" type="ColorRect" parent="."]
+z_index = -11
+offset_right = 4200.0
+offset_bottom = 2600.0
+mouse_filter = 2
+color = Color(0.018, 0.032, 0.052, 1)
+
+[node name="FloorTexture" type="TextureRect" parent="."]
+z_index = -10
+offset_right = 4200.0
+offset_bottom = 2600.0
+mouse_filter = 2
+texture_repeat = 2
+texture = ExtResource("6_floor")
+expand_mode = 1
+stretch_mode = 1
+modulate = Color(0.72, 0.82, 0.9, 1)
+
+[node name="Walls" type="StaticBody2D" parent="."]
+collision_mask = 3
+
+[node name="Top" type="CollisionShape2D" parent="Walls"]
+position = Vector2(2100, -10)
+shape = SubResource("WallHorizontal")
+
+[node name="Bottom" type="CollisionShape2D" parent="Walls"]
+position = Vector2(2100, 2610)
+shape = SubResource("WallHorizontal")
+
+[node name="Left" type="CollisionShape2D" parent="Walls"]
+position = Vector2(-10, 1300)
+shape = SubResource("WallVertical")
+
+[node name="Right" type="CollisionShape2D" parent="Walls"]
+position = Vector2(4210, 1300)
+shape = SubResource("WallVertical")
+
+[node name="NorthWing" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1220, 720)
+shape = SubResource("LabWing")
+
+[node name="SouthWing" type="CollisionShape2D" parent="Walls"]
+position = Vector2(2980, 1880)
+shape = SubResource("LabWing")
+
+[node name="WestWing" type="CollisionShape2D" parent="Walls"]
+position = Vector2(700, 1300)
+shape = SubResource("LabWingVertical")
+
+[node name="EastWing" type="CollisionShape2D" parent="Walls"]
+position = Vector2(3500, 1300)
+shape = SubResource("LabWingVertical")
+
+[node name="WallTopArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(2100, 0)
+scale = Vector2(21.875, 0.5)
+texture = ExtResource("9_wall")
+
+[node name="WallBottomArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(2100, 2600)
+scale = Vector2(21.875, 0.5)
+texture = ExtResource("9_wall")
+
+[node name="WallLeftArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(0, 1300)
+rotation = 1.5708
+scale = Vector2(13.55, 0.5)
+texture = ExtResource("9_wall")
+
+[node name="WallRightArt" type="Sprite2D" parent="Walls"]
+z_index = 1
+position = Vector2(4200, 1300)
+rotation = 1.5708
+scale = Vector2(13.55, 0.5)
+texture = ExtResource("9_wall")
+
+[node name="NorthWingArt" type="ColorRect" parent="Walls"]
+offset_left = 730.0
+offset_top = 703.0
+offset_right = 1710.0
+offset_bottom = 737.0
+mouse_filter = 2
+color = Color(0.09, 0.26, 0.34, 1)
+
+[node name="SouthWingArt" type="ColorRect" parent="Walls"]
+offset_left = 2490.0
+offset_top = 1863.0
+offset_right = 3470.0
+offset_bottom = 1897.0
+mouse_filter = 2
+color = Color(0.09, 0.26, 0.34, 1)
+
+[node name="Decoration" type="Node2D" parent="."]
+z_index = -2
+
+[node name="ConsoleA" type="Sprite2D" parent="Decoration"]
+position = Vector2(580, 560)
+texture = ExtResource("10_console")
+
+[node name="ConsoleB" type="Sprite2D" parent="Decoration"]
+position = Vector2(3620, 2040)
+rotation = 3.1416
+texture = ExtResource("10_console")
+
+[node name="ConsoleC" type="Sprite2D" parent="Decoration"]
+position = Vector2(2100, 380)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("10_console")
+
+[node name="ToxicA" type="Sprite2D" parent="Decoration"]
+position = Vector2(1080, 2180)
+scale = Vector2(1.1, 1.1)
+texture = ExtResource("12_toxic")
+
+[node name="ToxicB" type="Sprite2D" parent="Decoration"]
+position = Vector2(3180, 420)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("12_toxic")
+
+[node name="DebrisA" type="Sprite2D" parent="Decoration"]
+position = Vector2(360, 2140)
+rotation = -0.4
+texture = ExtResource("11_debris")
+
+[node name="DebrisB" type="Sprite2D" parent="Decoration"]
+position = Vector2(3830, 560)
+rotation = 0.7
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("11_debris")
+
+[node name="Player" parent="." instance=ExtResource("1_plyr")]
+position = Vector2(2100, 1300)
+
+[node name="Camera2D" parent="Player"]
+limit_left = 0
+limit_top = 0
+limit_right = 4200
+limit_bottom = 2600
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0
+
+[node name="Survivor" parent="." instance=ExtResource("7_survivor")]
+position = Vector2(480, 450)
+
+[node name="SupplyCache" parent="." instance=ExtResource("8_cache")]
+position = Vector2(3720, 2140)
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
+[node name="PerkSelection" parent="." instance=ExtResource("4_perk")]
+[node name="GameOverUI" parent="." instance=ExtResource("5_govr")]
+
+[node name="SpawnManager" type="Node" parent="."]
+script = ExtResource("2_wvmgr")
+spawn_points = Array[NodePath]([NodePath("../SpawnPoints/Spawn1"), NodePath("../SpawnPoints/Spawn2"), NodePath("../SpawnPoints/Spawn3"), NodePath("../SpawnPoints/Spawn4"), NodePath("../SpawnPoints/Spawn5"), NodePath("../SpawnPoints/Spawn6"), NodePath("../SpawnPoints/Spawn7"), NodePath("../SpawnPoints/Spawn8")])
+spawn_bounds = Rect2(80, 80, 4040, 2440)
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="Spawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(100, 100)
+[node name="Spawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(2100, 100)
+[node name="Spawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(4100, 100)
+[node name="Spawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(4100, 1300)
+[node name="Spawn5" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(4100, 2500)
+[node name="Spawn6" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(2100, 2500)
+[node name="Spawn7" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(100, 2500)
+[node name="Spawn8" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(100, 1300)

@@ -10,6 +10,10 @@ extends CharacterBody2D
 @export var ranged_attack: bool = false
 @export var preferred_attack_distance: float = 150.0
 @export var projectile_damage: int = 8
+@export var explodes_on_contact: bool = false
+@export var detonates_on_death: bool = false
+@export var detonation_radius: float = 140.0
+@export var detonation_damage: int = 16
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -56,8 +60,11 @@ func reset() -> void:
 	collision_layer = 2
 	collision_mask = 5
 	modulate = Color.WHITE
+	rotation = 0.0
 	sprite.modulate = base_sprite_modulate
 	sprite.scale = base_scale
+	sprite.rotation = 0.0
+	sprite.flip_h = false
 	walk_time = 0.0
 	wall_follow_direction = Vector2.ZERO
 	wall_follow_timer = 0.0
@@ -98,7 +105,12 @@ func _physics_process(delta: float) -> void:
 	var distance_to_player := global_position.distance_to(player.global_position)
 	var dir_to_player := global_position.direction_to(player.global_position)
 
-	look_at(player.global_position)
+	# The artwork is a top-down silhouette. Rotating the whole CharacterBody2D
+	# made the body and collision shape twist while walking around the player.
+	# Keep the body stable and communicate facing with a horizontal flip only.
+	if absf(dir_to_player.x) > 0.1:
+		sprite.flip_h = dir_to_player.x < 0.0
+	sprite.rotation = 0.0
 
 	# Knockback decay
 	knockback = knockback.move_toward(Vector2.ZERO, 500 * delta)
@@ -150,6 +162,10 @@ func _attack_player() -> void:
 	if can_attack and player.has_method("take_damage"):
 		can_attack = false
 		player.take_damage(attack_damage, global_position.direction_to(player.global_position))
+		if explodes_on_contact:
+			AudioManager.play_named("impact", -4.0)
+			die()
+			return
 
 		var timer := get_tree().create_timer(attack_cooldown)
 		timer.timeout.connect(func() -> void: can_attack = true)
@@ -215,9 +231,13 @@ func die() -> void:
 		return
 	is_dying = true
 	health = 0
+	if detonates_on_death:
+		_detonate()
 
 	EventBus.zombie_died.emit(global_position)
 	RunStats.register_kill()
+	if get_meta("is_elite", false):
+		RunStats.register_elite_kill()
 	SpatialGrid.remove(self)
 
 	if has_meta("is_boss") and get_meta("is_boss"):
@@ -242,6 +262,15 @@ func die() -> void:
 		collision_mask = 5
 		ObjectPoolManager.release(self)
 		)
+
+func _detonate() -> void:
+	var player_node := get_tree().get_first_node_in_group("player") as Player
+	if is_instance_valid(player_node) and global_position.distance_to(player_node.global_position) <= detonation_radius:
+		player_node.take_damage(detonation_damage, global_position.direction_to(player_node.global_position))
+	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
+	if impact:
+		impact.scale = Vector2.ONE * (detonation_radius / 70.0)
+	AudioManager.play_named("impact", -2.0, randf_range(0.72, 0.86))
 
 func _get_wall_aware_direction(target_direction: Vector2, delta: float) -> Vector2:
 	wall_follow_timer = maxf(0.0, wall_follow_timer - delta)

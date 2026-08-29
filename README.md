@@ -19,17 +19,20 @@ Godot 에디터에서 프로젝트를 열고 `scenes/ui/main_menu.tscn`을 실�
 - `scripts/autoloads`: EventBus, ObjectPoolManager, SpatialGrid, SaveManager, AudioManager
 - `scripts/player`, `scripts/enemies`, `scripts/weapons`: 전투 및 엔티티 로직
 - `scripts/resources`와 `data`: Resource 기반 무기/퍽 데이터
-- `scenes/maps`: 서로 다른 구조의 2개 플레이 맵
+- `scenes/maps`: 서로 다른 구조와 크기의 3개 플레이 맵
 - `scenes/world`: 생존자 구조 목표
 - `.github/workflows/build.yml`: 에셋 임포트, 맵 로드 검증, Windows export
 
 ## 게임 시스템
 
 - 30초마다 웨이브가 증가하며 생성 속도, 체력, 특수 좀비 비율이 상승합니다.
-- 일반 좀비, 러너, 탱크, 산성 투사체를 발사하는 스피터, 엘리트, 5분 보스가 등장합니다.
-- 무기는 5레벨에서 진화하고, 특정 패시브 조합은 추가 시너지를 제공합니다.
+- 일반 좀비, 러너, 탱크, 스피터, 자폭형 봄버, 사망 폭발형 블로터, 엘리트, 5분 보스가 등장합니다.
+- 기관단총, 점사 소총, 레일건, 충격파 발생기를 포함한 8종 무기는 5레벨에서 진화하고, 패시브 조합은 추가 시너지를 제공합니다.
 - 공격형 Scavenger, 생존형 Medic, 기동형 Ranger 중 하나를 선택할 수 있습니다.
 - 맵에서 구조 신호를 회수하고 처치 의뢰를 달성하면 추가 골드를 획득합니다.
+- 맵3 `침수 격리 지구`는 중앙 수로와 엄폐물이 있는 긴 동선으로, 맵4 `지하 연구소`는 교차 실험동과 콘솔 엄폐물로 설계되었습니다.
+- 레벨업 카드에서 골드 25G로 리롤하거나 카드를 건너뛸 수 있고, 맵3의 보급 상자는 골드와 체력을 제공합니다.
+- 웨이브가 오를 때 보너스 골드와 위협 상승 배너가 표시되며, 엘리트 5마리 처치 의뢰도 진행됩니다.
 - 런 통계와 최고 기록, 골드, 영구 업그레이드는 `user://save_data.cfg`에 저장됩니다.
 - 메뉴에서 화면 흔들림과 효과음 볼륨을 조절할 수 있습니다.
 
@@ -40,3 +43,7 @@ Godot 에디터에서 프로젝트를 열고 `scenes/ui/main_menu.tscn`을 실�
 ```bash
 godot --headless --path . --script verify_map.gd
 ```
+
+## 상용화 에셋
+
+현재 포함된 그래픽은 프로젝트 내부에서 직접 만든 SVG이며, 외부 유료 에셋 의존성이 없습니다. 사용 범위는 `ASSET_LICENSE.md`에 기록했습니다.

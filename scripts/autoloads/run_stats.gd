@@ -6,6 +6,8 @@ var elapsed_time: float = 0.0
 var kills: int = 0
 var damage_taken: int = 0
 var survivors_rescued: int = 0
+var supply_caches_opened: int = 0
+var elite_kills: int = 0
 var current_wave: int = 1
 var quest_completed: bool = false
 const KILL_QUEST_TARGET: int = 25
@@ -18,6 +20,8 @@ func start_run(new_map_id: String) -> void:
 	kills = 0
 	damage_taken = 0
 	survivors_rescued = 0
+	supply_caches_opened = 0
+	elite_kills = 0
 	current_wave = 1
 	quest_completed = false
 
@@ -39,6 +43,15 @@ func register_damage(amount: int) -> void:
 func register_rescue() -> void:
 	survivors_rescued += 1
 
+func register_supply_cache() -> void:
+	supply_caches_opened += 1
+
+func register_elite_kill() -> void:
+	elite_kills += 1
+	if elite_kills == 5:
+		SaveManager.add_gold(75)
+		EventBus.quest_completed.emit("elite_breaker", 75)
+
 func finish_run() -> Dictionary:
 	run_active = false
 	return get_summary()
@@ -50,5 +63,7 @@ func get_summary() -> Dictionary:
 		"kills": kills,
 		"damage_taken": damage_taken,
 		"survivors_rescued": survivors_rescued,
+		"supply_caches_opened": supply_caches_opened,
+		"elite_kills": elite_kills,
 		"wave": current_wave
 	}

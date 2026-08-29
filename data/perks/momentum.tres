@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="PerkData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/perk_data.gd" id="1_perk"]
+
+[resource]
+script = ExtResource("1_perk")
+id = "momentum"
+perk_name = "가속 전술"
+description = "이동 속도 +12%. 계속 움직일수록 생존 확률이 올라갑니다."
+speed_mult = 1.12

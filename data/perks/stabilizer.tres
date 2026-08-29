@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PerkData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/perk_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = "stabilizer"
+perk_name = "반동 제어기"
+description = "피해량 10% 증가, 사격 간격 5% 감소"
+damage_mult = 1.1
+speed_mult = 1.0
+reload_speed_mult = 0.95
+pierce_add = 0
+max_hp_add = 0

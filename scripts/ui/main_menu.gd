@@ -3,6 +3,8 @@ extends CanvasLayer
 
 @onready var map_1_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map1Button
 @onready var map_2_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map2Button
+@onready var map_3_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map3Button
+@onready var map_4_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map4Button
 
 @onready var hp_upgrade_btn: Button = $TabContainer/ShopTab/VBoxContainer/HPUpgradeBtn
 @onready var dmg_upgrade_btn: Button = $TabContainer/ShopTab/VBoxContainer/DmgUpgradeBtn
@@ -10,15 +12,23 @@ extends CanvasLayer
 @onready var gold_label: Label = $GoldLabel
 @onready var progress_label: Label = $ProgressLabel
 @onready var character_select: OptionButton = $TabContainer/PlayTab/VBoxContainer/CharacterSelect
+@onready var character_info_label: Label = $TabContainer/PlayTab/VBoxContainer/CharacterInfoLabel
 @onready var screen_shake_toggle: CheckButton = $TabContainer/ShopTab/VBoxContainer/ScreenShakeToggle
 @onready var volume_slider: HSlider = $TabContainer/ShopTab/VBoxContainer/VolumeSlider
 
 const CHARACTER_IDS := ["scavenger", "medic", "ranger"]
 const CHARACTER_NAMES := ["Scavenger · 공격형", "Medic · 생존형", "Ranger · 기동형"]
+const CHARACTER_DESCRIPTIONS := [
+	"폐허에서 살아남은 약탈자. 공격력과 골드 수급에 유리합니다.",
+	"응급 구조 전문가. 최대 체력이 높지만 공격력이 조금 낮습니다.",
+	"정찰병. 빠른 이동과 재장전으로 위험 구역을 돌파합니다."
+]
 
 func _ready() -> void:
 	map_1_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_1.tscn"))
 	map_2_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_2.tscn"))
+	map_3_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_3.tscn"))
+	map_4_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_4.tscn"))
 
 	hp_upgrade_btn.pressed.connect(func(): _buy_upgrade("max_hp"))
 	dmg_upgrade_btn.pressed.connect(func(): _buy_upgrade("damage"))
@@ -28,13 +38,17 @@ func _ready() -> void:
 	volume_slider.value_changed.connect(_on_volume_changed)
 	for character_name in CHARACTER_NAMES:
 		character_select.add_item(character_name)
-	character_select.select(maxi(0, CHARACTER_IDS.find(SaveManager.selected_character)))
+	var selected_character_index := maxi(0, CHARACTER_IDS.find(SaveManager.selected_character))
+	character_select.select(selected_character_index)
+	_update_character_info(selected_character_index)
 	screen_shake_toggle.button_pressed = SaveManager.screen_shake_enabled
 	volume_slider.value = SaveManager.master_volume
+	AudioManager.set_master_volume(SaveManager.master_volume)
 
 	EventBus.gold_changed.connect(_on_gold_changed)
 	_update_shop_ui()
 	_update_progress_ui()
+	map_1_btn.grab_focus()
 
 func _on_gold_changed(_new_gold: int) -> void:
 	_update_shop_ui()
@@ -47,7 +61,12 @@ func _update_progress_ui() -> void:
 func _on_character_selected(index: int) -> void:
 	if index >= 0 and index < CHARACTER_IDS.size():
 		SaveManager.selected_character = CHARACTER_IDS[index]
+		_update_character_info(index)
 		SaveManager.save_data()
+
+func _update_character_info(index: int) -> void:
+	if index >= 0 and index < CHARACTER_DESCRIPTIONS.size():
+		character_info_label.text = CHARACTER_DESCRIPTIONS[index]
 
 func _on_screen_shake_toggled(enabled: bool) -> void:
 	SaveManager.screen_shake_enabled = enabled
@@ -59,15 +78,15 @@ func _on_volume_changed(value: float) -> void:
 	SaveManager.save_data()
 
 func _update_shop_ui() -> void:
-	gold_label.text = "Gold: " + str(SaveManager.gold)
+	gold_label.text = "골드  " + str(SaveManager.gold)
 
 	var hp_cost = (SaveManager.upgrade_max_hp + 1) * 100
 	var dmg_cost = (SaveManager.upgrade_damage + 1) * 100
 	var spd_cost = (SaveManager.upgrade_speed + 1) * 100
 
-	hp_upgrade_btn.text = "Upgrade Max HP (Lv %d) - %d G" % [SaveManager.upgrade_max_hp, hp_cost]
-	dmg_upgrade_btn.text = "Upgrade Damage (Lv %d) - %d G" % [SaveManager.upgrade_damage, dmg_cost]
-	spd_upgrade_btn.text = "Upgrade Speed (Lv %d) - %d G" % [SaveManager.upgrade_speed, spd_cost]
+	hp_upgrade_btn.text = "응급 장갑  ·  Lv %d  ·  %d G" % [SaveManager.upgrade_max_hp, hp_cost]
+	dmg_upgrade_btn.text = "탄약 개조  ·  Lv %d  ·  %d G" % [SaveManager.upgrade_damage, dmg_cost]
+	spd_upgrade_btn.text = "기동 부츠  ·  Lv %d  ·  %d G" % [SaveManager.upgrade_speed, spd_cost]
 
 	hp_upgrade_btn.disabled = SaveManager.gold < hp_cost
 	dmg_upgrade_btn.disabled = SaveManager.gold < dmg_cost
