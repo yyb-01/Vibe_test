@@ -19,12 +19,18 @@ var speed_mult: float = 1.0
 var reload_mult: float = 1.0
 var pierce_add: int = 0
 var auto_fire_enabled: bool = true
+var character_id: String = "scavenger"
+var active_synergies: Array[String] = []
 
 @onready var sprite: Sprite2D = $Sprite2D
 
 func _ready() -> void:
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
+	character_id = SaveManager.selected_character
+	_apply_character_preset()
+	if not RunStats.run_active:
+		RunStats.start_run(get_tree().current_scene.scene_file_path.get_file().get_basename())
 
 	# Initialize default starting weapon
 	var starting_weap_data = preload("res://data/perks/weap_pistol.tres")
@@ -88,9 +94,11 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 		return
 
 	health -= amount
+	RunStats.register_damage(amount)
 	EventBus.camera_shake_requested.emit()
 	EventBus.player_health_changed.emit(health, max_health)
 	_play_hit_feedback(hit_direction)
+	AudioManager.play_named("hurt", -4.0)
 
 	if health <= 0:
 		die()
@@ -141,6 +149,7 @@ func apply_perk(perk: PerkData) -> void:
 	speed_mult *= perk.speed_mult
 	reload_mult *= perk.reload_speed_mult
 	pierce_add += perk.pierce_add
+	_check_synergies()
 
 	if perk.max_hp_add > 0:
 		max_health += perk.max_hp_add
@@ -148,3 +157,31 @@ func apply_perk(perk: PerkData) -> void:
 		EventBus.player_health_changed.emit(health, max_health)
 
 	EventBus.inventory_updated.emit(weapons, passives)
+
+func _apply_character_preset() -> void:
+	match character_id:
+		"medic":
+			max_health += 35
+			damage_mult *= 0.9
+		"ranger":
+			move_speed += 35
+			damage_mult *= 1.1
+			reload_mult *= 0.9
+		_:
+			max_health += 10
+			damage_mult *= 1.08
+
+func _check_synergies() -> void:
+	var perk_ids: Array[String] = []
+	for perk in passives:
+		perk_ids.append(perk.id)
+
+	if "heavy_caliber" in perk_ids and "piercing_rounds" in perk_ids and not "armor_breaker" in active_synergies:
+		active_synergies.append("armor_breaker")
+		damage_mult *= 1.15
+		pierce_add += 1
+	if "fast_hands" in perk_ids and "light_foot" in perk_ids and not "combat_medic" in active_synergies:
+		active_synergies.append("combat_medic")
+		reload_mult *= 0.85
+		max_health += 15
+		health += 15

@@ -7,12 +7,16 @@ extends Node
 const ZOMBIE_BASE: PackedScene = preload("res://scenes/enemies/zombie.tscn")
 const ZOMBIE_RUNNER: PackedScene = preload("res://scenes/enemies/zombie_runner.tscn")
 const ZOMBIE_TANK: PackedScene = preload("res://scenes/enemies/zombie_tank.tscn")
+const ZOMBIE_SPITTER: PackedScene = preload("res://scenes/enemies/zombie_spitter.tscn")
 
 var spawn_points_nodes: Array[Node2D] = []
 var time_elapsed: float = 0.0
 
-var base_spawn_delay: float = 2.0
-var min_spawn_delay: float = 0.2
+var base_spawn_delay: float = 1.8
+var min_spawn_delay: float = 0.35
+
+const WAVE_DURATION: float = 30.0
+var current_wave: int = 1
 
 var spawn_debt: float = 0.0
 var boss_spawned: bool = false
@@ -35,14 +39,17 @@ func _register_pools(pool_parent: Node) -> void:
 	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, pool_parent, 200)
 	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, pool_parent, 100)
 	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, pool_parent, 50)
+	ObjectPoolManager.register_pool("zombie_spitter", ZOMBIE_SPITTER, pool_parent, 50)
 	ObjectPoolManager.register_pool("exp_gem", preload("res://scenes/items/exp_gem.tscn"), pool_parent, 300)
 	ObjectPoolManager.register_pool("bullet", preload("res://scenes/weapons/bullet.tscn"), pool_parent, 50)
+	ObjectPoolManager.register_pool("acid_projectile", preload("res://scenes/weapons/acid_projectile.tscn"), pool_parent, 50)
 	ObjectPoolManager.register_pool("damage_number", preload("res://scenes/ui/effects/damage_number.tscn"), pool_parent, 100)
 	ObjectPoolManager.register_pool("blood_impact", preload("res://scenes/effects/blood_impact.tscn"), pool_parent, 100)
 	ObjectPoolManager.register_pool("player_hit", preload("res://scenes/effects/player_hit.tscn"), pool_parent, 40)
 
 func _process(delta: float) -> void:
 	time_elapsed += delta
+	current_wave = int(time_elapsed / WAVE_DURATION) + 1
 
 	if time_elapsed >= 300.0 and not boss_spawned: # 5 Minutes
 		_spawn_boss()
@@ -53,13 +60,14 @@ func _process(delta: float) -> void:
 
 	var speed_up_factor = clampf(time_elapsed / 300.0, 0.0, 1.0)
 	var current_delay = lerpf(base_spawn_delay, min_spawn_delay, speed_up_factor)
+	var wave_spawn_multiplier = 1.0 + float(current_wave - 1) * 0.10
 
 	# Spawn debt allows us to spawn multiple per frame if delay < delta
-	var spawn_rate = 1.0 / current_delay
+	var spawn_rate = (1.0 / current_delay) * wave_spawn_multiplier
 	spawn_debt += spawn_rate * delta
 
 	var spawns_this_frame: int = 0
-	const MAX_SPAWNS_PER_FRAME: int = 10
+	const MAX_SPAWNS_PER_FRAME: int = 8
 
 	while spawn_debt >= 1.0 and spawns_this_frame < MAX_SPAWNS_PER_FRAME:
 		spawn_debt -= 1.0
@@ -88,16 +96,21 @@ func _spawn_zombie() -> bool:
 		var sp := spawn_points_nodes[randi() % spawn_points_nodes.size()]
 
 		var pool_id: String = "zombie_base"
-		var hp_multiplier: float = 1.0 + (time_elapsed / 60.0) * 0.5 # 50% extra hp per minute
+		var hp_multiplier: float = 1.0 + (time_elapsed / 60.0) * 0.65
 
-		if time_elapsed > 120.0:
+		if current_wave >= 7:
+			var r := randf()
+			if r < 0.18:
+				pool_id = "zombie_tank"
+			elif r < 0.38:
+				pool_id = "zombie_spitter"
+			elif r < 0.68:
+				pool_id = "zombie_runner"
+		elif current_wave >= 4:
 			var r := randf()
 			if r < 0.15:
-				pool_id = "zombie_tank"
-			elif r < 0.4:
-				pool_id = "zombie_runner"
-		elif time_elapsed > 60.0:
-			if randf() < 0.25:
+				pool_id = "zombie_spitter"
+			elif r < 0.45:
 				pool_id = "zombie_runner"
 
 		# Offset slightly around spawn point to prevent immediate stacking
@@ -122,6 +135,8 @@ func _spawn_zombie() -> bool:
 		# We must re-assign max health manually since the pool object might have been dirty
 		if zombie.has_method("set_scaled_max_health"):
 			zombie.set_scaled_max_health(hp_multiplier)
+		if current_wave >= 5 and randf() < clampf(float(current_wave - 4) * 0.04, 0.0, 0.22):
+			zombie.set_elite()
 
 		return true
 	return false

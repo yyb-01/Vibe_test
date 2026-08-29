@@ -57,6 +57,6 @@ func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):
 		if body.has_method("add_exp"):
 			body.add_exp(exp_amount)
-			AudioManager.play_sfx(null) # Pick up sound
+			AudioManager.play_named("pickup", -10.0, randf_range(0.95, 1.1))
 		SpatialGrid.remove_item(self)
 		ObjectPoolManager.release(self)

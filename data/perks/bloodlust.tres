@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PerkData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/perk_data.gd" id="1_perk"]
+
+[resource]
+script = ExtResource("1_perk")
+id = "bloodlust"
+perk_name = "피의 굶주림"
+description = "피해량 10% 증가, 이동 속도 5% 감소"
+damage_mult = 1.1
+speed_mult = 0.95

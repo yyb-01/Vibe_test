@@ -1,13 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <ellipse cx="48" cy="82" rx="25" ry="7" fill="#101719" opacity=".7"/>
-  <path d="M31 57 L23 76 L34 79 L44 62 M65 57 L74 76 L62 80 L53 62" fill="#293a35" stroke="#14221f" stroke-width="4"/>
-  <path d="M27 39 Q25 57 34 65 Q48 73 62 65 Q71 56 69 39Z" fill="#476b50" stroke="#172b25" stroke-width="4"/>
-  <path d="M28 42 L15 51 L22 57 L34 51 M68 42 L82 50 L74 57 L63 51" fill="#51775a" stroke="#172b25" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M29 25 Q32 12 48 11 Q65 12 68 26 L66 49 Q58 59 48 59 Q37 59 30 49Z" fill="#63855b" stroke="#172b25" stroke-width="4"/>
-  <path d="M31 25 Q35 12 48 12 Q60 12 66 25 L61 22 L56 26 L51 20 L44 25 L38 20Z" fill="#8d5b57" stroke="#172b25" stroke-width="3"/>
-  <path d="M35 34 L45 33 L43 43 L34 40Z M52 33 L62 34 L62 40 L53 43Z" fill="#d6d46a" stroke="#172b25" stroke-width="3"/>
-  <circle cx="40" cy="36" r="2.4" fill="#402b25"/><circle cx="57" cy="36" r="2.4" fill="#402b25"/>
-  <path d="M39 49 Q48 55 58 48" fill="none" stroke="#241a1d" stroke-width="4" stroke-linecap="round"/>
-  <path d="M42 50 L42 56 M48 52 L48 58 M54 51 L54 56" stroke="#e5d7b1" stroke-width="2"/>
-  <path d="M24 60 L34 63 M71 61 L62 64" stroke="#b63f3d" stroke-width="3" stroke-linecap="round"/>
+  <!-- Top-down zombie: only shadow, hunched shoulders, arms and the top of the head are visible. -->
+  <ellipse cx="48" cy="76" rx="30" ry="10" fill="#101719" opacity=".72"/>
+  <path d="M28 47 L10 57 L16 68 L36 61 M68 47 L86 57 L80 68 L60 61" fill="#496f4f" stroke="#172b25" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M25 42 Q28 25 48 22 Q68 25 71 42 L63 69 Q48 78 33 69Z" fill="#304d3e" stroke="#14221f" stroke-width="5"/>
+  <path d="M32 43 Q32 24 48 17 Q64 24 64 43 L59 57 Q48 64 37 57Z" fill="#628b5b" stroke="#172b25" stroke-width="4"/>
+  <path d="M32 30 Q36 17 48 16 Q60 17 64 30 L57 26 L52 31 L47 23 L41 30 L36 26Z" fill="#995a51" stroke="#172b25" stroke-width="3"/>
+  <path d="M39 39 Q48 34 57 39" fill="none" stroke="#d7d46b" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="41" cy="39" r="2" fill="#38282a"/><circle cx="55" cy="39" r="2" fill="#38282a"/>
+  <path d="M36 59 L43 65 M60 59 L53 65" stroke="#b83e3d" stroke-width="4" stroke-linecap="round"/>
 </svg>

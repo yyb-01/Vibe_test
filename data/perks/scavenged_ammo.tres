@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PerkData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/perk_data.gd" id="1_perk"]
+
+[resource]
+script = ExtResource("1_perk")
+id = "scavenged_ammo"
+perk_name = "회수 탄약"
+description = "재장전 시간 15% 감소, 피해량 5% 증가"
+damage_mult = 1.05
+reload_speed_mult = 0.85

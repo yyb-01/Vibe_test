@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3 uid="uid://zombiespitter01"]
+
+[ext_resource type="Script" path="res://scripts/enemies/zombie.gd" id="1_zombie"]
+[ext_resource type="Texture2D" path="res://assets/graphics/zombie_spitter.svg" id="2_tex"]
+[ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_mat"]
+
+[sub_resource type="CircleShape2D" id="CircleShape_spitter"]
+radius = 20.0
+
+[node name="ZombieSpitter" type="CharacterBody2D" groups=["enemies"]]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_zombie")
+max_health = 26
+move_speed = 72.0
+attack_damage = 8
+attack_range = 260.0
+preferred_attack_distance = 150.0
+attack_cooldown = 2.0
+ranged_attack = true
+projectile_damage = 8
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 5
+material = ExtResource("3_mat")
+texture = ExtResource("2_tex")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape_spitter")

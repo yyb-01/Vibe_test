@@ -1,15 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <ellipse cx="46" cy="83" rx="25" ry="7" fill="#0b1216" opacity=".7"/>
-  <path d="M29 56 L23 78 L37 81 L45 63 L54 81 L68 77 L62 56Z" fill="#2b3b45" stroke="#101a20" stroke-width="4"/>
-  <path d="M27 38 Q26 56 36 65 Q47 70 59 64 Q68 54 66 38Z" fill="#3c5963" stroke="#101a20" stroke-width="4"/>
-  <path d="M31 44 L15 53 L21 60 L37 52 M62 43 L78 34 L82 42 L66 54" fill="#526b70" stroke="#101a20" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M32 29 Q34 16 47 13 Q61 15 64 29 L61 48 Q55 56 47 56 Q39 55 34 48Z" fill="#d18c68" stroke="#101a20" stroke-width="4"/>
-  <path d="M29 30 Q31 11 48 9 Q66 11 68 30 L60 26 L55 21 L48 25 L40 20 L34 28Z" fill="#b4c1ba" stroke="#101a20" stroke-width="4"/>
-  <path d="M35 34 L43 33 M52 33 L60 34" stroke="#101a20" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="40" cy="35" r="2" fill="#17212a"/><circle cx="56" cy="35" r="2" fill="#17212a"/>
-  <path d="M42 45 Q48 48 54 45" fill="none" stroke="#713f3a" stroke-width="2"/>
-  <path d="M38 56 L56 56 L60 69 L34 69Z" fill="#69757a" stroke="#101a20" stroke-width="3"/>
-  <path d="M58 54 L76 42 L81 48 L62 62Z" fill="#1b2428" stroke="#101a20" stroke-width="3"/>
-  <path d="M70 45 L86 34" stroke="#d7a35c" stroke-width="4" stroke-linecap="round"/>
-  <path d="M39 60 L39 67 M53 60 L53 67" stroke="#9f3f3e" stroke-width="3"/>
+  <!-- Top-down survivor: helmet, shoulders, backpack and sidearm; no front-facing face or legs. -->
+  <ellipse cx="45" cy="77" rx="29" ry="9" fill="#0b1216" opacity=".72"/>
+  <path d="M29 45 L10 55 L17 66 L37 57 M61 45 L80 37 L86 46 L66 58" fill="#536b70" stroke="#101a20" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M25 42 Q28 25 46 22 Q64 25 67 42 L60 69 Q46 77 32 69Z" fill="#374c56" stroke="#101a20" stroke-width="5"/>
+  <path d="M32 39 Q32 23 46 15 Q60 23 60 39 L55 55 Q46 62 37 55Z" fill="#c58a68" stroke="#101a20" stroke-width="4"/>
+  <path d="M31 32 Q33 14 47 11 Q62 14 63 32 L56 27 L51 22 L46 27 L40 21 L35 29Z" fill="#b8c6bf" stroke="#101a20" stroke-width="4"/>
+  <path d="M36 40 Q46 35 56 40" fill="none" stroke="#29383e" stroke-width="4" stroke-linecap="round"/>
+  <path d="M34 59 L58 59 L61 70 L31 70Z" fill="#69777a" stroke="#101a20" stroke-width="3"/>
+  <path d="M61 52 L77 42 L84 49 L65 63Z" fill="#1a2428" stroke="#101a20" stroke-width="3"/>
+  <path d="M74 45 L88 36" stroke="#d5a35f" stroke-width="5" stroke-linecap="round"/>
+  <path d="M38 63 L38 69 M51 63 L51 69" stroke="#a94442" stroke-width="3"/>
 </svg>

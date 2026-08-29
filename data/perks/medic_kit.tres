@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="PerkData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/perk_data.gd" id="1_perk"]
+
+[resource]
+script = ExtResource("1_perk")
+id = "medic_kit"
+perk_name = "응급 키트"
+description = "최대 체력 +30"
+max_hp_add = 30

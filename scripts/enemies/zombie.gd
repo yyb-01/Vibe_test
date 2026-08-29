@@ -7,6 +7,9 @@ extends CharacterBody2D
 @export var attack_range: float = 75.0
 @export var attack_cooldown: float = 1.0
 @export var knockback_resistance: float = 0.0
+@export var ranged_attack: bool = false
+@export var preferred_attack_distance: float = 150.0
+@export var projectile_damage: int = 8
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -17,18 +20,25 @@ var knockback: Vector2 = Vector2.ZERO
 var is_dying: bool = false
 
 var base_max_health: int
+var base_move_speed: float
+var base_attack_damage: int
 var base_scale: Vector2
 var base_sprite_modulate: Color
 var walk_time: float = 0.0
 var previous_pos: Vector2
 var wall_follow_direction: Vector2 = Vector2.ZERO
 var wall_follow_timer: float = 0.0
+var ranged_can_attack: bool = true
+var boss_attack_timer: float = 4.0
+var boss_telegraph_timer: float = 0.0
 
 const WALL_LOOK_AHEAD: float = 54.0
 const WALL_FOLLOW_TIME: float = 0.45
 
 func _ready() -> void:
 	base_max_health = max_health
+	base_move_speed = move_speed
+	base_attack_damage = attack_damage
 	base_scale = sprite.scale
 	base_sprite_modulate = sprite.modulate
 	if sprite.material:
@@ -37,6 +47,8 @@ func _ready() -> void:
 
 func reset() -> void:
 	max_health = base_max_health
+	move_speed = base_move_speed
+	attack_damage = base_attack_damage
 	health = max_health
 	can_attack = true
 	knockback = Vector2.ZERO
@@ -49,6 +61,11 @@ func reset() -> void:
 	walk_time = 0.0
 	wall_follow_direction = Vector2.ZERO
 	wall_follow_timer = 0.0
+	ranged_can_attack = true
+	boss_attack_timer = 4.0
+	boss_telegraph_timer = 0.0
+	set_meta("is_boss", false)
+	set_meta("is_elite", false)
 
 	if sprite.material is ShaderMaterial:
 		sprite.material.set_shader_parameter("active", false)
@@ -60,6 +77,15 @@ func reset() -> void:
 func set_scaled_max_health(multiplier: float) -> void:
 	max_health = int(float(base_max_health) * multiplier)
 	health = max_health
+
+func set_elite() -> void:
+	set_meta("is_elite", true)
+	max_health = int(float(max_health) * 1.8)
+	health = max_health
+	move_speed *= 1.12
+	attack_damage = int(float(attack_damage) * 1.25)
+	scale = base_scale * 1.2
+	sprite.modulate = Color(1.0, 0.72, 0.25, 1.0)
 
 func _physics_process(delta: float) -> void:
 	if health <= 0:
@@ -78,8 +104,14 @@ func _physics_process(delta: float) -> void:
 	knockback = knockback.move_toward(Vector2.ZERO, 500 * delta)
 
 	# Movement
-	if distance_to_player > attack_range * 0.9:
-		var move_dir = _get_wall_aware_direction(dir_to_player, delta)
+	var needs_movement := distance_to_player > attack_range * 0.9 or (ranged_attack and distance_to_player < preferred_attack_distance)
+	if needs_movement:
+		var should_advance := not ranged_attack or distance_to_player > attack_range
+		var move_dir := Vector2.ZERO
+		if should_advance:
+			move_dir = _get_wall_aware_direction(dir_to_player, delta)
+		elif ranged_attack and distance_to_player < preferred_attack_distance:
+			move_dir = _get_wall_aware_direction(-dir_to_player, delta)
 
 		# Soft Collision Separation using Grid O(1)
 		var separation_vector := Vector2.ZERO
@@ -107,8 +139,12 @@ func _physics_process(delta: float) -> void:
 	else:
 		sprite.scale = base_scale
 
-	if distance_to_player <= attack_range:
+	if ranged_attack and distance_to_player <= attack_range:
+		_attack_ranged()
+	elif not ranged_attack and distance_to_player <= attack_range:
 		_attack_player()
+
+	_update_boss(delta)
 
 func _attack_player() -> void:
 	if can_attack and player.has_method("take_damage"):
@@ -118,14 +154,41 @@ func _attack_player() -> void:
 		var timer := get_tree().create_timer(attack_cooldown)
 		timer.timeout.connect(func() -> void: can_attack = true)
 
+func _attack_ranged() -> void:
+	if not ranged_can_attack or not is_instance_valid(player):
+		return
+	ranged_can_attack = false
+	var projectile = ObjectPoolManager.acquire("acid_projectile", global_position)
+	if projectile:
+		projectile.direction = global_position.direction_to(player.global_position)
+		projectile.damage = projectile_damage
+	var timer := get_tree().create_timer(attack_cooldown)
+	timer.timeout.connect(func() -> void: ranged_can_attack = true)
+
+func _update_boss(delta: float) -> void:
+	if not has_meta("is_boss") or not get_meta("is_boss"):
+		return
+	if boss_telegraph_timer > 0.0:
+		boss_telegraph_timer -= delta
+		if boss_telegraph_timer <= 0.0:
+			_boss_shockwave()
+		return
+	boss_attack_timer -= delta
+	if boss_attack_timer <= 0.0:
+		boss_attack_timer = 4.5
+		boss_telegraph_timer = 0.7
+		sprite.modulate = Color(1.0, 0.25, 0.2, 1.0)
+
+func _boss_shockwave() -> void:
+	sprite.modulate = base_sprite_modulate
+	if is_instance_valid(player) and global_position.distance_to(player.global_position) <= 260.0:
+		player.take_damage(18, global_position.direction_to(player.global_position))
+
 func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0 or is_dying:
 		return
 
 	health -= amount
-
-	# Camera Shake
-	EventBus.camera_shake_requested.emit()
 
 	# Damage Number
 	var dmg_num = ObjectPoolManager.acquire("damage_number", global_position)
@@ -154,6 +217,7 @@ func die() -> void:
 	health = 0
 
 	EventBus.zombie_died.emit(global_position)
+	RunStats.register_kill()
 	SpatialGrid.remove(self)
 
 	if has_meta("is_boss") and get_meta("is_boss"):

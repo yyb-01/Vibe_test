@@ -11,12 +11,16 @@ func _ready() -> void:
 	EventBus.camera_shake_requested.connect(apply_shake)
 
 func apply_shake() -> void:
+	if not SaveManager.screen_shake_enabled:
+		return
 	shake_strength = random_strength
 
 func _process(delta: float) -> void:
 	if shake_strength > 0:
 		shake_strength = lerpf(shake_strength, 0, shake_fade * delta)
 		offset = _random_offset()
+	else:
+		offset = Vector2.ZERO
 
 func _random_offset() -> Vector2:
 	return Vector2(rng.randf_range(-shake_strength, shake_strength), rng.randf_range(-shake_strength, shake_strength))

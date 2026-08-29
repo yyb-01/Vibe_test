@@ -9,7 +9,11 @@ var available_passives: Array[PerkData] = [
 	preload("res://data/perks/hollow_point.tres"),
 	preload("res://data/perks/light_foot.tres"),
 	preload("res://data/perks/piercing_rounds.tres"),
-	preload("res://data/perks/heavy_caliber.tres")
+	preload("res://data/perks/heavy_caliber.tres"),
+	preload("res://data/perks/medic_kit.tres"),
+	preload("res://data/perks/adrenaline.tres"),
+	preload("res://data/perks/scavenged_ammo.tres"),
+	preload("res://data/perks/bloodlust.tres")
 ]
 
 var available_weapons: Array[WeaponUpgradeData] = [
@@ -33,7 +37,7 @@ func _on_level_up() -> void:
 	for child in container.get_children():
 		child.queue_free()
 
-	AudioManager.play_sfx(null) # Play level up sound
+	AudioManager.play_named("level_up", -2.0)
 
 	var player = get_tree().get_first_node_in_group("player") as Player
 	if not player: return
@@ -100,3 +104,4 @@ func _on_upgrade_selected(item: Variant) -> void:
 			player.add_weapon(item.weapon_script, item.weapon_data)
 		elif item is Weapon:
 			item.upgrade()
+		EventBus.inventory_updated.emit(player.weapons, player.passives)

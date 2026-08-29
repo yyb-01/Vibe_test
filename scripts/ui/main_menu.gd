@@ -8,6 +8,13 @@ extends CanvasLayer
 @onready var dmg_upgrade_btn: Button = $TabContainer/ShopTab/VBoxContainer/DmgUpgradeBtn
 @onready var spd_upgrade_btn: Button = $TabContainer/ShopTab/VBoxContainer/SpdUpgradeBtn
 @onready var gold_label: Label = $GoldLabel
+@onready var progress_label: Label = $ProgressLabel
+@onready var character_select: OptionButton = $TabContainer/PlayTab/VBoxContainer/CharacterSelect
+@onready var screen_shake_toggle: CheckButton = $TabContainer/ShopTab/VBoxContainer/ScreenShakeToggle
+@onready var volume_slider: HSlider = $TabContainer/ShopTab/VBoxContainer/VolumeSlider
+
+const CHARACTER_IDS := ["scavenger", "medic", "ranger"]
+const CHARACTER_NAMES := ["Scavenger · 공격형", "Medic · 생존형", "Ranger · 기동형"]
 
 func _ready() -> void:
 	map_1_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_1.tscn"))
@@ -16,12 +23,40 @@ func _ready() -> void:
 	hp_upgrade_btn.pressed.connect(func(): _buy_upgrade("max_hp"))
 	dmg_upgrade_btn.pressed.connect(func(): _buy_upgrade("damage"))
 	spd_upgrade_btn.pressed.connect(func(): _buy_upgrade("speed"))
+	character_select.item_selected.connect(_on_character_selected)
+	screen_shake_toggle.toggled.connect(_on_screen_shake_toggled)
+	volume_slider.value_changed.connect(_on_volume_changed)
+	for character_name in CHARACTER_NAMES:
+		character_select.add_item(character_name)
+	character_select.select(maxi(0, CHARACTER_IDS.find(SaveManager.selected_character)))
+	screen_shake_toggle.button_pressed = SaveManager.screen_shake_enabled
+	volume_slider.value = SaveManager.master_volume
 
 	EventBus.gold_changed.connect(_on_gold_changed)
 	_update_shop_ui()
+	_update_progress_ui()
 
 func _on_gold_changed(_new_gold: int) -> void:
 	_update_shop_ui()
+	_update_progress_ui()
+
+func _update_progress_ui() -> void:
+	var best_seconds := int(SaveManager.best_time)
+	progress_label.text = "런 %d회  ·  최고 웨이브 %02d  ·  최고 생존 %02d:%02d" % [SaveManager.total_runs, SaveManager.highest_wave, best_seconds / 60, best_seconds % 60]
+
+func _on_character_selected(index: int) -> void:
+	if index >= 0 and index < CHARACTER_IDS.size():
+		SaveManager.selected_character = CHARACTER_IDS[index]
+		SaveManager.save_data()
+
+func _on_screen_shake_toggled(enabled: bool) -> void:
+	SaveManager.screen_shake_enabled = enabled
+	SaveManager.save_data()
+
+func _on_volume_changed(value: float) -> void:
+	SaveManager.master_volume = value
+	AudioManager.set_master_volume(value)
+	SaveManager.save_data()
 
 func _update_shop_ui() -> void:
 	gold_label.text = "Gold: " + str(SaveManager.gold)
@@ -55,6 +90,7 @@ func _buy_upgrade(stat: String) -> void:
 
 func _load_map(path: String) -> void:
 	get_tree().paused = false
+	RunStats.start_run(path.get_file().get_basename())
 
 	# Clear Autoload states before launching a new game
 	ObjectPoolManager.clear()

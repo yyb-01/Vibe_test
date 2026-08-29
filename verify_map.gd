@@ -16,7 +16,8 @@ func _initialize() -> void:
         "ObjectPoolManager": "res://scripts/autoloads/object_pool_manager.gd",
         "SpatialGrid": "res://scripts/autoloads/spatial_grid.gd",
         "SaveManager": "res://scripts/autoloads/save_manager.gd",
-        "AudioManager": "res://scripts/autoloads/audio_manager.gd"
+        "AudioManager": "res://scripts/autoloads/audio_manager.gd",
+        "RunStats": "res://scripts/autoloads/run_stats.gd"
     }
     for singleton_name in autoloads:
         var singleton = load(autoloads[singleton_name]).new()

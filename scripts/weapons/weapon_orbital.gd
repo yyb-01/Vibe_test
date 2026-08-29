@@ -51,8 +51,10 @@ func _process(delta: float) -> void:
 	var player = get_parent() as Player
 	if not player: return
 
-	var radius = 100.0 + (current_level * 5.0)
+	var radius = 100.0 + (current_level * 5.0) + (30.0 if evolved else 0.0)
 	var scaled_damage = data.damage + (current_level * 5)
+	if evolved:
+		scaled_damage *= 1.4
 	var final_damage = int(scaled_damage * player.damage_mult)
 
 	for i in range(orbitals.size()):
@@ -72,6 +74,7 @@ func _process(delta: float) -> void:
 						hit = true
 				if hit:
 					cooldown_timer = data.fire_rate * player.reload_mult
+					AudioManager.play_named("impact", -10.0, randf_range(0.95, 1.05))
 
 func fire(_player: Player, _target_pos: Vector2) -> bool:
 	return false # Orbital fires automatically via _process overlap checks

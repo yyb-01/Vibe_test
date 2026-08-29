@@ -7,6 +7,7 @@ var current_level: int = 1
 var cooldown_timer: float = 0.0
 var reload_timer: float = 0.0
 var ammo_in_magazine: int = 0
+var evolved: bool = false
 
 func _ready() -> void:
 	if data:
@@ -46,3 +47,10 @@ func reload(player: Player) -> void:
 
 func upgrade() -> void:
 	current_level += 1
+	if current_level >= 5:
+		evolved = true
+
+func get_display_name() -> String:
+	if evolved:
+		return data.weapon_name + " ★"
+	return data.weapon_name

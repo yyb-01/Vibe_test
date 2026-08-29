@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://map123test"]
+[gd_scene load_steps=9 format=3 uid="uid://map123test"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 [ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
 [ext_resource type="Texture2D" path="res://assets/graphics/floor.svg" id="6_floor"]
+[ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(800, 20)
@@ -84,6 +85,9 @@ color = Color(0.18, 0.23, 0.24, 1)
 
 [node name="Player" parent="." instance=ExtResource("1_plyr")]
 position = Vector2(400, 300)
+
+[node name="Survivor" parent="." instance=ExtResource("7_survivor")]
+position = Vector2(400, 140)
 
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
 

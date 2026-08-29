@@ -23,8 +23,10 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 
 	var current_target = valid_enemies[0]
 	var hit_count = 0
-	var total_bounces = max_bounces + player.pierce_add + (current_level - 1)
+	var total_bounces = max_bounces + player.pierce_add + (current_level - 1) + (2 if evolved else 0)
 	var scaled_damage = data.damage + ((current_level - 1) * 10)
+	if evolved:
+		scaled_damage *= 1.25
 	var final_damage = int(scaled_damage * player.damage_mult)
 
 	var origin_pos = player.global_position
@@ -56,5 +58,5 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 		else:
 			break
 
-	AudioManager.play_sfx(null)
+	AudioManager.play_named("lightning", -6.0, randf_range(0.95, 1.05))
 	return true

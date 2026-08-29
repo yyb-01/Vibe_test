@@ -78,9 +78,21 @@ theme_override_colors/font_color = Color(0.7, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 18
 text = "AUTO [F]"
 
+[node name="WaveLabel" type="Label" parent="MarginContainer/VBoxContainer/WaveInfoBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.42, 0.3, 1)
+theme_override_font_sizes/font_size = 20
+text = "WAVE 01"
+
 [node name="InventoryBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 10
+
+[node name="ObjectiveLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.9, 0.78, 1)
+theme_override_font_sizes/font_size = 18
+text = "구조 신호: 0/1"
 
 [node name="WeaponsLabel" type="Label" parent="MarginContainer/VBoxContainer/InventoryBox"]
 layout_mode = 2
@@ -91,3 +103,61 @@ text = "Weapons:"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.701961, 0.701961, 0.701961, 1)
 text = "Passives:"
+
+[node name="PauseConfirm" type="ColorRect" parent="."]
+visible = false
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.015, 0.02, 0.02, 0.78)
+
+[node name="Panel" type="PanelContainer" parent="PauseConfirm"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -115.0
+offset_right = 220.0
+offset_bottom = 115.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PauseConfirm/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="TitleLabel" type="Label" parent="PauseConfirm/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "홈 화면으로 나가시겠습니까?"
+horizontal_alignment = 1
+
+[node name="HintLabel" type="Label" parent="PauseConfirm/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.75, 1)
+text = "현재 골드와 업그레이드는 저장됩니다."
+horizontal_alignment = 1
+
+[node name="Buttons" type="HBoxContainer" parent="PauseConfirm/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="ConfirmButton" type="Button" parent="PauseConfirm/Panel/VBoxContainer/Buttons"]
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "예, 나가기"
+
+[node name="CancelButton" type="Button" parent="PauseConfirm/Panel/VBoxContainer/Buttons"]
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "아니오, 계속하기"

@@ -9,8 +9,10 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 		return false
 
 	var dir := (target_pos - player.global_position).normalized()
-	var actual_pellets = pellet_count + (current_level - 1)
+	var actual_pellets = pellet_count + (current_level - 1) + (2 if evolved else 0)
 	var scaled_damage = data.damage + ((current_level - 1) * 3)
+	if evolved:
+		scaled_damage *= 1.2
 
 	for i in range(actual_pellets):
 		var bullet = ObjectPoolManager.acquire("bullet", player.global_position)
@@ -21,5 +23,5 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 			bullet.damage = int(scaled_damage * player.damage_mult)
 			bullet.pierce_count = player.pierce_add
 
-	AudioManager.play_sfx(null)
+	AudioManager.play_named("shotgun", -7.0, randf_range(0.92, 1.02))
 	return true
