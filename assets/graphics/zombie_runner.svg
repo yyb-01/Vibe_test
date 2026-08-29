@@ -1,12 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <!-- Lean top-down silhouette for the fast infected. -->
-  <ellipse cx="48" cy="77" rx="23" ry="8" fill="#101719" opacity=".65"/>
-  <path d="M33 45 L12 51 L17 60 L38 56 M63 45 L84 51 L79 60 L58 56" fill="#4e7a54" stroke="#14221f" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M34 42 Q36 27 48 24 Q60 27 62 42 L58 68 Q48 74 38 68Z" fill="#315743" stroke="#14221f" stroke-width="4"/>
-  <path d="M37 40 Q37 24 48 18 Q59 24 59 40 L55 55 Q48 61 41 55Z" fill="#739b60" stroke="#14221f" stroke-width="3"/>
-  <path d="M38 30 Q42 19 49 19 L58 29 L53 27 L48 34 L44 27Z" fill="#a75b50"/>
-  <circle cx="43" cy="40" r="3" fill="#eef18b" stroke="#14221f" stroke-width="2"/><circle cx="54" cy="40" r="3" fill="#eef18b" stroke="#14221f" stroke-width="2"/>
-  <circle cx="43" cy="40" r="1.2" fill="#38282a"/><circle cx="54" cy="40" r="1.2" fill="#38282a"/>
-  <path d="M41 53 Q48 57 55 52" fill="none" stroke="#281b1e" stroke-width="3" stroke-linecap="round"/>
-  <path d="M36 57 L29 64 M60 57 L67 64" stroke="#c8403f" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="104" height="104" viewBox="0 0 104 104">
+  <ellipse cx="52" cy="87" rx="27" ry="9" fill="#050d0e" opacity=".78"/>
+  <path d="M35 48L10 59L18 70L40 61M69 48L94 59L86 70L64 61" fill="#466e4d" stroke="#0c1c19" stroke-width="5"/>
+  <path d="M34 43Q37 25 52 22Q67 25 70 43L65 76Q52 84 39 76Z" fill="#2c543e" stroke="#0d1e1a" stroke-width="5"/>
+  <path d="M39 40Q39 23 52 16Q65 23 65 40L61 59Q52 67 43 59Z" fill="#79a760" stroke="#13251e" stroke-width="4"/>
+  <path d="M40 30Q45 17 52 17L65 29L58 27L52 35L47 27Z" fill="#b06455" stroke="#15251e" stroke-width="3"/>
+  <circle cx="45" cy="43" r="4" fill="#f1ee88"/><circle cx="59" cy="43" r="4" fill="#f1ee88"/>
+  <path d="M43 59L35 70M61 59L69 70" stroke="#d34840" stroke-width="4" stroke-linecap="round"/>
 </svg>
