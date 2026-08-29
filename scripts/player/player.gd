@@ -20,7 +20,12 @@ var reload_mult: float = 1.0
 var pierce_add: int = 0
 var auto_fire_enabled: bool = true
 
+@onready var sprite: Sprite2D = $Sprite2D
+
 func _ready() -> void:
+	if sprite.material:
+		sprite.material = sprite.material.duplicate()
+
 	# Initialize default starting weapon
 	var starting_weap_data = preload("res://data/perks/weap_pistol.tres")
 	add_weapon(starting_weap_data.weapon_script, starting_weap_data.weapon_data)
@@ -78,16 +83,31 @@ func add_weapon(weapon_script: Script, data: WeaponData) -> void:
 	weapons.append(w)
 	EventBus.inventory_updated.emit(weapons, passives)
 
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0:
 		return
 
 	health -= amount
 	EventBus.camera_shake_requested.emit()
 	EventBus.player_health_changed.emit(health, max_health)
+	_play_hit_feedback(hit_direction)
 
 	if health <= 0:
 		die()
+
+func _play_hit_feedback(hit_direction: Vector2) -> void:
+	var impact = ObjectPoolManager.acquire("player_hit", global_position)
+	if impact and hit_direction != Vector2.ZERO:
+		impact.rotation = hit_direction.angle()
+
+	if sprite.material is ShaderMaterial:
+		sprite.material.set_shader_parameter("flash_color", Color(1.0, 0.3, 0.2, 1.0))
+		sprite.material.set_shader_parameter("active", true)
+		var timer := get_tree().create_timer(0.09)
+		timer.timeout.connect(func() -> void:
+			if is_instance_valid(sprite) and sprite.material is ShaderMaterial:
+				sprite.material.set_shader_parameter("active", false)
+		)
 
 func die() -> void:
 	set_physics_process(false)

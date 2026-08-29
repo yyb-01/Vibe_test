@@ -21,6 +21,11 @@ var base_scale: Vector2
 var base_sprite_modulate: Color
 var walk_time: float = 0.0
 var previous_pos: Vector2
+var wall_follow_direction: Vector2 = Vector2.ZERO
+var wall_follow_timer: float = 0.0
+
+const WALL_LOOK_AHEAD: float = 54.0
+const WALL_FOLLOW_TIME: float = 0.45
 
 func _ready() -> void:
 	base_max_health = max_health
@@ -42,6 +47,8 @@ func reset() -> void:
 	sprite.modulate = base_sprite_modulate
 	sprite.scale = base_scale
 	walk_time = 0.0
+	wall_follow_direction = Vector2.ZERO
+	wall_follow_timer = 0.0
 
 	if sprite.material is ShaderMaterial:
 		sprite.material.set_shader_parameter("active", false)
@@ -58,9 +65,6 @@ func _physics_process(delta: float) -> void:
 	if health <= 0:
 		return
 
-	SpatialGrid.update_entity(self, previous_pos, global_position)
-	previous_pos = global_position
-
 	if not player:
 		player = get_tree().get_first_node_in_group("player")
 		return
@@ -75,7 +79,7 @@ func _physics_process(delta: float) -> void:
 
 	# Movement
 	if distance_to_player > attack_range * 0.9:
-		var move_dir = dir_to_player
+		var move_dir = _get_wall_aware_direction(dir_to_player, delta)
 
 		# Soft Collision Separation using Grid O(1)
 		var separation_vector := Vector2.ZERO
@@ -88,10 +92,12 @@ func _physics_process(delta: float) -> void:
 
 		move_dir = (move_dir * move_speed + separation_vector * 5.0).normalized()
 
-		# Use global_position directly to avoid move_and_slide physics overhead for 2000+ entities
-		# Only block via actual physics layers if colliding with World (Layer 1)
 		velocity = move_dir * move_speed + knockback
-		var collision = move_and_collide(velocity * delta)
+		# move_and_slide resolves the wall contact while the steering probe keeps the
+		# enemy moving along the wall instead of pressing into it forever.
+		move_and_slide()
+		SpatialGrid.update_entity(self, previous_pos, global_position)
+		previous_pos = global_position
 
 		# Procedural Animation (Squash & Stretch)
 		walk_time += delta * (move_speed / 20.0)
@@ -107,7 +113,7 @@ func _physics_process(delta: float) -> void:
 func _attack_player() -> void:
 	if can_attack and player.has_method("take_damage"):
 		can_attack = false
-		player.take_damage(attack_damage)
+		player.take_damage(attack_damage, global_position.direction_to(player.global_position))
 
 		var timer := get_tree().create_timer(attack_cooldown)
 		timer.timeout.connect(func() -> void: can_attack = true)
@@ -125,11 +131,6 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	var dmg_num = ObjectPoolManager.acquire("damage_number", global_position)
 	if dmg_num:
 		dmg_num.amount = amount
-
-	# Blood Particles
-	var blood = ObjectPoolManager.acquire("blood_impact", global_position)
-	if blood and hit_direction != Vector2.ZERO:
-		blood.rotation = hit_direction.angle()
 
 	# Knockback
 	knockback = hit_direction * 200.0 * (1.0 - knockback_resistance)
@@ -176,4 +177,36 @@ func die() -> void:
 		collision_layer = 2
 		collision_mask = 5
 		ObjectPoolManager.release(self)
+		)
+
+func _get_wall_aware_direction(target_direction: Vector2, delta: float) -> Vector2:
+	wall_follow_timer = maxf(0.0, wall_follow_timer - delta)
+
+	var probe_direction := target_direction
+	if wall_follow_timer > 0.0 and wall_follow_direction != Vector2.ZERO:
+		probe_direction = wall_follow_direction
+
+	var query := PhysicsRayQueryParameters2D.create(
+		global_position,
+		global_position + probe_direction * WALL_LOOK_AHEAD,
+		1
 	)
+	query.exclude = [get_rid()]
+	var hit: Dictionary = get_world_2d().direct_space_state.intersect_ray(query)
+	if hit.is_empty() or hit.get("collider") == player:
+		if wall_follow_timer > 0.0 and wall_follow_direction != Vector2.ZERO:
+			return wall_follow_direction
+		return target_direction
+
+	var normal: Vector2 = hit.get("normal", Vector2.ZERO)
+	if normal == Vector2.ZERO:
+		return target_direction
+
+	# Pick the tangent that keeps pointing toward the player. This makes the
+	# zombie round either side of pillars and room walls instead of getting stuck.
+	var tangent_a := Vector2(-normal.y, normal.x)
+	var tangent_b := -tangent_a
+	wall_follow_direction = tangent_a if tangent_a.dot(target_direction) > tangent_b.dot(target_direction) else tangent_b
+	wall_follow_direction = (wall_follow_direction * 0.92 + target_direction * 0.18).normalized()
+	wall_follow_timer = WALL_FOLLOW_TIME
+	return wall_follow_direction

@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://c1x2y3z4runner"]
 
 [ext_resource type="Script" path="res://scripts/enemies/zombie.gd" id="1_a2b3c"]
-[ext_resource type="Texture2D" uid="uid://t1z2o3m4svg" path="res://assets/graphics/zombie.svg" id="2_e6f7g"]
+[ext_resource type="Texture2D" path="res://assets/graphics/zombie_runner.svg" id="2_e6f7g"]
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="2_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_z9x8w"]
@@ -19,7 +19,6 @@ attack_range = 45.0
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 5
 material = ExtResource("2_mat")
-modulate = Color(1, 0.4, 0.4, 1)
 texture = ExtResource("2_e6f7g")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
