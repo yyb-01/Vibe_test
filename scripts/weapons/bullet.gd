@@ -37,6 +37,9 @@ func _on_body_entered(body: Node2D) -> void:
 	if body.has_method("take_damage"):
 		hit_targets.append(body)
 		body.take_damage(damage, direction)
+		var impact = ObjectPoolManager.acquire("blood_impact", body.global_position)
+		if impact and impact.has_method("configure"):
+			impact.configure(Color(1.0, 0.2, 0.08, 1.0), 38.0)
 
 		# Handle Pierce
 		pierce_count -= 1

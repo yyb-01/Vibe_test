@@ -1,6 +1,8 @@
 class_name WeaponLightning
 extends Weapon
 
+const SKILL_TRACER_SCRIPT: Script = preload("res://scripts/effects/skill_tracer.gd")
+
 @export var max_bounces: int = 3
 @export var bounce_range: float = 300.0
 
@@ -30,14 +32,13 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	var final_damage = int(scaled_damage * player.damage_mult)
 
 	var origin_pos = player.global_position
+	var arc_points := PackedVector2Array([origin_pos])
 
 	while hit_count < total_bounces and is_instance_valid(current_target):
 		if current_target.has_method("take_damage"):
 			var dir = origin_pos.direction_to(current_target.global_position)
 			current_target.take_damage(final_damage, dir)
-
-		# Visual line (placeholder logic)
-		# A real implementation would pool Line2D nodes and fade them out
+		arc_points.append(current_target.global_position)
 
 		hit_count += 1
 		origin_pos = current_target.global_position
@@ -57,6 +58,12 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 			current_target = next_target
 		else:
 			break
+
+	if arc_points.size() > 1:
+		var arc := Line2D.new()
+		arc.set_script(SKILL_TRACER_SCRIPT)
+		get_tree().current_scene.add_child(arc)
+		arc.call("setup_arc", arc_points, Color(0.35, 0.95, 1.0, 1.0), 7.0, 0.22)
 
 	AudioManager.play_named("lightning", -6.0, randf_range(0.95, 1.05))
 	return true

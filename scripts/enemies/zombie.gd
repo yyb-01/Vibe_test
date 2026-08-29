@@ -268,8 +268,8 @@ func _detonate() -> void:
 	if is_instance_valid(player_node) and global_position.distance_to(player_node.global_position) <= detonation_radius:
 		player_node.take_damage(detonation_damage, global_position.direction_to(player_node.global_position))
 	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
-	if impact:
-		impact.scale = Vector2.ONE * (detonation_radius / 70.0)
+	if impact and impact.has_method("configure"):
+		impact.configure(Color(1.0, 0.5, 0.12, 1.0), detonation_radius)
 	AudioManager.play_named("impact", -2.0, randf_range(0.72, 0.86))
 
 func _get_wall_aware_direction(target_direction: Vector2, delta: float) -> Vector2:
