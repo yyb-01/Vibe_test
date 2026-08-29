@@ -1,6 +1,49 @@
-[gd_scene load_steps=2 format=3 uid="uid://ci2d3m5h6b7n"]
+[gd_scene load_steps=6 format=3 uid="uid://ci2d3m5h6b7n"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_a2b3c"]
+[ext_resource type="Texture2D" path="res://assets/graphics/menu_backdrop.svg" id="2_backdrop"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.025, 0.07, 0.08, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.86, 0.7, 0.55)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(0.06, 0.15, 0.17, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.22, 0.72, 0.65, 0.65)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 18.0
+content_margin_right = 18.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(0.13, 0.34, 0.32, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.48, 1, 0.78, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 18.0
+content_margin_right = 18.0
 
 [node name="MainMenu" type="CanvasLayer"]
 script = ExtResource("1_a2b3c")
@@ -13,6 +56,19 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.035, 0.055, 0.06, 1)
 
+[node name="Backdrop" type="TextureRect" parent="."]
+z_index = -1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_backdrop")
+expand_mode = 1
+stretch_mode = 0
+modulate = Color(0.78, 0.88, 0.86, 0.86)
+
 [node name="TitleLabel" type="Label" parent="."]
 anchors_preset = 10
 anchor_right = 1.0
@@ -20,7 +76,22 @@ offset_top = 50.0
 offset_bottom = 100.0
 grow_horizontal = 2
 theme_override_font_sizes/font_size = 48
+theme_override_colors/font_color = Color(0.69, 1, 0.87, 1)
+theme_override_colors/font_shadow_color = Color(0.05, 0.4, 0.32, 0.8)
+theme_override_constants/shadow_offset_x = 3
+theme_override_constants/shadow_offset_y = 3
 text = "DEAD//SHIFT"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 106.0
+offset_bottom = 134.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.63, 0.87, 0.8, 1)
+theme_override_font_sizes/font_size = 16
+text = "QUARANTINE ZONE // NIGHT 47 // SURVIVE THE SHIFT"
 horizontal_alignment = 1
 
 [node name="GoldLabel" type="Label" parent="."]
@@ -63,6 +134,8 @@ offset_right = 300.0
 offset_bottom = 250.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+theme_override_colors/font_selected_color = Color(0.66, 1, 0.84, 1)
 
 [node name="PlayTab" type="CenterContainer" parent="TabContainer"]
 layout_mode = 2
@@ -77,6 +150,10 @@ custom_minimum_size = Vector2(300, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.7, 1, 0.88, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
 tooltip_text = "생존자는 시작 능력치와 플레이 스타일이 다릅니다."
 
 [node name="Map1Button" type="Button" parent="TabContainer/PlayTab/VBoxContainer"]
@@ -84,14 +161,22 @@ custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 24
-text = "Play: The Arena"
+theme_override_colors/font_color = Color(0.82, 1, 0.94, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
+text = "출동 01  ·  폐허 지구"
 
 [node name="Map2Button" type="Button" parent="TabContainer/PlayTab/VBoxContainer"]
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 24
-text = "Play: The Cross"
+theme_override_colors/font_color = Color(0.82, 1, 0.94, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
+text = "출동 02  ·  봉쇄 교차로"
 
 [node name="ShopTab" type="CenterContainer" parent="TabContainer"]
 visible = false
@@ -106,19 +191,25 @@ theme_override_constants/separation = 30
 custom_minimum_size = Vector2(400, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Upgrade Max HP"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+text = "응급 장갑  ·  최대 HP 강화"
 
 [node name="DmgUpgradeBtn" type="Button" parent="TabContainer/ShopTab/VBoxContainer"]
 custom_minimum_size = Vector2(400, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Upgrade Damage"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+text = "탄약 개조  ·  공격력 강화"
 
 [node name="SpdUpgradeBtn" type="Button" parent="TabContainer/ShopTab/VBoxContainer"]
 custom_minimum_size = Vector2(400, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Upgrade Speed"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+text = "기동 부츠  ·  이동 속도 강화"
 
 [node name="ScreenShakeToggle" type="CheckButton" parent="TabContainer/ShopTab/VBoxContainer"]
 custom_minimum_size = Vector2(400, 44)
