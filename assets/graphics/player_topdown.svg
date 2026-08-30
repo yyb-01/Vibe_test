@@ -1,17 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <ellipse cx="61" cy="110" rx="42" ry="11" fill="#02070b" fill-opacity=".76"/>
-  <path d="M37 75 27 103l14 7 14-27M73 75l17 27-14 8-17-28" fill="#102d38" stroke="#06131a" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M33 48 18 59l12 19 18-11M79 47l20-15 12 13-27 29" fill="#1d6570" stroke="#06131a" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M31 49Q39 38 59 37Q78 39 86 52L81 86Q62 101 39 87Z" fill="#174555" stroke="#06131a" stroke-width="7"/>
-  <path d="M35 47Q37 24 57 15Q79 23 83 47L74 63Q58 72 43 62Z" fill="#4b8a8e" stroke="#07171e" stroke-width="6"/>
-  <path d="M42 38 45 25l11-9 12 8 8 14-9-5-7 8-8-8z" fill="#b9d3c4" stroke="#163239" stroke-width="4"/>
-  <path d="M42 43h34l-4 15H46Z" fill="#071820" stroke="#79ffe0" stroke-width="3"/>
-  <path d="M49 49h21" stroke="#dbfff0" stroke-width="3" stroke-linecap="round"/>
-  <path d="M42 68h35l4 17-20 10-22-10z" fill="#286879" stroke="#06131a" stroke-width="5"/>
-  <path d="M43 75h32M57 68v25" stroke="#70d9c3" stroke-width="3" opacity=".55"/>
-  <path d="M77 65 95 51l10 11-23 20" fill="#091d26" stroke="#061117" stroke-width="5"/>
-  <path d="M95 55 120 37" stroke="#e5ad5a" stroke-width="8" stroke-linecap="round"/>
-  <path d="M113 42 123 35" stroke="#d7e8da" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="63" cy="67" r="4" fill="#75ffd7"/>
-  <path d="M34 93 26 99M80 92l12 7" stroke="#e36f53" stroke-width="4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="128" viewBox="0 0 160 128">
+  <!-- Directional survivor: the rifle points along local +X for stable sprite-only aiming. -->
+  <ellipse cx="79" cy="108" rx="53" ry="12" fill="#03070c" fill-opacity=".72"/>
+  <path d="M54 78 42 103l16 6 13-25M82 80l10 25 16-6-11-28" fill="#172c40" stroke="#07111c" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M47 61 34 77l17 10 14-17M94 61l18 6-7 17-20-8" fill="#28516c" stroke="#07111c" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M48 48Q60 38 78 39Q96 41 105 55L98 85Q76 98 53 85Z" fill="#1d3e59" stroke="#07111c" stroke-width="7"/>
+  <path d="M50 48Q57 25 78 21Q100 26 105 48L95 66Q76 76 58 65Z" fill="#354c66" stroke="#081522" stroke-width="6"/>
+  <path d="M58 42Q65 27 79 27Q94 29 99 42L91 47H65Z" fill="#afcbd7" stroke="#152b3d" stroke-width="4"/>
+  <path d="M58 46H99L94 59H63Z" fill="#071420" stroke="#65d8ff" stroke-width="3"/>
+  <path d="M67 52H88" stroke="#d7fbff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M55 66H99L101 81 78 91 53 82Z" fill="#2c6681" stroke="#07111c" stroke-width="5"/>
+  <path d="M61 73H95M78 67V89" stroke="#8fe8ff" stroke-width="3" opacity=".55"/>
+  <path d="M94 60 111 51l8 11-19 15" fill="#13283b" stroke="#07111c" stroke-width="5"/>
+  <path d="M105 51H143L151 57 143 63H104Z" fill="#243746" stroke="#07111c" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M123 48V66M136 52H147" stroke="#77ddff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M145 55H157" stroke="#f1bf69" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="78" cy="66" r="5" fill="#66e2ff" stroke="#0c3045" stroke-width="3"/>
+  <path d="M51 88 43 95M97 88l9 7" stroke="#e46d58" stroke-width="4" stroke-linecap="round"/>
 </svg>

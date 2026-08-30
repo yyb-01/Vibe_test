@@ -24,6 +24,7 @@ var active_synergies: Array[String] = []
 var walk_time: float = 0.0
 var sprite_base_scale: Vector2
 var sprite_base_position: Vector2
+var aim_angle: float = 0.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -65,18 +66,25 @@ func _physics_process(_delta: float) -> void:
 
 func _animate_topdown_body(delta: float) -> void:
 	var moving := velocity.length() > 8.0
+	var bob := 0.0
+	var lean := 0.0
 	if moving:
 		walk_time += delta * 9.0
 		var step := sin(walk_time)
-		var bob := absf(step)
+		bob = absf(step)
+		lean = step * 0.025
 		sprite.position = sprite_base_position + Vector2(0.0, -bob * 2.2)
-		sprite.rotation = step * 0.025
 		sprite.scale = sprite_base_scale * Vector2(1.0 + bob * 0.025, 1.0 - bob * 0.02)
 	else:
 		walk_time = lerpf(walk_time, 0.0, minf(delta * 8.0, 1.0))
 		sprite.position = sprite.position.lerp(sprite_base_position, minf(delta * 10.0, 1.0))
-		sprite.rotation = lerpf(sprite.rotation, 0.0, minf(delta * 10.0, 1.0))
 		sprite.scale = sprite.scale.lerp(sprite_base_scale, minf(delta * 10.0, 1.0))
+
+	# Keep the CharacterBody2D and its Camera2D unrotated. Rotating the parent
+	# to aim also rotated the camera, which made camera-limit corrections look
+	# like abrupt player teleports. Only the visual needs to face the cursor.
+	var target_rotation := aim_angle + lean
+	sprite.rotation = lerp_angle(sprite.rotation, target_rotation, minf(delta * 18.0, 1.0))
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -84,13 +92,15 @@ func _handle_movement() -> void:
 	move_and_slide()
 
 func _handle_shooting() -> void:
-	# Always aim at the mouse cursor
-	look_at(get_global_mouse_position())
+	# The player illustration is drawn facing local +X, so rotate the sprite,
+	# never the body. This preserves stable collision and camera transforms.
+	var target_pos := get_global_mouse_position()
+	if not target_pos.is_equal_approx(global_position):
+		aim_angle = global_position.angle_to_point(target_pos)
 	if not auto_fire_enabled and not Input.is_action_pressed("shoot"):
 		return
 
 	# Iterate over all weapons and attempt to fire
-	var target_pos = get_global_mouse_position()
 	for weapon in weapons:
 		weapon.fire(self, target_pos)
 

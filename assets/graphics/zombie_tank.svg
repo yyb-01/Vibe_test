@@ -1,12 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <ellipse cx="64" cy="111" rx="50" ry="14" fill="#03090a" fill-opacity=".82"/>
-  <path d="M45 78 32 106l18 6 14-30M77 78l16 29-18 6-14-29" fill="#263a32" stroke="#081512" stroke-width="8"/>
-  <path d="M36 48 8 60l15 27 29-18M91 47l29 12-14 28-31-18" fill="#53674a" stroke="#091512" stroke-width="9" stroke-linejoin="round"/>
-  <path d="M27 45Q33 24 64 21Q96 25 102 46L91 92Q64 109 37 92Z" fill="#354d3c" stroke="#081512" stroke-width="9"/>
-  <path d="M38 43Q40 22 63 12Q87 21 90 43L82 66Q64 78 46 66Z" fill="#82945d" stroke="#15251d" stroke-width="7"/>
-  <path d="M36 31 48 12l15 10 14-10 16 19-16-5-14 12-14-12z" fill="#a65f52" stroke="#17251f" stroke-width="5"/>
-  <path d="M38 49h52" stroke="#d2d86e" stroke-width="9" stroke-linecap="round"/>
-  <path d="M47 49h12M69 49h12" stroke="#171b18" stroke-width="7" stroke-linecap="round"/>
-  <path d="M44 71 57 83M84 71 71 83" stroke="#ca4942" stroke-width="8" stroke-linecap="round"/>
-  <path d="M23 33 35 22M105 33 93 22" stroke="#a9b77a" stroke-width="7" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="136" viewBox="0 0 144 136">
+  <!-- Armored tank infected: broad profile with a readable cracked riot plate. -->
+  <ellipse cx="72" cy="118" rx="58" ry="13" fill="#05080b" fill-opacity=".8"/>
+  <path d="M49 81 34 112l20 7 16-31M86 83l17 28 19-8-18-31" fill="#41483d" stroke="#111918" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M37 55 8 69l15 27 32-18M100 57l34 10-9 29-38-15" fill="#596b50" stroke="#111918" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M31 45Q42 23 72 26Q98 28 110 51L100 96Q72 112 42 96Z" fill="#3c5142" stroke="#101918" stroke-width="10"/>
+  <path d="M42 43Q43 20 70 15Q96 20 105 43L96 66Q72 81 49 65Z" fill="#8a9b66" stroke="#1c2a20" stroke-width="8"/>
+  <path d="M40 31 53 14l17 10 15-10 21 20-20-5-15 13-16-12z" fill="#845b50" stroke="#292820" stroke-width="5"/>
+  <path d="M60 41H102" stroke="#1b261e" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="84" cy="40" r="6" fill="#f1ff8a" stroke="#40502e" stroke-width="3"/>
+  <path d="M43 65 81 58 103 70 96 92 50 89Z" fill="#5a694f" stroke="#161f1b" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M65 62 72 86M88 64 77 89" stroke="#b8c77d" stroke-width="4" opacity=".65"/>
+  <path d="M86 48Q97 55 105 48" fill="none" stroke="#3c2026" stroke-width="7"/>
 </svg>

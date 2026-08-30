@@ -1,14 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="124" height="124" viewBox="0 0 124 124">
-  <ellipse cx="62" cy="109" rx="48" ry="12" fill="#09080c" fill-opacity=".8"/>
-  <path d="M42 78 30 106l15 7 16-27M82 78l16 28-15 7-17-28" fill="#704233" stroke="#26171c" stroke-width="7"/>
-  <path d="M37 52 10 66l12 19 28-17M88 52l27 14-11 19-30-17" fill="#86503b" stroke="#26171c" stroke-width="7"/>
-  <path d="M25 48Q31 22 62 20Q94 23 100 49L92 94Q62 114 32 94Z" fill="#89523b" stroke="#26171c" stroke-width="8"/>
-  <path d="M39 42Q41 21 61 12Q83 21 86 42L78 65Q62 77 46 65Z" fill="#c17a43" stroke="#3a2020" stroke-width="6"/>
-  <path d="M38 30 49 13l12 10 11-10 14 18-14-5-11 12-12-12z" fill="#d99a4e" stroke="#402323" stroke-width="5"/>
-  <circle cx="49" cy="44" r="5" fill="#241318"/><circle cx="75" cy="44" r="5" fill="#241318"/>
-  <circle cx="50" cy="43" r="2" fill="#ffd46b"/><circle cx="76" cy="43" r="2" fill="#ffd46b"/>
-  <path d="M39 64Q62 83 85 64" fill="none" stroke="#3b1d20" stroke-width="8"/>
-  <path d="M32 76Q62 96 92 76" fill="none" stroke="#f0a649" stroke-width="5" opacity=".7"/>
-  <path d="M26 52 14 40M98 52l12-12" stroke="#e6a452" stroke-width="5" stroke-linecap="round"/>
-  <path d="M40 87 30 102M84 87l11 15" stroke="#d95a42" stroke-width="6" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="136" viewBox="0 0 140 136">
+  <!-- Bloater: swollen toxic silhouette with rupturing acid sacs. -->
+  <ellipse cx="70" cy="118" rx="56" ry="13" fill="#08080a" fill-opacity=".8"/>
+  <path d="M48 82 33 112l18 7 17-29M91 83l16 29 18-8-18-29" fill="#654638" stroke="#291b1d" stroke-width="8"/>
+  <path d="M39 57 9 71l13 23 31-17M102 58l29 13-11 24-34-17" fill="#81533d" stroke="#291b1d" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M27 48Q33 22 70 25Q102 27 112 52L103 98Q70 115 37 98Z" fill="#79503d" stroke="#291b1d" stroke-width="9"/>
+  <path d="M43 45Q44 21 70 16Q96 21 105 45L96 68Q70 82 48 67Z" fill="#bd7948" stroke="#402526" stroke-width="7"/>
+  <path d="M42 32 55 15l15 10 14-10 21 19-20-5-14 12-15-11z" fill="#d29650" stroke="#4b2929" stroke-width="5"/>
+  <path d="M60 43H103" stroke="#432c25" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="84" cy="42" r="6" fill="#ffe079"/>
+  <path d="M68 59Q83 68 97 57" fill="none" stroke="#492229" stroke-width="7"/>
+  <path d="M40 72Q70 54 103 72L99 94Q70 106 41 93Z" fill="#925b3d" stroke="#3a2322" stroke-width="6"/>
+  <circle cx="58" cy="82" r="10" fill="#b2e24f" stroke="#3a6026" stroke-width="4"/>
+  <circle cx="80" cy="77" r="12" fill="#87d448" stroke="#345822" stroke-width="4"/>
+  <circle cx="91" cy="89" r="8" fill="#b7ef60" stroke="#3a6026" stroke-width="4"/>
+  <path d="M53 80 63 85M75 74 85 81M87 86 95 90" stroke="#efff9b" stroke-width="3" stroke-linecap="round"/>
 </svg>

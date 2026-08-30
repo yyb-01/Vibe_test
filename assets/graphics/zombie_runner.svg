@@ -1,10 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="104" height="104" viewBox="0 0 104 104">
-  <ellipse cx="52" cy="91" rx="31" ry="8" fill="#03090a" fill-opacity=".78"/>
-  <path d="M42 64 25 91l10 6 19-26M62 64l18 25-10 7-19-26" fill="#234b39" stroke="#091713" stroke-width="5"/>
-  <path d="M37 45 8 53l5 14 31-5M68 43l29 4-2 15-31-3" fill="#3e6c4a" stroke="#091713" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M34 42Q43 30 57 31Q72 34 75 47L68 73Q52 83 37 70Z" fill="#2b513b" stroke="#091713" stroke-width="5" transform="rotate(-8 55 55)"/>
-  <path d="M40 36Q41 20 55 14Q69 20 70 36L64 54Q53 61 43 54Z" fill="#81a95d" stroke="#10231c" stroke-width="4"/>
-  <path d="M41 28 49 15l7 8 8-7 7 13-9-3-7 7-7-7z" fill="#a75b50" stroke="#15261f" stroke-width="3"/>
-  <circle cx="47" cy="38" r="3" fill="#f6ee82"/><circle cx="63" cy="38" r="3" fill="#f6ee82"/>
-  <path d="M46 53 54 57l7-6" fill="none" stroke="#291a1c" stroke-width="5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112">
+  <!-- Fast, hunched infected: slim silhouette and cyan trail markings. -->
+  <ellipse cx="56" cy="95" rx="37" ry="8" fill="#05080b" fill-opacity=".74"/>
+  <path d="M44 69 24 94l12 7 21-25M64 71l22 19-11 9-24-21" fill="#27483b" stroke="#0b1817" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M39 53 10 64l7 15 30-10M69 54l29 2-3 16-31-2" fill="#3e7354" stroke="#0b1817" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M35 45Q46 34 62 37Q76 40 81 54L72 76Q54 85 39 72Z" fill="#295442" stroke="#0b1817" stroke-width="6"/>
+  <path d="M42 42Q44 25 61 20Q77 24 83 42L76 57Q61 67 47 57Z" fill="#93ac68" stroke="#16291f" stroke-width="5"/>
+  <path d="M42 31 53 17l9 8 11-7 11 15-12-3-10 9-10-8z" fill="#8d5c54" stroke="#252821" stroke-width="4"/>
+  <path d="M61 39H81" stroke="#203022" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="72" cy="39" r="4" fill="#f3ff91"/>
+  <path d="M64 53Q73 59 81 52" fill="none" stroke="#351d24" stroke-width="5"/>
+  <path d="M39 63 60 68M34 71l20 5" stroke="#70e1bb" stroke-width="3" opacity=".72" stroke-linecap="round"/>
 </svg>
