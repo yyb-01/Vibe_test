@@ -17,6 +17,9 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 			scaled_damage *= 1.5
 		bullet.damage = int(scaled_damage * player.damage_mult)
 		bullet.pierce_count = player.pierce_add + 3 + (2 if evolved else 0)
+		bullet.critical_chance = 0.18
+		bullet.impact_kind = "heavy"
+		player.configure_projectile(bullet)
 	var tracer := Line2D.new()
 	tracer.set_script(SKILL_TRACER_SCRIPT)
 	get_tree().current_scene.add_child(tracer)

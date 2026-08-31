@@ -6,6 +6,7 @@ const WALK_FRAME_B: Texture2D = preload("res://assets/graphics/player_walk_b_v4.
 const AIM_UP: Texture2D = preload("res://assets/graphics/player_aim_up_v1.png")
 const AIM_DOWN: Texture2D = preload("res://assets/graphics/player_aim_down_v1.png")
 const COMBAT_PET: PackedScene = preload("res://scenes/player/combat_pet.tscn")
+const MUZZLE_FLASH_SCRIPT: Script = preload("res://scripts/effects/muzzle_flash.gd")
 const GUN_MOUNT_RIGHT := Vector2(38.0, -20.0)
 const GUN_MOUNT_LEFT := Vector2(-38.0, 20.0)
 @export var max_health: int = 100
@@ -42,6 +43,12 @@ var skill_cooldown: float = 0.0
 var skill_duration: float = 0.0
 var skill_shield_duration: float = 0.0
 var skill_restore: Dictionary = {}
+var critical_chance_add: float = 0.0
+var execute_threshold: float = 0.0
+var health_regen_per_second: float = 0.0
+var skill_cooldown_rate: float = 1.0
+var regen_accumulator: float = 0.0
+var synergy_kill_counter: int = 0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var gun_pivot: Node2D = $GunPivot
@@ -76,6 +83,8 @@ func _ready() -> void:
 
 	if not EventBus.perk_selected.is_connected(apply_perk):
 		EventBus.perk_selected.connect(apply_perk)
+	if not EventBus.zombie_died.is_connected(_on_enemy_defeated):
+		EventBus.zombie_died.connect(_on_enemy_defeated)
 
 	# Delay emitting signals slightly so HUD is ready
 	call_deferred("_update_ui")
@@ -95,6 +104,7 @@ func _update_ui() -> void:
 
 func _physics_process(_delta: float) -> void:
 	_update_unique_skill(_delta)
+	_update_build_effects(_delta)
 	_handle_movement()
 	_handle_shooting()
 	_animate_topdown_body(_delta)
@@ -169,6 +179,40 @@ func _update_facing_pose(delta: float) -> void:
 
 func trigger_weapon_recoil(amount: float = 3.5) -> void:
 	gun_recoil = maxf(gun_recoil, amount)
+
+func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
+	var recoil := 3.5
+	var flash_size := 24.0
+	var flash_color := Color(1.0, 0.78, 0.32, 1.0)
+	match weapon_name:
+		"산탄총 (Shotgun)":
+			recoil = 8.5
+			flash_size = 42.0
+			flash_color = Color(1.0, 0.45, 0.16, 1.0)
+		"레일건 (Railgun)":
+			recoil = 11.0
+			flash_size = 52.0
+			flash_color = Color(0.28, 0.92, 1.0, 1.0)
+		"기관단총 (SMG)":
+			recoil = 2.0
+			flash_size = 17.0
+		"점사 소총 (Burst)":
+			recoil = 5.0
+			flash_size = 29.0
+		"체인 라이트닝 (Lightning)":
+			recoil = 2.5
+			flash_color = Color(0.4, 0.9, 1.0, 1.0)
+		"충격파 발생기 (Nova)":
+			recoil = 6.0
+			flash_size = 36.0
+			flash_color = Color(0.35, 1.0, 0.82, 1.0)
+		"보호막 (Orbital)":
+			return
+	trigger_weapon_recoil(recoil)
+	var flash := Node2D.new()
+	flash.set_script(MUZZLE_FLASH_SCRIPT)
+	get_tree().current_scene.add_child(flash)
+	flash.call("setup", get_muzzle_global_position(), get_muzzle_global_position().direction_to(target_pos), flash_color, flash_size)
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -246,7 +290,6 @@ func heal(amount: int) -> void:
 	if health > max_health:
 		health = max_health
 	EventBus.player_health_changed.emit(health, max_health)
-	print("Player healed! Health: ", health)
 
 func add_exp(amount: int) -> void:
 	current_exp += amount
@@ -327,6 +370,17 @@ func get_unique_skill_name() -> String:
 func get_unique_skill_cooldown() -> float:
 	return skill_cooldown
 
+func get_unique_skill_max_cooldown() -> float:
+	match character_id:
+		"medic": return 18.0
+		"ranger": return 16.0
+		"bulwark": return 20.0
+		"pyro": return 14.0
+		"engineer": return 13.0
+		"reaper": return 15.0
+		"chronomancer": return 19.0
+		_: return 15.0
+
 func use_unique_skill() -> bool:
 	if skill_cooldown > 0.0 or health <= 0:
 		return false
@@ -363,7 +417,7 @@ func use_unique_skill() -> bool:
 	return true
 
 func _update_unique_skill(delta: float) -> void:
-	skill_cooldown = maxf(0.0, skill_cooldown - delta)
+	skill_cooldown = maxf(0.0, skill_cooldown - delta * skill_cooldown_rate)
 	skill_shield_duration = maxf(0.0, skill_shield_duration - delta)
 	if skill_duration <= 0.0:
 		return
@@ -412,7 +466,7 @@ func _execute_wounded_enemies(radius: float) -> void:
 		var enemy_health := int(enemy.get("health"))
 		var enemy_max_health := maxi(1, int(enemy.get("max_health")))
 		var damage := enemy_health + 1 if float(enemy_health) / float(enemy_max_health) <= 0.35 else int(18.0 * damage_mult)
-		enemy.take_damage(damage, global_position.direction_to(enemy.global_position))
+		enemy.take_damage(damage, global_position.direction_to(enemy.global_position), "execute" if damage > enemy_health else "normal")
 		if damage > enemy_health:
 			executed += 1
 	if executed > 0:
@@ -433,6 +487,96 @@ func _restore_enemy_speed(enemy: Node, original_speed: float) -> void:
 	if is_instance_valid(enemy):
 		enemy.set("move_speed", original_speed)
 
+func configure_projectile(projectile: Node) -> void:
+	projectile.set("critical_chance", clampf(float(projectile.get("critical_chance")) + critical_chance_add, 0.0, 0.65))
+	projectile.set("execute_threshold", execute_threshold)
+
+func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critical_chance: float = 0.0, impact_kind: String = "normal") -> void:
+	if not is_instance_valid(target) or not target.has_method("take_damage"):
+		return
+	var final_damage := amount
+	var hit_kind := impact_kind
+	var target_health = target.get("health")
+	var target_max_health = target.get("max_health")
+	if execute_threshold > 0.0 and target_health != null and target_max_health != null and float(target_health) / float(maxi(1, int(target_max_health))) <= execute_threshold:
+		final_damage = int(target_health) + 1
+		hit_kind = "execute"
+	elif randf() < clampf(base_critical_chance + critical_chance_add, 0.0, 0.65):
+		final_damage = roundi(float(amount) * 1.75)
+		hit_kind = "critical"
+	target.take_damage(final_damage, direction, hit_kind)
+
+func _update_build_effects(delta: float) -> void:
+	if health_regen_per_second <= 0.0 or health <= 0 or health >= max_health:
+		return
+	regen_accumulator += health_regen_per_second * delta
+	if regen_accumulator >= 1.0:
+		var heal_amount := int(regen_accumulator)
+		regen_accumulator -= float(heal_amount)
+		heal(heal_amount)
+
+func _on_enemy_defeated(_position: Vector2) -> void:
+	if "blood_engine" not in active_synergies:
+		return
+	synergy_kill_counter += 1
+	if synergy_kill_counter >= 5:
+		synergy_kill_counter = 0
+		heal(4)
+
+func get_active_build_labels() -> Array[String]:
+	var labels: Array[String] = []
+	for synergy in active_synergies:
+		match synergy:
+			"armor_breaker": labels.append("장갑 파쇄자")
+			"combat_medic": labels.append("기동 의무병")
+			"gunrunner": labels.append("런 앤 건")
+			"execution_protocol": labels.append("처형 교리")
+			"overclock": labels.append("과부하 전술")
+			"field_survivor": labels.append("불굴의 생존자")
+			"scavenger_economy": labels.append("폐허 경제")
+			"blood_engine": labels.append("피의 엔진")
+	return labels
+
+func get_next_build_hint() -> String:
+	var perk_ids: Array[String] = []
+	for perk in passives:
+		perk_ids.append(perk.id)
+	var recipes := [
+		["heavy_caliber", "piercing_rounds", "장갑 파쇄자"],
+		["hollow_point", "executioner", "처형 교리"],
+		["fast_hands", "momentum", "런 앤 건"],
+		["adrenaline", "stabilizer", "과부하 전술"],
+		["reinforced_vest", "trauma_kit", "불굴의 생존자"],
+		["scavenged_ammo", "field_rations", "폐허 경제"],
+		["medic_kit", "light_foot", "기동 의무병"],
+		["bloodlust", "field_rations", "피의 엔진"]
+	]
+	for recipe in recipes:
+		var has_first := String(recipe[0]) in perk_ids
+		var has_second := String(recipe[1]) in perk_ids
+		if has_first != has_second:
+			return "%s 완성: %s 필요" % [recipe[2], _perk_display_name(String(recipe[1] if has_first else recipe[0]))]
+	return ""
+
+func _perk_display_name(perk_id: String) -> String:
+	match perk_id:
+		"heavy_caliber": return "대구경 탄환"
+		"piercing_rounds": return "철갑탄"
+		"hollow_point": return "할로우 포인트"
+		"executioner": return "처형 프로토콜"
+		"fast_hands": return "빠른 손놀림"
+		"momentum": return "가속 전술"
+		"adrenaline": return "아드레날린"
+		"stabilizer": return "반동 제어기"
+		"reinforced_vest": return "복합 장갑"
+		"trauma_kit": return "외상 키트"
+		"scavenged_ammo": return "회수 탄약"
+		"field_rations": return "야전 식량"
+		"medic_kit": return "응급 키트"
+		"light_foot": return "가벼운 발걸음"
+		"bloodlust": return "피의 굶주림"
+		_: return perk_id
+
 func _check_synergies() -> void:
 	var perk_ids: Array[String] = []
 	for perk in passives:
@@ -442,8 +586,31 @@ func _check_synergies() -> void:
 		active_synergies.append("armor_breaker")
 		damage_mult *= 1.15
 		pierce_add += 1
-	if "fast_hands" in perk_ids and "light_foot" in perk_ids and not "combat_medic" in active_synergies:
+	if "medic_kit" in perk_ids and "light_foot" in perk_ids and not "combat_medic" in active_synergies:
 		active_synergies.append("combat_medic")
-		reload_mult *= 0.85
-		max_health += 15
-		health += 15
+		reload_mult *= 0.9
+		health_regen_per_second += 0.75
+	if "fast_hands" in perk_ids and "momentum" in perk_ids and not "gunrunner" in active_synergies:
+		active_synergies.append("gunrunner")
+		reload_mult *= 0.8
+		speed_mult *= 1.12
+		critical_chance_add += 0.05
+	if "hollow_point" in perk_ids and "executioner" in perk_ids and not "execution_protocol" in active_synergies:
+		active_synergies.append("execution_protocol")
+		critical_chance_add += 0.12
+		execute_threshold = maxf(execute_threshold, 0.2)
+	if "adrenaline" in perk_ids and "stabilizer" in perk_ids and not "overclock" in active_synergies:
+		active_synergies.append("overclock")
+		skill_cooldown_rate *= 1.35
+		damage_mult *= 1.08
+	if "reinforced_vest" in perk_ids and "trauma_kit" in perk_ids and not "field_survivor" in active_synergies:
+		active_synergies.append("field_survivor")
+		incoming_damage_mult *= 0.82
+		health_regen_per_second += 1.25
+	if "scavenged_ammo" in perk_ids and "field_rations" in perk_ids and not "scavenger_economy" in active_synergies:
+		active_synergies.append("scavenger_economy")
+		RunStats.scrap_multiplier *= 1.4
+		pierce_add += 1
+	if "bloodlust" in perk_ids and "field_rations" in perk_ids and not "blood_engine" in active_synergies:
+		active_synergies.append("blood_engine")
+		damage_mult *= 1.12

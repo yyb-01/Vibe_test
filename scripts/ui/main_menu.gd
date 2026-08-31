@@ -127,6 +127,7 @@ func _build_run_settings() -> void:
 		difficulty_select.add_item(entry[1])
 		difficulty_select.set_item_metadata(difficulty_select.item_count - 1, entry[0])
 	row.add_child(difficulty_select)
+	difficulty_select.tooltip_text = "쉬움  체력72%/공격75%/밀도78%\n보통  기본 수치\n어려움  체력145%/공격135%/밀도128%\n악몽  체력215%/공격180%/밀도165%"
 	challenge_select = OptionButton.new()
 	challenge_select.custom_minimum_size = Vector2(185, 42)
 	var challenges := [["none", "도전 과제: 없음"], ["untouchable", "철인"], ["elite_hunter", "정예 사냥꾼"], ["mission_master", "현장 전문가"], ["endless_15", "끝없는 밤"]]
@@ -135,8 +136,10 @@ func _build_run_settings() -> void:
 		challenge_select.add_item(String(entry[1]) + completed_mark)
 		challenge_select.set_item_metadata(challenge_select.item_count - 1, entry[0])
 	row.add_child(challenge_select)
+	challenge_select.tooltip_text = "런당 하나의 목표를 추적합니다. 최초 달성 시 300골드를 획득하며 ✓로 기록됩니다."
 	endless_toggle = CheckButton.new()
 	endless_toggle.text = "무한 모드"
+	endless_toggle.tooltip_text = "5분마다 더 강한 보스가 반복 등장하며 보스 처치 후에도 런이 계속됩니다."
 	endless_toggle.button_pressed = SaveManager.endless_mode
 	row.add_child(endless_toggle)
 	_select_metadata(difficulty_select, SaveManager.selected_difficulty)

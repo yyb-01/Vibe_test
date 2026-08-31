@@ -38,7 +38,7 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	cooldown_timer = actual_fire_rate
 	if data.magazine_size > 0:
 		ammo_in_magazine -= 1
-	player.trigger_weapon_recoil()
+	player.play_weapon_feedback(data.weapon_name, target_pos)
 	return true
 
 func reload(player: Player) -> void:

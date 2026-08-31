@@ -18,5 +18,6 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 			bullet.direction = dir.rotated(offset)
 			bullet.damage = int(scaled_damage * player.damage_mult)
 			bullet.pierce_count = player.pierce_add
+			player.configure_projectile(bullet)
 	AudioManager.play_named("shotgun", -10.0, randf_range(1.08, 1.16))
 	return true

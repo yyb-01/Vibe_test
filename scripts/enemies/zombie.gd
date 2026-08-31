@@ -53,6 +53,7 @@ var runner_dash_cooldown: float = 0.0
 var tank_stomp_cooldown: float = 0.0
 var bloater_spit_cooldown: float = 1.5
 var strafe_sign: float = 1.0
+var hit_stop_timer: float = 0.0
 
 const WALL_LOOK_AHEAD: float = 54.0
 const WALL_FOLLOW_TIME: float = 0.45
@@ -109,6 +110,7 @@ func reset() -> void:
 	tank_stomp_cooldown = randf_range(1.0, 2.2)
 	bloater_spit_cooldown = randf_range(1.5, 3.5)
 	strafe_sign = -1.0 if randf() < 0.5 else 1.0
+	hit_stop_timer = 0.0
 	set_meta("is_boss", false)
 	set_meta("is_elite", false)
 
@@ -134,6 +136,9 @@ func set_elite() -> void:
 
 func _physics_process(delta: float) -> void:
 	if health <= 0:
+		return
+	if hit_stop_timer > 0.0:
+		hit_stop_timer = maxf(0.0, hit_stop_timer - delta)
 		return
 
 	if not player:
@@ -319,16 +324,27 @@ func _draw() -> void:
 				draw_circle(marker, 34.0, Color(1.0, 0.16, 0.08, 0.26 * pulse))
 				draw_arc(marker, 34.0, 0.0, TAU, 32, warning_color, 6.0, true)
 
-func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
+func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, hit_kind: String = "normal") -> void:
 	if health <= 0 or is_dying:
 		return
 
+	var applied_damage := mini(amount, health)
 	health -= amount
+	RunStats.register_combat_hit(applied_damage, hit_kind)
 
 	# Damage Number
 	var dmg_num = ObjectPoolManager.acquire("damage_number", global_position)
 	if dmg_num:
-		dmg_num.amount = amount
+		if dmg_num.has_method("configure"):
+			dmg_num.configure(amount, hit_kind)
+		else:
+			dmg_num.amount = amount
+
+	match hit_kind:
+		"critical": hit_stop_timer = maxf(hit_stop_timer, 0.055)
+		"execute": hit_stop_timer = maxf(hit_stop_timer, 0.075)
+		"heavy": hit_stop_timer = maxf(hit_stop_timer, 0.038)
+		_: hit_stop_timer = maxf(hit_stop_timer, 0.018)
 
 	# Knockback
 	knockback = hit_direction * 200.0 * (1.0 - knockback_resistance)

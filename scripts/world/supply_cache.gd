@@ -3,10 +3,19 @@ extends Area2D
 
 @export var gold_reward: int = 35
 @export var heal_amount: int = 18
+@export var lifetime: float = 0.0
 var opened: bool = false
+var age: float = 0.0
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
+
+func _process(delta: float) -> void:
+	if lifetime <= 0.0 or opened:
+		return
+	age += delta
+	if age >= lifetime:
+		queue_free()
 
 func _on_body_entered(body: Node2D) -> void:
 	if opened or not body.is_in_group("player"):

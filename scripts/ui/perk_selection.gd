@@ -167,7 +167,7 @@ func _create_upgrade_button(item: Variant) -> void:
 	if item is PerkData:
 		kind_label.text = "패시브"
 		name_label.text = item.perk_name
-		description_label.text = item.description
+		description_label.text = item.description + _get_build_recipe_hint(item.id)
 	elif item is WeaponUpgradeData:
 		kind_label.text = "신규 무기"
 		name_label.text = item.weapon_name
@@ -180,6 +180,25 @@ func _create_upgrade_button(item: Variant) -> void:
 	select_button.text = "이 강화 선택"
 	select_button.pressed.connect(func() -> void: _on_upgrade_selected(item))
 	container.add_child(card)
+
+func _get_build_recipe_hint(perk_id: String) -> String:
+	match perk_id:
+		"heavy_caliber": return "\n\n[전투 교리] 철갑탄 → 장갑 파쇄자"
+		"piercing_rounds": return "\n\n[전투 교리] 대구경 탄환 → 장갑 파쇄자"
+		"hollow_point": return "\n\n[전투 교리] 처형 프로토콜 → 처형 교리"
+		"executioner": return "\n\n[전투 교리] 할로우 포인트 → 처형 교리"
+		"fast_hands": return "\n\n[전투 교리] 가속 전술 → 런 앤 건"
+		"momentum": return "\n\n[전투 교리] 빠른 손놀림 → 런 앤 건"
+		"adrenaline": return "\n\n[전투 교리] 반동 제어기 → 과부하 전술"
+		"stabilizer": return "\n\n[전투 교리] 아드레날린 → 과부하 전술"
+		"reinforced_vest": return "\n\n[전투 교리] 외상 키트 → 불굴의 생존자"
+		"trauma_kit": return "\n\n[전투 교리] 복합 장갑 → 불굴의 생존자"
+		"scavenged_ammo": return "\n\n[전투 교리] 야전 식량 → 폐허 경제"
+		"medic_kit": return "\n\n[전투 교리] 가벼운 발걸음 → 기동 의무병"
+		"light_foot": return "\n\n[전투 교리] 응급 키트 → 기동 의무병"
+		"bloodlust": return "\n\n[전투 교리] 야전 식량 → 피의 엔진"
+		"field_rations": return "\n\n[전투 교리] 회수 탄약 → 폐허 경제\n피의 굶주림 → 피의 엔진"
+		_: return ""
 
 func _update_reroll_button() -> void:
 	reroll_button.text = "카드 리롤  ·  %dG" % REROLL_COST

@@ -32,10 +32,12 @@ func _on_game_over(is_victory: bool) -> void:
 		title_label.text = "GAME OVER"
 		title_label.add_theme_color_override("font_color", Color.RED)
 
-	gold_label.text = "Total Gold: " + str(SaveManager.gold)
+	gold_label.text = "보유 골드  ·  " + str(SaveManager.gold)
 	var total_seconds := int(summary.get("time", 0.0))
 	var challenge_result := "달성" if bool(summary.get("challenge_completed", false)) else "미달성"
-	summary_label.text = "%s%s  ·  생존 %02d:%02d  ·  처치 %d  ·  웨이브 %02d  ·  구조 %d  ·  보급 %d  ·  엘리트 %d  ·  도전 %s" % [RunStats.get_difficulty_name(), " 무한" if bool(summary.get("endless_mode", false)) else "", total_seconds / 60, total_seconds % 60, int(summary.get("kills", 0)), int(summary.get("wave", 1)), int(summary.get("survivors_rescued", 0)), int(summary.get("supply_caches_opened", 0)), int(summary.get("elite_kills", 0)), challenge_result]
+	var dealt := int(summary.get("damage_dealt", 0))
+	var dps := float(dealt) / maxf(1.0, float(summary.get("time", 0.0)))
+	summary_label.text = "%s%s\n생존  %02d:%02d     웨이브  %02d     처치  %d     엘리트  %d\n가한 피해  %d     평균 DPS  %.1f     받은 피해  %d\n치명타  %d     처형  %d     구조  %d     보급  %d\n도전 과제  ·  %s" % [RunStats.get_difficulty_name(), " · 무한 모드" if bool(summary.get("endless_mode", false)) else "", total_seconds / 60, total_seconds % 60, int(summary.get("wave", 1)), int(summary.get("kills", 0)), int(summary.get("elite_kills", 0)), dealt, dps, int(summary.get("damage_taken", 0)), int(summary.get("critical_hits", 0)), int(summary.get("executions", 0)), int(summary.get("survivors_rescued", 0)), int(summary.get("supply_caches_opened", 0)), challenge_result]
 	SaveManager.save_data()
 
 func _on_return_pressed() -> void:

@@ -5,6 +5,9 @@ var map_id: String = ""
 var elapsed_time: float = 0.0
 var kills: int = 0
 var damage_taken: int = 0
+var damage_dealt: int = 0
+var critical_hits: int = 0
+var executions: int = 0
 var survivors_rescued: int = 0
 var supply_caches_opened: int = 0
 var elite_kills: int = 0
@@ -30,6 +33,9 @@ func start_run(new_map_id: String) -> void:
 	elapsed_time = 0.0
 	kills = 0
 	damage_taken = 0
+	damage_dealt = 0
+	critical_hits = 0
+	executions = 0
 	survivors_rescued = 0
 	supply_caches_opened = 0
 	elite_kills = 0
@@ -67,6 +73,13 @@ func register_kill() -> void:
 func register_damage(amount: int) -> void:
 	damage_taken += amount
 	_check_challenge()
+
+func register_combat_hit(amount: int, hit_kind: String) -> void:
+	damage_dealt += maxi(0, amount)
+	if hit_kind == "critical":
+		critical_hits += 1
+	elif hit_kind == "execute":
+		executions += 1
 
 func register_rescue() -> void:
 	survivors_rescued += 1
@@ -130,6 +143,9 @@ func get_summary() -> Dictionary:
 		"time": elapsed_time,
 		"kills": kills,
 		"damage_taken": damage_taken,
+		"damage_dealt": damage_dealt,
+		"critical_hits": critical_hits,
+		"executions": executions,
 		"survivors_rescued": survivors_rescued,
 		"supply_caches_opened": supply_caches_opened,
 		"elite_kills": elite_kills,
@@ -179,6 +195,14 @@ func get_challenge_text() -> String:
 		"mission_master": return "현장 전문가: 사건·구조·보급 목표 2개 완료"
 		"endless_15": return "끝없는 밤: 무한 모드 웨이브 15 도달"
 		_: return "없음"
+
+func get_challenge_progress_text() -> String:
+	match active_challenge:
+		"untouchable": return "웨이브 %d/8 · 피해 %d/100" % [mini(current_wave, 8), damage_taken]
+		"elite_hunter": return "엘리트 %d/10" % mini(elite_kills, 10)
+		"mission_master": return "현장 목표 %d/2" % mini(missions_completed + survivors_rescued + supply_caches_opened, 2)
+		"endless_15": return "웨이브 %d/15" % mini(current_wave, 15)
+		_: return ""
 
 func _check_challenge() -> void:
 	if challenge_completed or active_challenge == "none":

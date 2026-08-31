@@ -37,7 +37,7 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	while hit_count < total_bounces and is_instance_valid(current_target):
 		if current_target.has_method("take_damage"):
 			var dir = origin_pos.direction_to(current_target.global_position)
-			current_target.take_damage(final_damage, dir)
+			player.apply_build_hit(current_target, final_damage, dir, 0.1)
 		arc_points.append(current_target.global_position)
 
 		hit_count += 1

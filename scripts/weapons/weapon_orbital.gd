@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 				for body in bodies:
 					if body.is_in_group("enemies") and body.has_method("take_damage"):
 						var dir = player.global_position.direction_to(body.global_position)
-						body.take_damage(final_damage, dir)
+						player.apply_build_hit(body, final_damage, dir, 0.04, "heavy" if evolved else "normal")
 						hit = true
 				if hit:
 					cooldown_timer = data.fire_rate * player.reload_mult
