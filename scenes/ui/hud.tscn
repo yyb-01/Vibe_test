@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://ci1d3m4h5b6n2"]
+[gd_scene load_steps=6 format=3 uid="uid://ci1d3m4h5b6n2"]
 
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1_a2b3c"]
 
@@ -22,11 +22,23 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exp_fill"]
-bg_color = Color(0.25, 0.9, 0.72, 1)
+bg_color = Color(0.22, 0.78, 0.82, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
+bg_color = Color(0.008, 0.025, 0.034, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.18, 0.62, 0.68, 0.58)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="HUD" type="CanvasLayer"]
 process_mode = 3
@@ -100,16 +112,16 @@ offset_right = 0.0
 offset_bottom = 108.0
 grow_horizontal = 2
 mouse_filter = 2
-color = Color(0.015, 0.04, 0.05, 0.68)
+color = Color(0.006, 0.02, 0.028, 0.8)
 
-[node name="InventoryBackplate" type="ColorRect" parent="."]
+[node name="InventoryBackplate" type="Panel" parent="."]
 z_index = -2
 offset_left = 14.0
 offset_top = 92.0
 offset_right = 455.0
 offset_bottom = 238.0
 mouse_filter = 2
-color = Color(0.02, 0.07, 0.075, 0.64)
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 anchors_preset = 15
@@ -151,7 +163,6 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ExpBar" type="ProgressBar" parent="MarginContainer/VBoxContainer/HBoxContainer"]
-modulate = Color(0, 0.5, 1, 1)
 custom_minimum_size = Vector2(280, 22)
 layout_mode = 2
 size_flags_vertical = 4
@@ -201,7 +212,7 @@ theme_override_constants/separation = 4
 
 [node name="ObjectiveLabel" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.9, 0.78, 1)
+theme_override_colors/font_color = Color(1, 0.68, 0.32, 1)
 theme_override_font_sizes/font_size = 16
 text = "구조 신호: 0/1"
 

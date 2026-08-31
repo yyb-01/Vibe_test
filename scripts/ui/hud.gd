@@ -38,7 +38,8 @@ func _process(delta: float) -> void:
 	wave_label.text = "WAVE %02d" % (int(time_elapsed / 30.0) + 1)
 	threat_label.text = "위협 %03d" % _get_active_enemy_count()
 	objective_label.text = "구조 신호: %d/1" % RunStats.survivors_rescued
-	objective_label.text += "  ·  보급품: %d/1" % RunStats.supply_caches_opened
+	if RunStats.map_id in ["map_3", "map_4"]:
+		objective_label.text += "  ·  보급품: %d/1" % RunStats.supply_caches_opened
 	if not RunStats.quest_completed:
 		objective_label.text += "  ·  처치 의뢰: %d/%d" % [RunStats.kills, RunStats.KILL_QUEST_TARGET]
 	else:
@@ -73,6 +74,7 @@ func _get_active_enemy_count() -> int:
 func _on_player_health_changed(current_hp: int, max_hp: int) -> void:
 	hp_bar.max_value = max_hp
 	hp_bar.value = current_hp
+	hp_bar.get_node("HPLabel").text = "HP  %d / %d" % [current_hp, max_hp]
 
 func _on_exp_changed(current_exp: int, required_exp: int, level: int) -> void:
 	exp_bar.max_value = required_exp

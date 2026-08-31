@@ -36,22 +36,38 @@ func _ready() -> void:
 		if node:
 			spawn_points_nodes.append(node)
 
-	# Wait until the map has finished adding its children before warming pools.
-	call_deferred("_register_pools", pool_parent)
+	# Register definitions immediately so auto-fire can acquire objects on the
+	# first physics tick. Heavy pre-warming is deferred until the parent is ready.
+	_register_pools(pool_parent)
+	call_deferred("_warm_pools")
 
 func _register_pools(pool_parent: Node) -> void:
-	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, pool_parent, 200)
-	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, pool_parent, 100)
-	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, pool_parent, 50)
-	ObjectPoolManager.register_pool("zombie_spitter", ZOMBIE_SPITTER, pool_parent, 50)
-	ObjectPoolManager.register_pool("zombie_bomber", ZOMBIE_BOMBER, pool_parent, 50)
-	ObjectPoolManager.register_pool("zombie_bloater", ZOMBIE_BLOATER, pool_parent, 50)
-	ObjectPoolManager.register_pool("exp_gem", preload("res://scenes/items/exp_gem.tscn"), pool_parent, 300)
-	ObjectPoolManager.register_pool("bullet", preload("res://scenes/weapons/bullet.tscn"), pool_parent, 50)
-	ObjectPoolManager.register_pool("acid_projectile", preload("res://scenes/weapons/acid_projectile.tscn"), pool_parent, 50)
-	ObjectPoolManager.register_pool("damage_number", preload("res://scenes/ui/effects/damage_number.tscn"), pool_parent, 100)
-	ObjectPoolManager.register_pool("blood_impact", preload("res://scenes/effects/blood_impact.tscn"), pool_parent, 100)
-	ObjectPoolManager.register_pool("player_hit", preload("res://scenes/effects/player_hit.tscn"), pool_parent, 40)
+	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, pool_parent)
+	ObjectPoolManager.register_pool("zombie_runner", ZOMBIE_RUNNER, pool_parent)
+	ObjectPoolManager.register_pool("zombie_tank", ZOMBIE_TANK, pool_parent)
+	ObjectPoolManager.register_pool("zombie_spitter", ZOMBIE_SPITTER, pool_parent)
+	ObjectPoolManager.register_pool("zombie_bomber", ZOMBIE_BOMBER, pool_parent)
+	ObjectPoolManager.register_pool("zombie_bloater", ZOMBIE_BLOATER, pool_parent)
+	ObjectPoolManager.register_pool("exp_gem", preload("res://scenes/items/exp_gem.tscn"), pool_parent)
+	ObjectPoolManager.register_pool("bullet", preload("res://scenes/weapons/bullet.tscn"), pool_parent)
+	ObjectPoolManager.register_pool("acid_projectile", preload("res://scenes/weapons/acid_projectile.tscn"), pool_parent)
+	ObjectPoolManager.register_pool("damage_number", preload("res://scenes/ui/effects/damage_number.tscn"), pool_parent)
+	ObjectPoolManager.register_pool("blood_impact", preload("res://scenes/effects/blood_impact.tscn"), pool_parent)
+	ObjectPoolManager.register_pool("player_hit", preload("res://scenes/effects/player_hit.tscn"), pool_parent)
+
+func _warm_pools() -> void:
+	ObjectPoolManager.warm_pool("zombie_base", 200)
+	ObjectPoolManager.warm_pool("zombie_runner", 100)
+	ObjectPoolManager.warm_pool("zombie_tank", 50)
+	ObjectPoolManager.warm_pool("zombie_spitter", 50)
+	ObjectPoolManager.warm_pool("zombie_bomber", 50)
+	ObjectPoolManager.warm_pool("zombie_bloater", 50)
+	ObjectPoolManager.warm_pool("exp_gem", 300)
+	ObjectPoolManager.warm_pool("bullet", 50)
+	ObjectPoolManager.warm_pool("acid_projectile", 50)
+	ObjectPoolManager.warm_pool("damage_number", 100)
+	ObjectPoolManager.warm_pool("blood_impact", 100)
+	ObjectPoolManager.warm_pool("player_hit", 40)
 
 func _process(delta: float) -> void:
 	time_elapsed += delta

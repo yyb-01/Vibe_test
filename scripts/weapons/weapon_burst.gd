@@ -13,7 +13,7 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	for i in range(shots):
 		var bullet = ObjectPoolManager.acquire("bullet", player.global_position)
 		if bullet:
-			var offset := deg_to_rad(10.0) * (float(i) / max(1, shots - 1) - 0.5)
+			var offset: float = deg_to_rad(10.0) * (float(i) / maxf(1.0, float(shots - 1)) - 0.5)
 			bullet.direction = dir.rotated(offset)
 			bullet.damage = int(scaled_damage * player.damage_mult)
 			bullet.pierce_count = player.pierce_add

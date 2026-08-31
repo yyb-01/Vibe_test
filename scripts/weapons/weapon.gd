@@ -1,6 +1,8 @@
 class_name Weapon
 extends Node
 
+const MAX_LEVEL: int = 5
+
 @export var data: WeaponData
 var current_level: int = 1
 
@@ -46,8 +48,10 @@ func reload(player: Player) -> void:
 		ammo_in_magazine = data.magazine_size
 
 func upgrade() -> void:
+	if current_level >= MAX_LEVEL:
+		return
 	current_level += 1
-	if current_level >= 5:
+	if current_level >= MAX_LEVEL:
 		evolved = true
 
 func get_display_name() -> String:

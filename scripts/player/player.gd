@@ -3,6 +3,7 @@ extends CharacterBody2D
 
 @export var max_health: int = 100
 @export var move_speed: float = 200.0
+@export var invulnerability_duration: float = 0.35
 var weapons: Array[Weapon] = []
 var max_weapons: int = 6
 var passives: Array[PerkData] = []
@@ -25,6 +26,7 @@ var walk_time: float = 0.0
 var sprite_base_scale: Vector2
 var sprite_base_position: Vector2
 var aim_angle: float = 0.0
+var invulnerable: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -36,7 +38,11 @@ func _ready() -> void:
 	character_id = SaveManager.selected_character
 	_apply_character_preset()
 	if not RunStats.run_active:
-		RunStats.start_run(get_tree().current_scene.scene_file_path.get_file().get_basename())
+		var scene_root := get_tree().current_scene
+		if not is_instance_valid(scene_root):
+			scene_root = get_parent()
+		var scene_path: String = scene_root.scene_file_path if is_instance_valid(scene_root) else "map_1"
+		RunStats.start_run(scene_path.get_file().get_basename())
 
 	# Initialize default starting weapon
 	var starting_weap_data = preload("res://data/perks/weap_pistol.tres")
@@ -121,15 +127,18 @@ func add_weapon(weapon_script: Script, data: WeaponData) -> void:
 	EventBus.inventory_updated.emit(weapons, passives)
 
 func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
-	if health <= 0:
+	if health <= 0 or invulnerable:
 		return
 
+	invulnerable = true
 	health -= amount
 	RunStats.register_damage(amount)
 	EventBus.camera_shake_requested.emit()
 	EventBus.player_health_changed.emit(health, max_health)
 	_play_hit_feedback(hit_direction)
 	AudioManager.play_named("hurt", -4.0)
+	var invulnerability_timer := get_tree().create_timer(invulnerability_duration)
+	invulnerability_timer.timeout.connect(func() -> void: invulnerable = false)
 
 	if health <= 0:
 		die()
@@ -174,6 +183,11 @@ func _level_up() -> void:
 	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 
 func apply_perk(perk: PerkData) -> void:
+	if passives.size() >= max_passives:
+		return
+	for owned_perk in passives:
+		if owned_perk.id == perk.id:
+			return
 	print("Applying perk: ", perk.perk_name)
 	passives.append(perk)
 	damage_mult *= perk.damage_mult

@@ -19,7 +19,7 @@ Godot 에디터에서 프로젝트를 열고 `scenes/ui/main_menu.tscn`을 실�
 - `scripts/autoloads`: EventBus, ObjectPoolManager, SpatialGrid, SaveManager, AudioManager
 - `scripts/player`, `scripts/enemies`, `scripts/weapons`: 전투 및 엔티티 로직
 - `scripts/resources`와 `data`: Resource 기반 무기/퍽 데이터
-- `scenes/maps`: 서로 다른 구조와 크기의 3개 플레이 맵
+- `scenes/maps`: 서로 다른 구조와 크기의 4개 플레이 맵
 - `scenes/world`: 생존자 구조 목표
 - `.github/workflows/build.yml`: 에셋 임포트, 맵 로드 검증, Windows export
 

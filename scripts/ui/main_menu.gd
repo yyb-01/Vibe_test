@@ -19,9 +19,9 @@ extends CanvasLayer
 const CHARACTER_IDS := ["scavenger", "medic", "ranger"]
 const CHARACTER_NAMES := ["Scavenger · 공격형", "Medic · 생존형", "Ranger · 기동형"]
 const CHARACTER_DESCRIPTIONS := [
-	"폐허에서 살아남은 약탈자. 공격력과 골드 수급에 유리합니다.",
-	"응급 구조 전문가. 최대 체력이 높지만 공격력이 조금 낮습니다.",
-	"정찰병. 빠른 이동과 재장전으로 위험 구역을 돌파합니다."
+	"폐허의 약탈자 · 최대 HP +10 · 피해량 +8%",
+	"응급 구조 전문가 · 최대 HP +35 · 피해량 -10%",
+	"기동 정찰병 · 이동 속도 +35 · 피해량 +10% · 사격/재장전 10% 단축"
 ]
 
 func _ready() -> void:

@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 [ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
-[ext_resource type="Texture2D" path="res://assets/graphics/floor.svg" id="6_floor"]
+[ext_resource type="Texture2D" path="res://assets/graphics/floor_v2.png" id="6_floor"]
 [ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
 [ext_resource type="Texture2D" path="res://assets/graphics/barricade.svg" id="8_barricade"]
 [ext_resource type="Texture2D" path="res://assets/graphics/wreck.svg" id="9_wreck"]

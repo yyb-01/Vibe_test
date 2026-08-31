@@ -1,9 +1,17 @@
 extends SceneTree
 
 const SPAWN_WAIT_SECONDS := 3.0
+const MAP_PATHS := [
+    "res://scenes/maps/map_1.tscn",
+    "res://scenes/maps/map_2.tscn",
+    "res://scenes/maps/map_3.tscn",
+    "res://scenes/maps/map_4.tscn"
+]
 var elapsed := 0.0
 var map_scene: PackedScene
 var map_instance: Node
+var map_index := -1
+var transitioning := false
 
 func _initialize() -> void:
     print("Starting map load test...")
@@ -24,11 +32,29 @@ func _initialize() -> void:
         singleton.name = singleton_name
         root.add_child(singleton)
 
-    map_scene = load("res://scenes/maps/map_1.tscn") as PackedScene
+    _load_next_map()
+
+func _load_next_map() -> void:
+    map_index += 1
+    elapsed = 0.0
+    if map_index >= MAP_PATHS.size():
+        print("All assertions passed. All four maps loaded and spawned zombies successfully.")
+        quit(0)
+        return
+
+    var map_path: String = MAP_PATHS[map_index]
+    print("Loading verification map: ", map_path)
+    map_scene = load(map_path) as PackedScene
+    if not map_scene:
+        push_error("Assertion failed: Could not load " + map_path)
+        quit(1)
+        return
     map_instance = map_scene.instantiate()
-    root.add_child(map_instance)
+    get_root().add_child(map_instance)
 
 func _process(delta: float) -> bool:
+    if transitioning:
+        return false
     elapsed += delta
     if elapsed >= SPAWN_WAIT_SECONDS:
         print("Checking verification assertions...")
@@ -59,7 +85,19 @@ func _process(delta: float) -> bool:
             quit(1)
             return true
 
-        print("All assertions passed. Map loaded and ran successfully.")
-        quit(0)
-        return true
+        print("Map assertions passed: ", MAP_PATHS[map_index])
+        transitioning = true
+        map_instance.process_mode = Node.PROCESS_MODE_DISABLED
+        if map_instance is CanvasItem:
+            map_instance.visible = false
+        call_deferred("_finish_map_transition")
+        return false
     return false
+
+func _finish_map_transition() -> void:
+    if is_instance_valid(map_instance):
+        map_instance.free()
+    get_root().get_node("ObjectPoolManager").call("clear")
+    get_root().get_node("SpatialGrid").call("clear")
+    transitioning = false
+    _load_next_map()

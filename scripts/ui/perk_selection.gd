@@ -62,7 +62,13 @@ func _on_level_up() -> void:
 		return
 
 	var pool = []
-	pool.append_array(available_passives)
+	var owned_passive_ids: Array[String] = []
+	for passive in player.passives:
+		owned_passive_ids.append(passive.id)
+	if player.passives.size() < player.max_passives:
+		for passive in available_passives:
+			if passive.id not in owned_passive_ids:
+				pool.append(passive)
 
 	# Check weapons
 	for w_data in available_weapons:
@@ -70,7 +76,8 @@ func _on_level_up() -> void:
 		for w in player.weapons:
 			if w.data.weapon_name == w_data.weapon_data.weapon_name:
 				has_weapon = true
-				pool.append(w) # Can upgrade existing weapon
+				if w.current_level < Weapon.MAX_LEVEL:
+					pool.append(w) # Can upgrade existing weapon
 				break
 
 		if not has_weapon and player.weapons.size() < player.max_weapons:
@@ -104,6 +111,25 @@ func _create_upgrade_button(item: Variant) -> void:
 	btn.focus_mode = Control.FOCUS_ALL
 	btn.add_theme_color_override("font_color", Color(0.86, 1.0, 0.94, 1.0))
 	btn.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 0.86, 1.0))
+	btn.add_theme_font_size_override("font_size", 18)
+
+	var accent := Color(0.25, 0.88, 0.82, 1.0)
+	if item is WeaponUpgradeData or item is Weapon:
+		accent = Color(1.0, 0.57, 0.28, 1.0)
+	var normal_style := StyleBoxFlat.new()
+	normal_style.bg_color = Color(0.025, 0.055, 0.07, 0.98)
+	normal_style.border_color = Color(accent, 0.72)
+	normal_style.set_border_width_all(2)
+	normal_style.set_corner_radius_all(8)
+	normal_style.set_content_margin_all(18.0)
+	var hover_style := normal_style.duplicate() as StyleBoxFlat
+	hover_style.bg_color = Color(0.07, 0.13, 0.15, 1.0)
+	hover_style.border_color = accent
+	hover_style.set_border_width_all(3)
+	btn.add_theme_stylebox_override("normal", normal_style)
+	btn.add_theme_stylebox_override("hover", hover_style)
+	btn.add_theme_stylebox_override("focus", hover_style)
+	btn.add_theme_stylebox_override("pressed", hover_style)
 
 	if item is PerkData:
 		btn.text = "[패시브] " + item.perk_name + "\n\n" + item.description
