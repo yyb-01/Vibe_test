@@ -20,6 +20,8 @@ var min_spawn_delay: float = 0.35
 
 const WAVE_DURATION: float = 30.0
 const MAX_ACTIVE_ENEMIES: int = 220
+const SPAWN_DISTANCE_MIN: float = 680.0
+const SPAWN_DISTANCE_MAX: float = 920.0
 var current_wave: int = 1
 var last_announced_wave: int = 1
 
@@ -119,8 +121,12 @@ func _process(delta: float) -> void:
 
 func _spawn_boss() -> void:
 	boss_spawned = true
-	var sp := spawn_points_nodes[0]
-	var boss = ObjectPoolManager.acquire("zombie_tank", sp.global_position)
+	var player := get_tree().get_first_node_in_group("player") as Node2D
+	if not is_instance_valid(player):
+		return
+	# Bosses enter from outside the player's current view even on the expanded maps.
+	var boss_position := _get_player_spawn_position(player, 760.0, 920.0)
+	var boss = ObjectPoolManager.acquire("zombie_tank", boss_position)
 	if boss:
 		boss.set_meta("pool_id", "zombie_tank")
 		boss.set_meta("is_boss", true)
@@ -131,62 +137,68 @@ func _spawn_boss() -> void:
 func _spawn_zombie() -> bool:
 	if _get_active_enemy_count() >= MAX_ACTIVE_ENEMIES:
 		return false
-	if spawn_points_nodes.size() > 0:
-		var sp := spawn_points_nodes[randi() % spawn_points_nodes.size()]
+	var player := get_tree().get_first_node_in_group("player") as Node2D
+	if not is_instance_valid(player):
+		return false
 
-		var pool_id: String = "zombie_base"
-		var hp_multiplier: float = 1.0 + (time_elapsed / 60.0) * 0.65
+	var pool_id: String = "zombie_base"
+	var hp_multiplier: float = 1.0 + (time_elapsed / 60.0) * 0.65
 
-		if current_wave >= 7:
-			var r := randf()
-			if r < 0.10:
-				pool_id = "zombie_bomber"
-			elif r < 0.18:
-				pool_id = "zombie_bloater"
-			elif r < 0.30:
-				pool_id = "zombie_tank"
-			elif r < 0.50:
-				pool_id = "zombie_spitter"
-			elif r < 0.75:
-				pool_id = "zombie_runner"
-		elif current_wave >= 4:
-			var r := randf()
-			if r < 0.08:
-				pool_id = "zombie_bomber"
-			elif r < 0.14:
-				pool_id = "zombie_bloater"
-			elif r < 0.24:
-				pool_id = "zombie_spitter"
-			elif r < 0.48:
-				pool_id = "zombie_runner"
+	if current_wave >= 7:
+		var r := randf()
+		if r < 0.10:
+			pool_id = "zombie_bomber"
+		elif r < 0.18:
+			pool_id = "zombie_bloater"
+		elif r < 0.30:
+			pool_id = "zombie_tank"
+		elif r < 0.50:
+			pool_id = "zombie_spitter"
+		elif r < 0.75:
+			pool_id = "zombie_runner"
+	elif current_wave >= 4:
+		var r := randf()
+		if r < 0.08:
+			pool_id = "zombie_bomber"
+		elif r < 0.14:
+			pool_id = "zombie_bloater"
+		elif r < 0.24:
+			pool_id = "zombie_spitter"
+		elif r < 0.48:
+			pool_id = "zombie_runner"
 
-		# Offset slightly around spawn point to prevent immediate stacking
-		# Safety check for player instance
-		var player = get_tree().get_first_node_in_group("player")
-		if not is_instance_valid(player):
-			return false
+	# Large maps still need constant pressure. Enemies now emerge just outside
+	# the visible play space around the player rather than walking from a corner.
+	var final_pos := _get_player_spawn_position(player, SPAWN_DISTANCE_MIN, SPAWN_DISTANCE_MAX)
+	var zombie = ObjectPoolManager.acquire(pool_id, final_pos)
+	if not zombie:
+		return false
 
-		var offset := Vector2(randf_range(-40, 40), randf_range(-40, 40))
-		var final_pos = sp.global_position + offset
+	zombie.set_meta("pool_id", pool_id)
+	if zombie.has_method("set_scaled_max_health"):
+		zombie.set_scaled_max_health(hp_multiplier)
+	if current_wave >= 5 and randf() < clampf(float(current_wave - 4) * 0.04, 0.0, 0.22):
+		zombie.set_elite()
 
-		# Clamp to safe playable area bounds
-		final_pos.x = clampf(final_pos.x, spawn_bounds.position.x, spawn_bounds.position.x + spawn_bounds.size.x)
-		final_pos.y = clampf(final_pos.y, spawn_bounds.position.y, spawn_bounds.position.y + spawn_bounds.size.y)
+	return true
 
-		var zombie = ObjectPoolManager.acquire(pool_id, final_pos)
-		if not zombie:
-			return false # Failed to acquire from pool
-
-		zombie.set_meta("pool_id", pool_id)
-
-		# We must re-assign max health manually since the pool object might have been dirty
-		if zombie.has_method("set_scaled_max_health"):
-			zombie.set_scaled_max_health(hp_multiplier)
-		if current_wave >= 5 and randf() < clampf(float(current_wave - 4) * 0.04, 0.0, 0.22):
-			zombie.set_elite()
-
-		return true
-	return false
+func _get_player_spawn_position(player: Node2D, min_distance: float, max_distance: float) -> Vector2:
+	var safe_left := spawn_bounds.position.x + 120.0
+	var safe_top := spawn_bounds.position.y + 120.0
+	var safe_right := spawn_bounds.position.x + spawn_bounds.size.x - 120.0
+	var safe_bottom := spawn_bounds.position.y + spawn_bounds.size.y - 120.0
+	for _attempt in range(8):
+		var angle := randf() * TAU
+		var distance := randf_range(min_distance, max_distance)
+		var candidate := player.global_position + Vector2.RIGHT.rotated(angle) * distance
+		candidate.x = clampf(candidate.x, safe_left, safe_right)
+		candidate.y = clampf(candidate.y, safe_top, safe_bottom)
+		if candidate.distance_to(player.global_position) >= min_distance * 0.72:
+			return candidate
+	return Vector2(
+		clampf(player.global_position.x + min_distance, safe_left, safe_right),
+		clampf(player.global_position.y, safe_top, safe_bottom)
+	)
 
 func _get_active_enemy_count() -> int:
 	var count := 0

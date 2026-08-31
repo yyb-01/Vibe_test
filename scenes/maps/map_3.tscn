@@ -15,10 +15,10 @@
 [ext_resource type="PackedScene" path="res://scenes/world/supply_cache.tscn" id="13_cache"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
-size = Vector2(3600, 20)
+size = Vector2(14400, 20)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
-size = Vector2(20, 2200)
+size = Vector2(20, 8800)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_cover"]
 size = Vector2(720, 28)
@@ -36,15 +36,15 @@ size = Vector2(160, 80)
 
 [node name="Background" type="ColorRect" parent="."]
 z_index = -11
-offset_right = 3600.0
-offset_bottom = 2200.0
+offset_right = 14400.0
+offset_bottom = 8800.0
 mouse_filter = 2
 color = Color(0.025, 0.075, 0.09, 1)
 
 [node name="FloorTexture" type="TextureRect" parent="."]
 z_index = -10
-offset_right = 3600.0
-offset_bottom = 2200.0
+offset_right = 14400.0
+offset_bottom = 8800.0
 mouse_filter = 2
 texture_repeat = 2
 texture = ExtResource("6_floor")
@@ -55,111 +55,111 @@ stretch_mode = 1
 collision_mask = 3
 
 [node name="TopWall" type="CollisionShape2D" parent="Walls"]
-position = Vector2(1800, -10)
+position = Vector2(7200, -10)
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="BottomWall" type="CollisionShape2D" parent="Walls"]
-position = Vector2(1800, 2210)
+position = Vector2(7200, 8810)
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="LeftWall" type="CollisionShape2D" parent="Walls"]
-position = Vector2(-10, 1100)
+position = Vector2(-10, 4400)
 shape = SubResource("RectangleShape2D_wall_v")
 
 [node name="RightWall" type="CollisionShape2D" parent="Walls"]
-position = Vector2(3610, 1100)
+position = Vector2(14410, 4400)
 shape = SubResource("RectangleShape2D_wall_v")
 
 [node name="NorthCover" type="CollisionShape2D" parent="Walls"]
-position = Vector2(1120, 610)
+position = Vector2(4480, 2440)
 shape = SubResource("RectangleShape2D_cover")
 
 [node name="SouthCover" type="CollisionShape2D" parent="Walls"]
-position = Vector2(2480, 1590)
+position = Vector2(9920, 6360)
 shape = SubResource("RectangleShape2D_cover")
 
 [node name="CanalGate" type="CollisionShape2D" parent="Walls"]
-position = Vector2(1800, 1100)
+position = Vector2(7200, 4400)
 shape = SubResource("RectangleShape2D_gate")
 
 [node name="WreckACover" type="CollisionShape2D" parent="Walls"]
-position = Vector2(420, 420)
+position = Vector2(1680, 1680)
 rotation = 0.35
 shape = SubResource("RectangleShape2D_wreck_cover")
 
 [node name="WreckBCover" type="CollisionShape2D" parent="Walls"]
-position = Vector2(3170, 1760)
+position = Vector2(12680, 7040)
 rotation = -2.4
 scale = Vector2(0.85, 0.85)
 shape = SubResource("RectangleShape2D_wreck_cover")
 
 [node name="WreckCCover" type="CollisionShape2D" parent="Walls"]
-position = Vector2(3020, 430)
+position = Vector2(12080, 1720)
 rotation = 2.7
 scale = Vector2(0.7, 0.7)
 shape = SubResource("RectangleShape2D_wreck_cover")
 
 [node name="BarricadeACover" type="CollisionShape2D" parent="Walls"]
-position = Vector2(1800, 320)
+position = Vector2(7200, 1280)
 rotation = 0.05
 shape = SubResource("RectangleShape2D_barricade_cover")
 
 [node name="BarricadeBCover" type="CollisionShape2D" parent="Walls"]
-position = Vector2(1800, 1880)
+position = Vector2(7200, 7520)
 rotation = 3.1
 shape = SubResource("RectangleShape2D_barricade_cover")
 
 [node name="TopWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
-position = Vector2(1800, 0)
+position = Vector2(7200, 0)
 texture_filter = 2
-scale = Vector2(1.657, 0.0442)
+scale = Vector2(6.628, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="BottomWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
-position = Vector2(1800, 2200)
+position = Vector2(7200, 8800)
 texture_filter = 2
-scale = Vector2(1.657, 0.0442)
+scale = Vector2(6.628, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="LeftWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
-position = Vector2(0, 1100)
+position = Vector2(0, 4400)
 rotation = 1.5708
 texture_filter = 2
-scale = Vector2(1.012, 0.0442)
+scale = Vector2(4.048, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="RightWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
-position = Vector2(3600, 1100)
+position = Vector2(14400, 4400)
 rotation = 1.5708
 texture_filter = 2
-scale = Vector2(1.012, 0.0442)
+scale = Vector2(4.048, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="CoverNorthArt" type="ColorRect" parent="Walls"]
-offset_left = 760.0
-offset_top = 596.0
-offset_right = 1480.0
-offset_bottom = 624.0
+offset_left = 4120.0
+offset_top = 2426.0
+offset_right = 4840.0
+offset_bottom = 2454.0
 mouse_filter = 2
 color = Color(0.16, 0.32, 0.32, 1)
 
 [node name="CoverSouthArt" type="ColorRect" parent="Walls"]
-offset_left = 2120.0
-offset_top = 1576.0
-offset_right = 2840.0
-offset_bottom = 1604.0
+offset_left = 9560.0
+offset_top = 6346.0
+offset_right = 10280.0
+offset_bottom = 6374.0
 mouse_filter = 2
 color = Color(0.16, 0.32, 0.32, 1)
 
 [node name="CanalGateArt" type="ColorRect" parent="Walls"]
-offset_left = 1786.0
-offset_top = 840.0
-offset_right = 1814.0
-offset_bottom = 1360.0
+offset_left = 7186.0
+offset_top = 4140.0
+offset_right = 7214.0
+offset_bottom = 4660.0
 mouse_filter = 2
 color = Color(0.12, 0.28, 0.3, 1)
 
@@ -167,79 +167,79 @@ color = Color(0.12, 0.28, 0.3, 1)
 z_index = -2
 
 [node name="WreckA" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(420, 420)
+position = Vector2(1680, 1680)
 rotation = 0.35
 texture = ExtResource("9_wreck")
 
 [node name="WreckB" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(3170, 1760)
+position = Vector2(12680, 7040)
 rotation = -2.4
 scale = Vector2(0.85, 0.85)
 texture = ExtResource("9_wreck")
 
 [node name="WreckC" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(3020, 430)
+position = Vector2(12080, 1720)
 rotation = 2.7
 scale = Vector2(0.7, 0.7)
 texture = ExtResource("9_wreck")
 
 [node name="ToxicPoolA" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(800, 350)
+position = Vector2(3200, 1400)
 scale = Vector2(0.82, 0.82)
 texture = ExtResource("10_toxic")
 
 [node name="ToxicPoolB" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(2720, 1840)
+position = Vector2(10880, 7360)
 scale = Vector2(0.95, 0.95)
 texture = ExtResource("10_toxic")
 
 [node name="ToxicPoolC" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(1250, 1830)
+position = Vector2(5000, 7320)
 scale = Vector2(0.65, 0.65)
 texture = ExtResource("10_toxic")
 
 [node name="BarricadeA" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(1800, 320)
+position = Vector2(7200, 1280)
 rotation = 0.05
 texture = ExtResource("8_barricade")
 
 [node name="BarricadeB" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(1800, 1880)
+position = Vector2(7200, 7520)
 rotation = 3.1
 texture = ExtResource("8_barricade")
 
 [node name="DebrisA" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(380, 1700)
+position = Vector2(1520, 6800)
 rotation = -0.3
 texture = ExtResource("11_debris")
 
 [node name="DebrisB" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(3250, 820)
+position = Vector2(13000, 3280)
 rotation = 0.6
 texture = ExtResource("11_debris")
 
 [node name="DebrisC" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(2250, 380)
+position = Vector2(9000, 1520)
 rotation = -0.8
 scale = Vector2(0.75, 0.75)
 texture = ExtResource("11_debris")
 
 [node name="Player" parent="." instance=ExtResource("1_plyr")]
-position = Vector2(1800, 1100)
+position = Vector2(7200, 4400)
 
 [node name="Camera2D" parent="Player"]
 limit_left = 0
 limit_top = 0
-limit_right = 3600
-limit_bottom = 2200
+limit_right = 14400
+limit_bottom = 8800
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
 
 [node name="Survivor" parent="." instance=ExtResource("7_survivor")]
-position = Vector2(520, 420)
+position = Vector2(2080, 1680)
 
 [node name="SupplyCache" parent="." instance=ExtResource("13_cache")]
-position = Vector2(3060, 1780)
+position = Vector2(12240, 7120)
 
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
 
@@ -250,30 +250,30 @@ position = Vector2(3060, 1780)
 [node name="SpawnManager" type="Node" parent="."]
 script = ExtResource("2_wvmgr")
 spawn_points = Array[NodePath]([NodePath("../SpawnPoints/Spawn1"), NodePath("../SpawnPoints/Spawn2"), NodePath("../SpawnPoints/Spawn3"), NodePath("../SpawnPoints/Spawn4"), NodePath("../SpawnPoints/Spawn5"), NodePath("../SpawnPoints/Spawn6"), NodePath("../SpawnPoints/Spawn7"), NodePath("../SpawnPoints/Spawn8")])
-spawn_bounds = Rect2(80, 80, 3440, 2040)
+spawn_bounds = Rect2(80, 80, 14240, 8640)
 
 [node name="SpawnPoints" type="Node2D" parent="."]
 
 [node name="Spawn1" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(100, 100)
+position = Vector2(400, 400)
 
 [node name="Spawn2" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(1800, 100)
+position = Vector2(7200, 400)
 
 [node name="Spawn3" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(3500, 100)
+position = Vector2(14000, 400)
 
 [node name="Spawn4" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(3500, 1100)
+position = Vector2(14000, 4400)
 
 [node name="Spawn5" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(3500, 2100)
+position = Vector2(14000, 8400)
 
 [node name="Spawn6" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(1800, 2100)
+position = Vector2(7200, 8400)
 
 [node name="Spawn7" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(100, 2100)
+position = Vector2(400, 8400)
 
 [node name="Spawn8" type="Marker2D" parent="SpawnPoints"]
-position = Vector2(100, 1100)
+position = Vector2(400, 4400)
