@@ -117,6 +117,7 @@ func _physics_process(delta: float) -> void:
 
 	var distance_to_player := global_position.distance_to(player.global_position)
 	var dir_to_player := global_position.direction_to(player.global_position)
+	var position_before_move := global_position
 
 	# Keep physics and collision upright. Facing is communicated by a horizontal
 	# flip while the sprite itself receives only a tiny procedural sway.
@@ -126,10 +127,13 @@ func _physics_process(delta: float) -> void:
 	# Knockback decay
 	knockback = knockback.move_toward(Vector2.ZERO, 500 * delta)
 
-	# Movement
-	var needs_movement := distance_to_player > attack_range * 0.9 or (ranged_attack and distance_to_player < preferred_attack_distance)
+	# Movement. Melee reach is never allowed to be shorter than the two collision
+	# bodies together, otherwise zombies could be physically touching the player
+	# but remain outside their own damage check.
+	var effective_attack_range := attack_range if ranged_attack else _get_melee_engagement_range()
+	var needs_movement := distance_to_player > effective_attack_range * 0.9 or (ranged_attack and distance_to_player < preferred_attack_distance)
 	if needs_movement:
-		var should_advance := not ranged_attack or distance_to_player > attack_range
+		var should_advance := not ranged_attack or distance_to_player > effective_attack_range
 		var move_dir := Vector2.ZERO
 		if should_advance:
 			move_dir = _get_wall_aware_direction(dir_to_player, delta)
@@ -154,11 +158,14 @@ func _physics_process(delta: float) -> void:
 		SpatialGrid.update_entity(self, previous_pos, global_position)
 		previous_pos = global_position
 
-	_animate_visual(delta, needs_movement)
+	# Animate only when the zombie actually travelled this frame. This avoids
+	# a fake walk cycle when it is blocked against a wall or another enemy.
+	var visually_moving := global_position.distance_squared_to(position_before_move) > 0.25
+	_animate_visual(delta, visually_moving)
 
-	if ranged_attack and distance_to_player <= attack_range:
+	if ranged_attack and distance_to_player <= effective_attack_range:
 		_attack_ranged()
-	elif not ranged_attack and distance_to_player <= attack_range:
+	elif not ranged_attack and distance_to_player <= effective_attack_range:
 		_attack_player()
 
 	_update_boss(delta)
@@ -246,40 +253,40 @@ func _animate_visual(delta: float, moving: bool) -> void:
 	match motion_profile:
 		1: # Runner: sharp, fast strides and a forward rush.
 			var stride := sin(visual_time * 15.0)
-			bob = absf(stride) * 3.4 * movement_weight
-			sway = stride * 1.6 * movement_weight
-			desired_rotation = stride * 0.035 * movement_weight
-			desired_scale = base_scale * Vector2(1.0 + absf(stride) * 0.065, 1.0 - absf(stride) * 0.055)
+			bob = absf(stride) * 6.0 * movement_weight
+			sway = stride * 3.0 * movement_weight
+			desired_rotation = stride * 0.065 * movement_weight
+			desired_scale = base_scale * Vector2(1.0 + absf(stride) * 0.11, 1.0 - absf(stride) * 0.085)
 		2: # Tank: slow mass shifting and a heavy impact step.
 			var stomp := sin(visual_time * 5.2)
-			bob = absf(stomp) * 1.35 * movement_weight
-			sway = stomp * 0.55 * movement_weight
-			desired_rotation = stomp * 0.012 * movement_weight
-			desired_scale = base_scale * Vector2(1.0 + absf(stomp) * 0.024, 1.0 - absf(stomp) * 0.018)
+			bob = absf(stomp) * 2.8 * movement_weight
+			sway = stomp * 1.2 * movement_weight
+			desired_rotation = stomp * 0.026 * movement_weight
+			desired_scale = base_scale * Vector2(1.0 + absf(stomp) * 0.05, 1.0 - absf(stomp) * 0.035)
 		3: # Spitter: tense breathing while circling, then a short firing lunge.
 			var breath := sin(visual_time * (5.8 if moving else 2.6))
-			bob = breath * (1.25 if moving else 0.75)
-			sway = sin(visual_time * 3.4) * 0.65
-			desired_rotation = breath * 0.014
+			bob = breath * (2.5 if moving else 1.25)
+			sway = sin(visual_time * 3.4) * 1.4
+			desired_rotation = breath * 0.03
 			desired_scale = base_scale * Vector2(1.0 + attack_pulse * 0.08, 1.0 - attack_pulse * 0.05)
 		4: # Bomber: an unstable warning pulse that accelerates as it advances.
 			var alarm := sin(visual_time * (10.0 if moving else 6.0))
-			bob = absf(alarm) * 1.7 * movement_weight
-			sway = alarm * 0.8
-			desired_rotation = alarm * 0.022
-			desired_scale = base_scale * Vector2(1.0 + absf(alarm) * 0.055 + attack_pulse * 0.1, 1.0 - absf(alarm) * 0.035)
+			bob = absf(alarm) * 3.6 * movement_weight
+			sway = alarm * 1.7
+			desired_rotation = alarm * 0.045
+			desired_scale = base_scale * Vector2(1.0 + absf(alarm) * 0.09 + attack_pulse * 0.1, 1.0 - absf(alarm) * 0.06)
 		5: # Bloater: slow organic swelling, even while standing still.
 			var swell := sin(visual_time * 3.2) + sin(visual_time * 5.1) * 0.35
-			bob = swell * 0.72
-			sway = sin(visual_time * 2.1) * 0.55
-			desired_rotation = sway * 0.012
-			desired_scale = base_scale * Vector2(1.0 + swell * 0.028 + attack_pulse * 0.05, 1.0 + swell * 0.018)
+			bob = swell * 1.5
+			sway = sin(visual_time * 2.1) * 1.15
+			desired_rotation = sway * 0.024
+			desired_scale = base_scale * Vector2(1.0 + swell * 0.055 + attack_pulse * 0.05, 1.0 + swell * 0.035)
 		_: # Shambler: uneven steps with a small side-to-side stagger.
 			var stagger := sin(visual_time * (8.0 if moving else 2.0))
-			bob = absf(stagger) * 1.9 * movement_weight
-			sway = sin(visual_time * 4.1) * 0.8 * movement_weight
-			desired_rotation = stagger * 0.02 * movement_weight
-			desired_scale = base_scale * Vector2(1.0 + absf(stagger) * 0.035, 1.0 - absf(stagger) * 0.028)
+			bob = absf(stagger) * 4.2 * movement_weight
+			sway = sin(visual_time * 4.1) * 2.1 * movement_weight
+			desired_rotation = stagger * 0.045 * movement_weight
+			desired_scale = base_scale * Vector2(1.0 + absf(stagger) * 0.075, 1.0 - absf(stagger) * 0.055)
 
 	hit_recoil = hit_recoil.move_toward(Vector2.ZERO, delta * 30.0)
 	var attack_lunge := Vector2(-attack_pulse * 3.0, 0.0)
@@ -339,6 +346,21 @@ func _detonate() -> void:
 	if impact and impact.has_method("configure"):
 		impact.configure(Color(1.0, 0.5, 0.12, 1.0), detonation_radius)
 	AudioManager.play_named("impact", -2.0, randf_range(0.72, 0.86))
+
+func _get_melee_engagement_range() -> float:
+	if not is_instance_valid(player):
+		return attack_range
+	var self_radius := _get_collision_radius(self)
+	var player_radius := _get_collision_radius(player)
+	# Leave a small visible contact gap rather than allowing sprite overlap.
+	return maxf(attack_range, self_radius + player_radius + 10.0)
+
+func _get_collision_radius(body: Node2D) -> float:
+	var collision := body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision and collision.shape is CircleShape2D:
+		var circle := collision.shape as CircleShape2D
+		return circle.radius * maxf(absf(collision.global_scale.x), absf(collision.global_scale.y))
+	return 0.0
 
 func _get_wall_aware_direction(target_direction: Vector2, delta: float) -> Vector2:
 	wall_follow_timer = maxf(0.0, wall_follow_timer - delta)

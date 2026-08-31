@@ -1,6 +1,8 @@
 class_name WeaponOrbital
 extends Weapon
 
+const SHIELD_TEXTURE := preload("res://assets/graphics/orbital_shield_v3.png")
+
 var orbitals: Array[Area2D] = []
 var angle: float = 0.0
 @export var rotation_speed: float = PI
@@ -30,16 +32,18 @@ func _update_orbitals() -> void:
 		area.collision_mask = 2 # Enemies
 		var shape = CollisionShape2D.new()
 		var circle = CircleShape2D.new()
-		circle.radius = 15.0
+		circle.radius = 24.0
 		shape.shape = circle
 		area.add_child(shape)
 
-		# Visual
-		var rect = ColorRect.new()
-		rect.color = Color.AQUA
-		rect.size = Vector2(20, 20)
-		rect.position = Vector2(-10, -10)
-		area.add_child(rect)
+		# Dedicated shield-drone art replaces the old debug-colored square.
+		var shield_sprite := Sprite2D.new()
+		shield_sprite.name = "ShieldSprite"
+		shield_sprite.texture = SHIELD_TEXTURE
+		shield_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		shield_sprite.scale = Vector2.ONE * 0.05
+		shield_sprite.z_index = 9
+		area.add_child(shield_sprite)
 
 		# Add to the global scene tree rather than the player, to prevent tree traversal/hierarchy crashes
 		get_tree().current_scene.call_deferred("add_child", area)
@@ -63,6 +67,12 @@ func _process(delta: float) -> void:
 			var a = angle + (i * TAU / orbitals.size())
 			# Sync to global position instead of relying on local player offset
 			o.global_position = player.global_position + Vector2(cos(a), sin(a)) * radius
+			var shield_sprite := o.get_node_or_null("ShieldSprite") as Sprite2D
+			if shield_sprite:
+				var energy_pulse := sin(Time.get_ticks_msec() * 0.008 + i * 1.7)
+				shield_sprite.rotation += delta * 2.4
+				shield_sprite.scale = Vector2.ONE * (0.05 + energy_pulse * 0.004)
+				shield_sprite.modulate = Color(0.82, 1.0, 1.0, 0.92 + energy_pulse * 0.08)
 
 			if cooldown_timer <= 0:
 				var bodies = o.get_overlapping_bodies()

@@ -5,13 +5,13 @@
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="2_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_z9x8w"]
-radius = 23.0
+radius = 32.0
 
 [node name="Zombie" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
 collision_mask = 5
 script = ExtResource("1_a2b3c")
-attack_range = 45.0
+attack_range = 78.0
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 5

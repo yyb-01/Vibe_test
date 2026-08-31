@@ -5,7 +5,7 @@
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape_bloater"]
-radius = 30.0
+radius = 43.0
 
 [node name="ZombieBloater" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
@@ -14,7 +14,7 @@ script = ExtResource("1_zombie")
 max_health = 42
 move_speed = 78.0
 attack_damage = 8
-attack_range = 56.0
+attack_range = 92.0
 knockback_resistance = 0.75
 detonates_on_death = true
 detonation_radius = 155.0

@@ -21,4 +21,5 @@
 - `assets/graphics/acid_v2.png`, `supply_cache_v2.png`, `survivor_beacon_v2.png`: 산성 투사체·보급 상자·구조 신호용 특수 오브젝트 에셋
 - `assets/graphics/barricade_v2.png`, `wall_obstacle_v2.png`, `wreck_obstacle_v2.png`, `lab_console_obstacle_v2.png`: 맵 경계·엄폐물·실험실 구조물용 장애물 에셋
 - `assets/graphics/floor_quarantine_v3.png`, `floor_industrial_v3.png`, `floor_flooded_v3.png`, `floor_lab_v3.png`: 맵별 격리 도시·산업지대·침수 구역·지하 연구소용 바닥 배경 에셋
+- `assets/graphics/player_armed_v3.png`: 양손으로 소총을 든 플레이어 일체형 에셋, `orbital_shield_v3.png`: 플레이어 주위를 도는 보호막 드론 에셋
 - 생성 프롬프트와 제작 목적은 `GAME_AUDIT.md`에 기록했습니다.

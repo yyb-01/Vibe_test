@@ -5,7 +5,7 @@
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape_bomber"]
-radius = 22.0
+radius = 31.0
 
 [node name="ZombieBomber" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
@@ -14,7 +14,7 @@ script = ExtResource("1_zombie")
 max_health = 18
 move_speed = 142.0
 attack_damage = 35
-attack_range = 48.0
+attack_range = 80.0
 knockback_resistance = 0.1
 explodes_on_contact = true
 motion_profile = 4

@@ -5,7 +5,7 @@
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape_spitter"]
-radius = 22.0
+radius = 30.0
 
 [node name="ZombieSpitter" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
