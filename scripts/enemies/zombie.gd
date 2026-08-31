@@ -29,6 +29,7 @@ var is_dying: bool = false
 var base_max_health: int
 var base_move_speed: float
 var base_attack_damage: int
+var base_projectile_damage: int
 var base_body_scale: Vector2
 var base_scale: Vector2
 var base_sprite_position: Vector2
@@ -61,6 +62,7 @@ func _ready() -> void:
 	base_max_health = max_health
 	base_move_speed = move_speed
 	base_attack_damage = attack_damage
+	base_projectile_damage = projectile_damage
 	base_body_scale = scale
 	base_scale = sprite.scale
 	base_sprite_position = sprite.position
@@ -74,6 +76,7 @@ func reset() -> void:
 	max_health = base_max_health
 	move_speed = base_move_speed
 	attack_damage = base_attack_damage
+	projectile_damage = base_projectile_damage
 	health = max_health
 	can_attack = true
 	knockback = Vector2.ZERO
@@ -464,8 +467,13 @@ func die() -> void:
 	SpatialGrid.remove(self)
 
 	if has_meta("is_boss") and get_meta("is_boss"):
-		SaveManager.add_gold(1000)
-		EventBus.game_over.emit(true)
+		EventBus.boss_defeated.emit()
+		if RunStats.endless_mode:
+			SaveManager.add_gold(250)
+			ObjectPoolManager.acquire("exp_gem", global_position)
+		else:
+			SaveManager.add_gold(1000)
+			EventBus.game_over.emit(true)
 	else:
 		# Standard drop
 		ObjectPoolManager.acquire("exp_gem", global_position)

@@ -34,7 +34,8 @@ func _on_game_over(is_victory: bool) -> void:
 
 	gold_label.text = "Total Gold: " + str(SaveManager.gold)
 	var total_seconds := int(summary.get("time", 0.0))
-	summary_label.text = "생존 %02d:%02d  ·  처치 %d  ·  웨이브 %02d  ·  구조 %d  ·  보급 %d  ·  엘리트 %d" % [total_seconds / 60, total_seconds % 60, int(summary.get("kills", 0)), int(summary.get("wave", 1)), int(summary.get("survivors_rescued", 0)), int(summary.get("supply_caches_opened", 0)), int(summary.get("elite_kills", 0))]
+	var challenge_result := "달성" if bool(summary.get("challenge_completed", false)) else "미달성"
+	summary_label.text = "%s%s  ·  생존 %02d:%02d  ·  처치 %d  ·  웨이브 %02d  ·  구조 %d  ·  보급 %d  ·  엘리트 %d  ·  도전 %s" % [RunStats.get_difficulty_name(), " 무한" if bool(summary.get("endless_mode", false)) else "", total_seconds / 60, total_seconds % 60, int(summary.get("kills", 0)), int(summary.get("wave", 1)), int(summary.get("survivors_rescued", 0)), int(summary.get("supply_caches_opened", 0)), int(summary.get("elite_kills", 0)), challenge_result]
 	SaveManager.save_data()
 
 func _on_return_pressed() -> void:

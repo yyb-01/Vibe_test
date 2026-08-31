@@ -15,6 +15,11 @@ var action_timer: float = 0.0
 var pressure_timer: float = 0.0
 var route_start: Vector2
 var route_end: Vector2
+var branch_name: String = ""
+var pressure_interval_mult: float = 1.0
+var reward_gold_mult: float = 1.0
+var bonus_reward_rolls: int = 1
+var choice_layer: CanvasLayer
 
 const ACTIVE_RADIUS := 210.0
 
@@ -70,7 +75,7 @@ func _process(delta: float) -> void:
 	action_timer = maxf(0.0, action_timer - delta)
 	if pressure_timer <= 0.0:
 		_spawn_pressure()
-		pressure_timer = 1.45 if mission_kind != "escort" else 1.8
+		pressure_timer = (1.45 if mission_kind != "escort" else 1.8) * pressure_interval_mult
 
 	match mission_kind:
 		"escort": _process_escort(delta)
@@ -84,7 +89,74 @@ func _activate() -> void:
 		return
 	state = State.ACTIVE
 	progress = 0.0
-	_emit_status("진행 중", progress)
+	_show_branch_choices()
+
+func _show_branch_choices() -> void:
+	var branches: Array[Dictionary] = [
+		{"name": "안전 우선", "description": "적의 압박이 25% 느려집니다.\n골드 80% · 무작위 보상 1회", "pressure": 1.25, "gold": 0.8, "rolls": 1, "color": Color(0.3, 0.9, 0.72, 1.0)},
+		{"name": "현장 수색", "description": "표준 난이도로 임무를 수행합니다.\n골드 100% · 무작위 보상 2회", "pressure": 1.0, "gold": 1.0, "rolls": 2, "color": Color(0.35, 0.78, 1.0, 1.0)},
+		{"name": "위험 감수", "description": "적의 압박이 30% 빨라집니다.\n골드 140% · 무작위 보상 3회", "pressure": 0.7, "gold": 1.4, "rolls": 3, "color": Color(1.0, 0.38, 0.28, 1.0)}
+	]
+	branches.shuffle()
+	choice_layer = CanvasLayer.new()
+	choice_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	choice_layer.layer = 30
+	add_child(choice_layer)
+	var shade := ColorRect.new()
+	shade.color = Color(0.005, 0.012, 0.018, 0.92)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	choice_layer.add_child(shade)
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.position = Vector2(-480, -230)
+	panel.size = Vector2(960, 460)
+	shade.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 18)
+	margin.add_child(content)
+	var title := Label.new()
+	title.text = mission_title + "  ·  작전 분기 선택"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 30)
+	content.add_child(title)
+	var hint := Label.new()
+	hint.text = "위험이 클수록 완료 보상 후보가 늘어납니다. 보상은 임무 완료 시 무작위로 결정됩니다."
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_color_override("font_color", Color(0.68, 0.82, 0.82, 1.0))
+	content.add_child(hint)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(row)
+	for branch in branches:
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(280, 250)
+		button.text = "%s\n\n%s" % [branch.name, branch.description]
+		button.add_theme_font_size_override("font_size", 18)
+		button.add_theme_color_override("font_color", branch.color)
+		button.pressed.connect(_select_branch.bind(branch))
+		row.add_child(button)
+	get_tree().paused = true
+	_emit_status("작전 분기 선택 대기", 0.0)
+
+func _select_branch(branch: Dictionary) -> void:
+	branch_name = String(branch.name)
+	pressure_interval_mult = float(branch.pressure)
+	reward_gold_mult = float(branch.gold)
+	bonus_reward_rolls = int(branch.rolls)
+	if is_instance_valid(choice_layer):
+		choice_layer.queue_free()
+	choice_layer = null
+	get_tree().paused = false
+	_emit_status("%s  ·  진행 중" % branch_name, progress)
 	AudioManager.play_named("level_up", -8.0)
 
 func _process_escort(delta: float) -> void:
@@ -164,15 +236,48 @@ func _complete(gold_reward: int, blueprint_id: String) -> void:
 	var blueprint_unlocked := false
 	if not blueprint_id.is_empty():
 		blueprint_unlocked = RunStats.add_pet_blueprint(blueprint_id)
-	SaveManager.add_gold(gold_reward)
-	EventBus.mission_completed.emit(mission_title, gold_reward)
-	var reward_status := "완료  ·  진화 코어 +1"
+	var final_gold := maxi(1, roundi(float(gold_reward) * reward_gold_mult))
+	SaveManager.add_gold(final_gold)
+	var random_rewards := _grant_random_rewards(bonus_reward_rolls)
+	EventBus.mission_completed.emit(mission_title, final_gold)
+	var reward_status := "완료  ·  %s  ·  진화 코어 +1" % branch_name
 	if not blueprint_id.is_empty():
 		reward_status += "  ·  %s" % ("새 펫 설계도 획득" if blueprint_unlocked else "펫 설계도 보유")
+	if not random_rewards.is_empty():
+		reward_status += "  ·  " + " / ".join(random_rewards)
 	_emit_status(reward_status, 1.0)
 	$CollisionShape2D.set_deferred("disabled", true)
 	monitoring = false
 	queue_redraw()
+
+func _grant_random_rewards(roll_count: int) -> Array[String]:
+	var rewards: Array[String] = []
+	var pool: Array[String] = ["scrap", "heal", "gold", "damage", "speed", "core"]
+	pool.shuffle()
+	for index in mini(roll_count, pool.size()):
+		match pool[index]:
+			"scrap":
+				RunStats.add_scrap(18)
+				rewards.append("스크랩 +18")
+			"heal":
+				if is_instance_valid(player):
+					player.heal(30)
+				rewards.append("체력 +30")
+			"gold":
+				SaveManager.add_gold(25)
+				rewards.append("추가 골드 +25")
+			"damage":
+				if is_instance_valid(player):
+					player.damage_mult *= 1.08
+				rewards.append("화력 +8%")
+			"speed":
+				if is_instance_valid(player):
+					player.speed_mult *= 1.06
+				rewards.append("이동 속도 +6%")
+			"core":
+				RunStats.add_evolution_core()
+				rewards.append("진화 코어 +1")
+	return rewards
 
 func _emit_status(status: String, ratio: float) -> void:
 	EventBus.mission_status_changed.emit(mission_title, status, ratio)

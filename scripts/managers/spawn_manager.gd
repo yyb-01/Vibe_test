@@ -29,6 +29,8 @@ var last_announced_wave: int = 1
 var spawn_debt: float = 0.0
 var boss_spawned: bool = false
 var boss_data_hacked: bool = false
+var next_boss_time: float = 300.0
+var bosses_defeated: int = 0
 
 func _ready() -> void:
 	add_to_group("spawn_manager")
@@ -47,6 +49,8 @@ func _ready() -> void:
 	_register_pools(pool_parent)
 	_ensure_wave_shop(pool_parent)
 	_ensure_mission_event(pool_parent)
+	if not EventBus.boss_defeated.is_connected(_on_boss_defeated):
+		EventBus.boss_defeated.connect(_on_boss_defeated)
 	call_deferred("_warm_pools")
 
 func _ensure_mission_event(scene_root: Node) -> void:
@@ -58,6 +62,7 @@ func spawn_event_enemy(pool_id: String, spawn_position: Vector2) -> Node:
 	var enemy = ObjectPoolManager.acquire(pool_id, spawn_position)
 	if enemy:
 		enemy.set_meta("pool_id", pool_id)
+		_apply_difficulty(enemy, 1.0 + (time_elapsed / 60.0) * 0.4)
 	return enemy
 
 func _ensure_wave_shop(scene_root: Node) -> void:
@@ -104,7 +109,7 @@ func _process(delta: float) -> void:
 		if current_wave > 2:
 			SaveManager.add_gold(5 + current_wave * 2)
 
-	if time_elapsed >= 300.0 and not boss_spawned: # 5 Minutes
+	if time_elapsed >= next_boss_time and not boss_spawned: # 5 Minutes
 		_spawn_boss()
 		return
 
@@ -116,7 +121,7 @@ func _process(delta: float) -> void:
 	var wave_spawn_multiplier = 1.0 + float(current_wave - 1) * 0.10
 
 	# Spawn debt allows us to spawn multiple per frame if delay < delta
-	var spawn_rate = (1.0 / current_delay) * wave_spawn_multiplier
+	var spawn_rate = (1.0 / current_delay) * wave_spawn_multiplier * RunStats.get_difficulty_spawn_mult()
 	spawn_debt += spawn_rate * delta
 
 	var spawns_this_frame: int = 0
@@ -144,7 +149,9 @@ func _spawn_boss() -> void:
 	if boss:
 		boss.set_meta("pool_id", "zombie_tank")
 		boss.set_meta("is_boss", true)
-		boss.set_scaled_max_health(38.0 if boss_data_hacked else 50.0)
+		var endless_scale := 1.0 + float(bosses_defeated) * 0.35
+		boss.set_scaled_max_health((38.0 if boss_data_hacked else 50.0) * RunStats.get_difficulty_health_mult() * endless_scale)
+		_apply_enemy_damage(boss)
 		boss.scale = Vector2(3.0, 3.0)
 		boss.modulate = Color.RED
 		boss.set_meta("boss_data_hacked", boss_data_hacked)
@@ -190,12 +197,31 @@ func _spawn_zombie() -> bool:
 		return false
 
 	zombie.set_meta("pool_id", pool_id)
-	if zombie.has_method("set_scaled_max_health"):
-		zombie.set_scaled_max_health(hp_multiplier)
+	_apply_difficulty(zombie, hp_multiplier)
 	if current_wave >= 5 and randf() < clampf(float(current_wave - 4) * 0.04, 0.0, 0.22):
 		zombie.set_elite()
 
 	return true
+
+func _apply_difficulty(enemy: Node, health_multiplier: float) -> void:
+	if enemy.has_method("set_scaled_max_health"):
+		enemy.set_scaled_max_health(health_multiplier * RunStats.get_difficulty_health_mult())
+	_apply_enemy_damage(enemy)
+
+func _apply_enemy_damage(enemy: Node) -> void:
+	var damage_mult := RunStats.get_difficulty_damage_mult()
+	var attack_value = enemy.get("attack_damage")
+	if attack_value != null:
+		enemy.set("attack_damage", maxi(1, roundi(float(attack_value) * damage_mult)))
+	var projectile_value = enemy.get("projectile_damage")
+	if projectile_value != null:
+		enemy.set("projectile_damage", maxi(1, roundi(float(projectile_value) * damage_mult)))
+
+func _on_boss_defeated() -> void:
+	bosses_defeated += 1
+	if RunStats.endless_mode:
+		boss_spawned = false
+		next_boss_time += 300.0
 
 func _get_player_spawn_position(player: Node2D, min_distance: float, max_distance: float) -> Vector2:
 	var safe_left := spawn_bounds.position.x + 120.0

@@ -55,6 +55,8 @@ func _process(delta: float) -> void:
 		objective_label.text += "  ·  " + mission_status
 	if not RunStats.companion_role.is_empty():
 		objective_label.text += "  ·  동료: %s" % _companion_display_name(RunStats.companion_role)
+	if not RunStats.equipped_pet.is_empty():
+		objective_label.text += "  ·  펫: %s" % _pet_display_name(RunStats.equipped_pet)
 	if RunStats.map_id in ["map_3", "map_4"]:
 		objective_label.text += "  ·  보급품: %d/1" % RunStats.supply_caches_opened
 	if not RunStats.quest_completed:
@@ -62,9 +64,14 @@ func _process(delta: float) -> void:
 	else:
 		objective_label.text += "  ·  처치 의뢰 완료 +%dG" % RunStats.KILL_QUEST_REWARD
 	objective_label.text += "  ·  엘리트: %d/5" % RunStats.elite_kills
+	if RunStats.active_challenge != "none":
+		objective_label.text += "  ·  도전: %s%s" % [RunStats.get_challenge_text(), " ✓" if RunStats.challenge_completed else ""]
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if player:
-		mode_label.text = "AUTO [F]" if player.auto_fire_enabled else "MANUAL [LMB]"
+		var fire_mode := "AUTO [F]" if player.auto_fire_enabled else "MANUAL [LMB]"
+		var skill_state := "준비" if player.get_unique_skill_cooldown() <= 0.0 else "%.1fs" % player.get_unique_skill_cooldown()
+		var run_mode := "%s%s" % [RunStats.get_difficulty_name(), "·무한" if RunStats.endless_mode else ""]
+		mode_label.text = "%s  ·  %s  ·  [SPACE] %s %s" % [run_mode, fire_mode, player.get_unique_skill_name(), skill_state]
 
 func _on_gold_changed(total_gold: int) -> void:
 	gold_label.text = "골드  %d" % total_gold
@@ -97,6 +104,13 @@ func _companion_display_name(role: String) -> String:
 		"Gunner": return "사수"
 		"Scavenger": return "회수꾼"
 		_: return role
+
+func _pet_display_name(pet_id: String) -> String:
+	match pet_id:
+		"rescue_hound": return "구조견"
+		"toxic_crow": return "독성 까마귀"
+		"lab_drone": return "연구 드론"
+		_: return pet_id
 
 func _on_boss_status_changed(boss_name: String, health_ratio: float, phase: int) -> void:
 	if health_ratio < 0.0:
@@ -144,7 +158,10 @@ func _on_exp_changed(current_exp: int, required_exp: int, level: int) -> void:
 func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	var weapon_names: Array[String] = []
 	for w in weapons:
-		weapon_names.append(w.get_display_name() + " Lv" + str(w.current_level))
+		var weapon_text := w.get_display_name() + " Lv" + str(w.current_level)
+		if w.current_level >= Weapon.MAX_LEVEL and not w.evolved:
+			weapon_text += "  ·  진화 조합: " + w.get_evolution_requirement_text()
+		weapon_names.append(weapon_text)
 	weapons_label.text = "무장  ·  " + "  |  ".join(weapon_names)
 
 	var passive_names: Array[String] = []

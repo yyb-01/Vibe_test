@@ -55,11 +55,19 @@ func upgrade() -> void:
 		return
 	current_level += 1
 
-func can_evolve() -> bool:
-	return current_level >= MAX_LEVEL and not evolved
+func can_evolve(player: Player) -> bool:
+	if current_level < MAX_LEVEL or evolved or not is_instance_valid(player):
+		return false
+	var owned_perks: Array[String] = []
+	for perk in player.passives:
+		owned_perks.append(perk.id)
+	for perk_id in get_evolution_requirements():
+		if perk_id not in owned_perks:
+			return false
+	return true
 
-func evolve() -> bool:
-	if not can_evolve():
+func evolve(player: Player) -> bool:
+	if not can_evolve(player):
 		return false
 	evolved = true
 	evolution_id = _get_evolution_id()
@@ -73,15 +81,50 @@ func get_display_name() -> String:
 
 func get_evolution_description() -> String:
 	match _get_evolution_id():
-		"deadeye_revolver": return "장거리 치명타와 관통탄으로 단일 대상을 제압합니다."
-		"breacher_cannon": return "관통 산탄과 넉백으로 좁은 길을 뚫습니다."
-		"overload_smg": return "연속 처치가 탄창과 연사력을 되돌리는 탄막 무기입니다."
-		"triad_breaker": return "점사의 마지막 탄환이 강화되어 정밀 사격 보상이 커집니다."
-		"rail_lance": return "관통할수록 강해지고 마지막 적에게 전기 충격을 줍니다."
-		"storm_runner": return "이동하며 충전한 번개가 더 많은 적에게 연쇄됩니다."
-		"bunker_pulse": return "포위될수록 커지는 충격파와 보호막을 생성합니다."
-		"guardian_orbital": return "회전 방패가 투사체를 튕겨내고 주기적으로 보호합니다."
+		"deadeye_revolver": return "피해량 35% 증가, 관통 +1의 정밀 사격입니다."
+		"breacher_cannon": return "산탄 +2, 피해량 20% 증가로 좁은 길을 뚫습니다."
+		"overload_smg": return "피해량 25% 증가, 관통 +1의 탄막 무기입니다."
+		"triad_breaker": return "점사 +1, 피해량 15% 증가의 정밀 사격입니다."
+		"rail_lance": return "피해량 50% 증가, 추가 관통 +2를 얻습니다."
+		"storm_runner": return "연쇄 횟수 +2, 피해량 25% 증가의 번개입니다."
+		"bunker_pulse": return "투사체 +4, 피해량 30% 증가, 관통 +1을 얻습니다."
+		"guardian_orbital": return "회전 반경 +30, 피해량 40% 증가의 방패입니다."
 		_: return "무기의 공격 방식과 피해량이 크게 강화됩니다."
+
+func get_evolution_requirements() -> Array[String]:
+	match _get_evolution_id():
+		"deadeye_revolver": return ["heavy_caliber", "piercing_rounds"]
+		"breacher_cannon": return ["reinforced_vest", "field_rations"]
+		"overload_smg": return ["fast_hands", "scavenged_ammo"]
+		"triad_breaker": return ["stabilizer", "executioner"]
+		"rail_lance": return ["heavy_caliber", "hollow_point"]
+		"storm_runner": return ["adrenaline", "momentum"]
+		"bunker_pulse": return ["trauma_kit", "field_rations"]
+		"guardian_orbital": return ["medic_kit", "reinforced_vest"]
+		_: return []
+
+func get_evolution_requirement_text() -> String:
+	var labels: Array[String] = []
+	for perk_id in get_evolution_requirements():
+		labels.append(_get_perk_label(perk_id))
+	return " + ".join(labels)
+
+func _get_perk_label(perk_id: String) -> String:
+	match perk_id:
+		"heavy_caliber": return "대구경 탄환"
+		"piercing_rounds": return "철갑탄"
+		"reinforced_vest": return "복합 장갑"
+		"field_rations": return "야전 식량"
+		"fast_hands": return "빠른 손놀림"
+		"scavenged_ammo": return "회수 탄약"
+		"stabilizer": return "반동 제어기"
+		"executioner": return "처형 프로토콜"
+		"hollow_point": return "할로우 포인트"
+		"adrenaline": return "아드레날린"
+		"momentum": return "가속 전술"
+		"trauma_kit": return "외상 키트"
+		"medic_kit": return "응급 키트"
+		_: return perk_id
 
 func _get_evolution_id() -> String:
 	if not data:

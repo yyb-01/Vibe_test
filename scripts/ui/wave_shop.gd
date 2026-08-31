@@ -160,7 +160,7 @@ func _roll_offers(player: Player) -> void:
 func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	var evolution_candidates: Array[Weapon] = []
 	for weapon in player.weapons:
-		if weapon.can_evolve():
+		if weapon.can_evolve(player):
 			evolution_candidates.append(weapon)
 	if current_wave >= 3 and not evolution_candidates.is_empty() and randf() < 0.2:
 		var evolution_weapon: Weapon = evolution_candidates.pick_random()
@@ -422,7 +422,7 @@ func _buy_offer(index: int) -> void:
 		"evolution":
 			if free_evolution:
 				RunStats.consume_evolution_core()
-			(offer.item as Weapon).evolve()
+			(offer.item as Weapon).evolve(player)
 		"repair": player.heal(35)
 		"plating":
 			player.max_health += 20
