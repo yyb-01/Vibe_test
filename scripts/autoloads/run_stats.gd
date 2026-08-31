@@ -9,6 +9,8 @@ var survivors_rescued: int = 0
 var supply_caches_opened: int = 0
 var elite_kills: int = 0
 var scrap: int = 0
+var scrap_multiplier: float = 1.0
+var companion_role: String = ""
 var current_wave: int = 1
 var quest_completed: bool = false
 const KILL_QUEST_TARGET: int = 25
@@ -24,6 +26,8 @@ func start_run(new_map_id: String) -> void:
 	supply_caches_opened = 0
 	elite_kills = 0
 	scrap = 0
+	scrap_multiplier = 1.0
+	companion_role = ""
 	EventBus.scrap_changed.emit(scrap)
 	current_wave = 1
 	quest_completed = false
@@ -46,6 +50,9 @@ func register_damage(amount: int) -> void:
 func register_rescue() -> void:
 	survivors_rescued += 1
 
+func set_companion(role: String) -> void:
+	companion_role = role
+
 func register_supply_cache() -> void:
 	supply_caches_opened += 1
 
@@ -58,7 +65,7 @@ func register_elite_kill() -> void:
 func add_scrap(amount: int) -> void:
 	if amount <= 0:
 		return
-	scrap += amount
+	scrap += maxi(1, int(round(float(amount) * scrap_multiplier)))
 	EventBus.scrap_changed.emit(scrap)
 
 func spend_scrap(amount: int) -> bool:

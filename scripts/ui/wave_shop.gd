@@ -167,13 +167,28 @@ func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 		return {"kind": "evolution", "id": "evolution_" + evolution_weapon.data.weapon_name, "item": evolution_weapon, "cost": 52, "locked": false}
 
 	var roll := randf()
-	if roll < 0.25:
+	if current_wave >= 2 and roll < 0.18:
+		return _make_contract_offer(used_ids)
+	if roll < 0.34:
 		return _make_supply_offer(used_ids)
-	if roll < 0.62:
+	if roll < 0.70:
 		var passive_offer := _make_passive_offer(player, used_ids)
 		if not passive_offer.is_empty():
 			return passive_offer
 	return _make_weapon_offer(player, used_ids)
+
+func _make_contract_offer(used_ids: Array[String]) -> Dictionary:
+	var contracts := [
+		{"kind": "contract", "id": "volatile_ammo", "name": "불안정 탄약 계약", "description": "모든 피해 +22%\n대신 받는 피해 +18%", "cost": 18},
+		{"kind": "contract", "id": "scavenger_route", "name": "회수꾼 경로", "description": "스크랩 획득량 +45%\n대신 최대 체력 -15", "cost": 16},
+		{"kind": "contract", "id": "last_stand", "name": "최후의 저항", "description": "최대 체력 -25\n모든 피해 +35%, 이동 속도 +12%", "cost": 24}
+	]
+	var candidates: Array[Dictionary] = []
+	for contract in contracts:
+		if String(contract.id) not in used_ids:
+			contract["locked"] = false
+			candidates.append(contract)
+	return _make_supply_offer(used_ids) if candidates.is_empty() else candidates.pick_random()
 
 func _make_passive_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	var owned_ids: Array[String] = []
@@ -315,6 +330,7 @@ func _offer_kind_label(kind: String) -> String:
 		"weapon_new": return "신규 무기"
 		"weapon_upgrade": return "무기 강화"
 		"evolution": return "변이 코어"
+		"contract": return "위험 계약"
 		_: return "보급품"
 
 func _offer_name(offer: Dictionary) -> String:
@@ -325,6 +341,7 @@ func _offer_name(offer: Dictionary) -> String:
 			var weapon := offer.item as Weapon
 			return "%s\nLv %d → %d" % [weapon.data.weapon_name, weapon.current_level, weapon.current_level + 1]
 		"evolution": return "%s ★" % (offer.item as Weapon).data.weapon_name
+		"contract": return String(offer.name)
 		_: return String(offer.name)
 
 func _offer_description(offer: Dictionary) -> String:
@@ -333,6 +350,7 @@ func _offer_description(offer: Dictionary) -> String:
 		"weapon_new": return (offer.item as WeaponUpgradeData).description
 		"weapon_upgrade": return "피해량과 성능을 강화합니다.\n다음 단계의 화력을 준비하세요."
 		"evolution": return "최대 레벨 무기를 진화시켜\n특수 성능을 해금합니다."
+		"contract": return String(offer.description)
 		_: return String(offer.description)
 
 func _offer_text(offer: Dictionary) -> String:
@@ -358,6 +376,7 @@ func _offer_color(kind: String) -> Color:
 	match kind:
 		"weapon_new", "weapon_upgrade": return Color(1.0, 0.58, 0.28, 1.0)
 		"evolution": return Color(0.88, 0.42, 1.0, 1.0)
+		"contract": return Color(1.0, 0.3, 0.28, 1.0)
 		"passive": return Color(0.3, 0.9, 0.78, 1.0)
 		_: return Color(0.42, 0.78, 1.0, 1.0)
 
@@ -404,6 +423,7 @@ func _buy_offer(index: int) -> void:
 			player.heal(20)
 		"amplifier": player.damage_mult *= 1.1
 		"boots": player.speed_mult *= 1.08
+		"contract": _apply_contract(player, String(offer.id))
 	offer["purchased"] = true
 	offers[index] = offer
 	EventBus.inventory_updated.emit(player.weapons, player.passives)
@@ -412,6 +432,24 @@ func _buy_offer(index: int) -> void:
 func _close_shop() -> void:
 	visible = false
 	get_tree().paused = false
+	EventBus.wave_started.emit(current_wave)
+
+func _apply_contract(player: Player, contract_id: String) -> void:
+	match contract_id:
+		"volatile_ammo":
+			player.damage_mult *= 1.22
+			player.incoming_damage_mult *= 1.18
+		"scavenger_route":
+			RunStats.scrap_multiplier *= 1.45
+			player.max_health = maxi(35, player.max_health - 15)
+			player.health = mini(player.health, player.max_health)
+			EventBus.player_health_changed.emit(player.health, player.max_health)
+		"last_stand":
+			player.max_health = maxi(35, player.max_health - 25)
+			player.health = mini(player.health, player.max_health)
+			player.damage_mult *= 1.35
+			player.speed_mult *= 1.12
+			EventBus.player_health_changed.emit(player.health, player.max_health)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed("ui_cancel"):

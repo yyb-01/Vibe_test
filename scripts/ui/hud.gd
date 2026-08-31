@@ -13,6 +13,7 @@ extends CanvasLayer
 @onready var scrap_label: Label = $ScrapLabel
 @onready var threat_label: Label = $ThreatLabel
 @onready var wave_banner: Label = $WaveBanner
+@onready var boss_label: Label = $BossLabel
 @onready var pause_confirm: Control = $PauseConfirm
 @onready var pause_confirm_button: Button = $PauseConfirm/Panel/VBoxContainer/Buttons/ConfirmButton
 @onready var pause_cancel_button: Button = $PauseConfirm/Panel/VBoxContainer/Buttons/CancelButton
@@ -30,6 +31,8 @@ func _ready() -> void:
 	_on_gold_changed(SaveManager.gold)
 	_on_scrap_changed(RunStats.scrap)
 	EventBus.wave_started.connect(_on_wave_started)
+	EventBus.boss_status_changed.connect(_on_boss_status_changed)
+	boss_label.visible = false
 
 func _process(delta: float) -> void:
 	if get_tree().paused:
@@ -41,6 +44,8 @@ func _process(delta: float) -> void:
 	wave_label.text = "WAVE %02d" % (int(time_elapsed / 30.0) + 1)
 	threat_label.text = "위협 %03d" % _get_active_enemy_count()
 	objective_label.text = "구조 신호: %d/1" % RunStats.survivors_rescued
+	if not RunStats.companion_role.is_empty():
+		objective_label.text += "  ·  동료: %s" % _companion_display_name(RunStats.companion_role)
 	if RunStats.map_id in ["map_3", "map_4"]:
 		objective_label.text += "  ·  보급품: %d/1" % RunStats.supply_caches_opened
 	if not RunStats.quest_completed:
@@ -76,6 +81,22 @@ func _get_active_enemy_count() -> int:
 		if enemy is CanvasItem and is_instance_valid(enemy) and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.visible:
 			count += 1
 	return count
+
+func _companion_display_name(role: String) -> String:
+	match role:
+		"Medic": return "의무병"
+		"Gunner": return "사수"
+		"Scavenger": return "회수꾼"
+		_: return role
+
+func _on_boss_status_changed(boss_name: String, health_ratio: float, phase: int) -> void:
+	if health_ratio < 0.0:
+		boss_label.visible = false
+		return
+	var segments := 18
+	var filled := clampi(int(round(health_ratio * segments)), 0, segments)
+	boss_label.text = "%s  ·  위상 %d  [%s%s]" % [boss_name, phase, "■".repeat(filled), "□".repeat(segments - filled)]
+	boss_label.visible = true
 
 func _on_player_health_changed(current_hp: int, max_hp: int) -> void:
 	hp_bar.max_value = max_hp

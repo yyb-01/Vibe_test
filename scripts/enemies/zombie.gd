@@ -49,6 +49,9 @@ var wall_follow_timer: float = 0.0
 var ranged_can_attack: bool = true
 var boss_attack_timer: float = 4.0
 var boss_telegraph_timer: float = 0.0
+var boss_charge_time: float = 0.0
+var boss_phase: int = 1
+var boss_attack_mode: String = "shockwave"
 var runner_dash_time: float = 0.0
 var runner_dash_cooldown: float = 0.0
 var tank_stomp_cooldown: float = 0.0
@@ -99,6 +102,9 @@ func reset() -> void:
 	ranged_can_attack = true
 	boss_attack_timer = 4.0
 	boss_telegraph_timer = 0.0
+	boss_charge_time = 0.0
+	boss_phase = 1
+	boss_attack_mode = "shockwave"
 	runner_dash_time = 0.0
 	runner_dash_cooldown = randf_range(0.6, 1.4)
 	tank_stomp_cooldown = randf_range(1.0, 2.2)
@@ -138,7 +144,8 @@ func _physics_process(delta: float) -> void:
 	var distance_to_player := global_position.distance_to(player.global_position)
 	var dir_to_player := global_position.direction_to(player.global_position)
 	var position_before_move := global_position
-	var profile_speed_multiplier := _update_special_pattern(delta, distance_to_player, dir_to_player)
+	var boss_speed_multiplier := _update_boss(delta)
+	var profile_speed_multiplier := _update_special_pattern(delta, distance_to_player, dir_to_player) * boss_speed_multiplier
 
 	# Keep physics and collision upright. Facing is communicated by a horizontal
 	# flip while the sprite itself receives only a tiny procedural sway.
@@ -192,8 +199,6 @@ func _physics_process(delta: float) -> void:
 	elif not ranged_attack and distance_to_player <= effective_attack_range:
 		_attack_player()
 
-	_update_boss(delta)
-
 func _attack_player() -> void:
 	if can_attack and player.has_method("take_damage"):
 		can_attack = false
@@ -225,24 +230,69 @@ func _attack_ranged() -> void:
 	var timer := get_tree().create_timer(attack_cooldown)
 	timer.timeout.connect(func() -> void: ranged_can_attack = true)
 
-func _update_boss(delta: float) -> void:
+func _update_boss(delta: float) -> float:
 	if not has_meta("is_boss") or not get_meta("is_boss"):
-		return
+		return 1.0
+	var health_ratio := float(health) / float(maxi(1, max_health))
+	var next_phase := 1 if health_ratio > 0.66 else (2 if health_ratio > 0.33 else 3)
+	if next_phase != boss_phase:
+		boss_phase = next_phase
+		attack_pulse = 1.0
+		boss_attack_timer = 1.1
+		if boss_phase == 2:
+			_summon_boss_escorts("zombie_runner", 4)
+		else:
+			_summon_boss_escorts("zombie_bomber", 2)
+			_summon_boss_escorts("zombie_spitter", 2)
+	EventBus.boss_status_changed.emit("격리 파괴자", health_ratio, boss_phase)
+	if boss_charge_time > 0.0:
+		boss_charge_time -= delta
+		return 2.15
 	if boss_telegraph_timer > 0.0:
 		boss_telegraph_timer -= delta
 		if boss_telegraph_timer <= 0.0:
-			_boss_shockwave()
-		return
+			_execute_boss_attack()
+		return 1.0
 	boss_attack_timer -= delta
 	if boss_attack_timer <= 0.0:
-		boss_attack_timer = 4.5
+		boss_attack_timer = 4.8 - float(boss_phase) * 0.45
 		boss_telegraph_timer = 0.7
-		sprite.modulate = Color(1.0, 0.25, 0.2, 1.0)
+		if boss_phase == 1:
+			boss_attack_mode = "shockwave"
+		elif boss_phase == 2:
+			boss_attack_mode = "summon" if randf() < 0.45 else "shockwave"
+		else:
+			boss_attack_mode = "charge" if randf() < 0.58 else "summon"
+		sprite.modulate = Color(1.0, 0.22 + float(boss_phase) * 0.08, 0.12, 1.0)
+	return 1.0
+
+func _execute_boss_attack() -> void:
+	sprite.modulate = base_sprite_modulate
+	match boss_attack_mode:
+		"charge":
+			boss_charge_time = 0.78
+			attack_pulse = 1.0
+		"summon":
+			_summon_boss_escorts("zombie_runner", 3 + boss_phase)
+			if boss_phase >= 3:
+				_summon_boss_escorts("zombie_spitter", 2)
+		_: _boss_shockwave()
 
 func _boss_shockwave() -> void:
-	sprite.modulate = base_sprite_modulate
-	if is_instance_valid(player) and global_position.distance_to(player.global_position) <= 260.0:
-		player.take_damage(18, global_position.direction_to(player.global_position))
+	if is_instance_valid(player) and global_position.distance_to(player.global_position) <= 270.0 + boss_phase * 30.0:
+		player.take_damage(13 + boss_phase * 5, global_position.direction_to(player.global_position))
+	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
+	if impact and impact.has_method("configure"):
+		impact.configure(Color(1.0, 0.22, 0.1, 1.0), 270.0 + boss_phase * 30.0)
+
+func _summon_boss_escorts(pool_id: String, count: int) -> void:
+	for index in range(count):
+		var summon_position := global_position + Vector2.RIGHT.rotated((TAU / float(count)) * float(index) + randf_range(-0.2, 0.2)) * randf_range(96.0, 160.0)
+		var summon = ObjectPoolManager.acquire(pool_id, summon_position)
+		if summon:
+			summon.set_meta("pool_id", pool_id)
+			if summon.has_method("set_scaled_max_health"):
+				summon.set_scaled_max_health(1.0 + float(boss_phase) * 0.3)
 
 func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0 or is_dying:
@@ -408,6 +458,7 @@ func die() -> void:
 		scrap_reward = 5
 	if has_meta("is_boss") and get_meta("is_boss"):
 		scrap_reward = 30
+		EventBus.boss_status_changed.emit("", -1.0, 0)
 	RunStats.add_scrap(scrap_reward)
 	SpatialGrid.remove(self)
 

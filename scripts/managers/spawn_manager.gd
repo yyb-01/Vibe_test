@@ -86,7 +86,6 @@ func _process(delta: float) -> void:
 		last_announced_wave = current_wave
 		RunStats.add_scrap(8 + current_wave * 2)
 		EventBus.wave_shop_requested.emit(current_wave)
-		EventBus.wave_started.emit(current_wave)
 		if current_wave > 2:
 			SaveManager.add_gold(5 + current_wave * 2)
 

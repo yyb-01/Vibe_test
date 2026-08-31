@@ -22,6 +22,7 @@ var damage_mult: float = 1.0
 var speed_mult: float = 1.0
 var reload_mult: float = 1.0
 var pierce_add: int = 0
+var incoming_damage_mult: float = 1.0
 var auto_fire_enabled: bool = true
 var character_id: String = "scavenger"
 var active_synergies: Array[String] = []
@@ -156,6 +157,7 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0 or invulnerable:
 		return
 
+	amount = maxi(1, int(ceil(float(amount) * incoming_damage_mult)))
 	invulnerable = true
 	health -= amount
 	RunStats.register_damage(amount)
