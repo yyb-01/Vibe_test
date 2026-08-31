@@ -4,6 +4,7 @@ extends CharacterBody2D
 const WALK_FRAME_A: Texture2D = preload("res://assets/graphics/player_walk_a_v4.png")
 const WALK_FRAME_B: Texture2D = preload("res://assets/graphics/player_walk_b_v4.png")
 const GUN_MOUNT_RIGHT := Vector2(38.0, -20.0)
+const AIM_STEP := TAU / 8.0
 @export var max_health: int = 100
 @export var move_speed: float = 200.0
 @export var invulnerability_duration: float = 0.35
@@ -33,7 +34,6 @@ var sprite_base_scale: Vector2
 var sprite_base_position: Vector2
 var aim_angle: float = 0.0
 var invulnerable: bool = false
-var facing_left := false
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var gun_pivot: Node2D = $GunPivot
@@ -84,12 +84,10 @@ func _animate_topdown_body(delta: float) -> void:
 	animation_time += delta
 	var target_position := sprite_base_position
 	var target_scale := sprite_base_scale
-	var gun_mount := GUN_MOUNT_RIGHT
-	if absf(cos(aim_angle)) > 0.12:
-		facing_left = cos(aim_angle) < 0.0
-	sprite.flip_h = facing_left
-	if facing_left:
-		gun_mount.x = -gun_mount.x
+	# The survivor and rifle use the same eight-direction pose. This keeps the
+	# stock in the hands instead of letting an independent gun spin around them.
+	var visual_aim_angle := snappedf(aim_angle, AIM_STEP)
+	var gun_mount := GUN_MOUNT_RIGHT.rotated(visual_aim_angle)
 	if moving:
 		walk_time += delta * 9.5
 		var frame_index := int(walk_time * 1.7) % 2
@@ -104,13 +102,14 @@ func _animate_topdown_body(delta: float) -> void:
 		target_position += Vector2(0.0, -breath * 0.8)
 		target_scale = sprite_base_scale * Vector2(1.0 - breath * 0.014, 1.0 + breath * 0.014)
 
-	# The body only faces left or right. The independent rifle can aim freely at
-	# the cursor without making the entire survivor spin through 360 degrees.
+	# Mouse aim remains precise for bullet direction, but the visual pose only
+	# changes in eight clear directions rather than continuously spinning 360°.
 	sprite.position = sprite.position.lerp(target_position, minf(delta * 16.0, 1.0))
 	sprite.scale = sprite.scale.lerp(target_scale, minf(delta * 14.0, 1.0))
-	sprite.rotation = 0.0
+	sprite.flip_h = false
+	sprite.rotation = visual_aim_angle
 	gun_pivot.position = gun_pivot.position.lerp(gun_mount, minf(delta * 18.0, 1.0))
-	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, aim_angle, minf(delta * 24.0, 1.0))
+	gun_pivot.rotation = visual_aim_angle
 	gun_pivot.position += Vector2(-gun_recoil, 0.0).rotated(gun_pivot.rotation)
 	gun_recoil = move_toward(gun_recoil, 0.0, delta * 48.0)
 

@@ -105,14 +105,11 @@ func _on_level_up() -> void:
 	_update_reroll_button()
 
 func _create_upgrade_button(item: Variant) -> void:
-	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(200, 300)
-	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	btn.focus_mode = Control.FOCUS_ALL
-	btn.add_theme_color_override("font_color", Color(0.86, 1.0, 0.94, 1.0))
-	btn.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 0.86, 1.0))
-	btn.add_theme_font_size_override("font_size", 18)
-
+	# Keep every level-up card identical in size. Long descriptions live in a
+	# dedicated wrapped label instead of stretching a Button unpredictably.
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(300, 360)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var accent := Color(0.25, 0.88, 0.82, 1.0)
 	if item is WeaponUpgradeData or item is Weapon:
 		accent = Color(1.0, 0.57, 0.28, 1.0)
@@ -121,25 +118,68 @@ func _create_upgrade_button(item: Variant) -> void:
 	normal_style.border_color = Color(accent, 0.72)
 	normal_style.set_border_width_all(2)
 	normal_style.set_corner_radius_all(8)
-	normal_style.set_content_margin_all(18.0)
+	normal_style.set_content_margin_all(14.0)
 	var hover_style := normal_style.duplicate() as StyleBoxFlat
 	hover_style.bg_color = Color(0.07, 0.13, 0.15, 1.0)
 	hover_style.border_color = accent
 	hover_style.set_border_width_all(3)
-	btn.add_theme_stylebox_override("normal", normal_style)
-	btn.add_theme_stylebox_override("hover", hover_style)
-	btn.add_theme_stylebox_override("focus", hover_style)
-	btn.add_theme_stylebox_override("pressed", hover_style)
+	card.add_theme_stylebox_override("panel", normal_style)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+	card.add_child(content)
+
+	var kind_label := Label.new()
+	kind_label.add_theme_font_size_override("font_size", 14)
+	kind_label.add_theme_color_override("font_color", accent)
+	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(kind_label)
+
+	var name_label := Label.new()
+	name_label.custom_minimum_size = Vector2(0, 58)
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 20)
+	name_label.add_theme_color_override("font_color", Color(0.9, 1.0, 0.96, 1.0))
+	content.add_child(name_label)
+
+	var description_label := Label.new()
+	description_label.custom_minimum_size = Vector2(0, 174)
+	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	description_label.add_theme_font_size_override("font_size", 15)
+	description_label.add_theme_color_override("font_color", Color(0.7, 0.86, 0.82, 1.0))
+	content.add_child(description_label)
+
+	var select_button := Button.new()
+	select_button.custom_minimum_size = Vector2(0, 52)
+	select_button.focus_mode = Control.FOCUS_ALL
+	select_button.add_theme_font_size_override("font_size", 18)
+	select_button.add_theme_color_override("font_color", Color(0.86, 1.0, 0.94, 1.0))
+	select_button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 0.86, 1.0))
+	select_button.add_theme_stylebox_override("normal", normal_style)
+	select_button.add_theme_stylebox_override("hover", hover_style)
+	select_button.add_theme_stylebox_override("focus", hover_style)
+	select_button.add_theme_stylebox_override("pressed", hover_style)
+	content.add_child(select_button)
 
 	if item is PerkData:
-		btn.text = "[패시브] " + item.perk_name + "\n\n" + item.description
+		kind_label.text = "패시브"
+		name_label.text = item.perk_name
+		description_label.text = item.description
 	elif item is WeaponUpgradeData:
-		btn.text = "[신규 무기] " + item.weapon_name + "\n\n" + item.description
+		kind_label.text = "신규 무기"
+		name_label.text = item.weapon_name
+		description_label.text = item.description
 	elif item is Weapon:
-		btn.text = "[무기 강화] " + item.data.weapon_name + " Lv " + str(item.current_level + 1) + "\n\n피해량 증가 및 성능 강화"
+		kind_label.text = "무기 강화"
+		name_label.text = "%s  Lv %d → %d" % [item.data.weapon_name, item.current_level, item.current_level + 1]
+		description_label.text = "피해량 증가 및 성능 강화\n다음 단계의 화력을 준비하세요."
 
-	btn.pressed.connect(func() -> void: _on_upgrade_selected(item))
-	container.add_child(btn)
+	select_button.text = "이 강화 선택"
+	select_button.pressed.connect(func() -> void: _on_upgrade_selected(item))
+	container.add_child(card)
 
 func _update_reroll_button() -> void:
 	reroll_button.text = "카드 리롤  ·  %dG" % REROLL_COST

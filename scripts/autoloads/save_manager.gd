@@ -11,6 +11,7 @@ var upgrade_damage: int = 0
 var total_runs: int = 0
 var best_time: float = 0.0
 var highest_wave: int = 0
+var pet_blueprints: Array[String] = []
 var selected_character: String = "scavenger"
 var screen_shake_enabled: bool = true
 var master_volume: float = 0.8
@@ -33,6 +34,7 @@ func save_data() -> void:
 	config.set_value("Progress", "total_runs", total_runs)
 	config.set_value("Progress", "best_time", best_time)
 	config.set_value("Progress", "highest_wave", highest_wave)
+	config.set_value("Progress", "pet_blueprints", pet_blueprints)
 	config.set_value("Settings", "screen_shake_enabled", screen_shake_enabled)
 	config.set_value("Settings", "selected_character", selected_character)
 	config.set_value("Settings", "master_volume", master_volume)
@@ -51,6 +53,10 @@ func load_data() -> void:
 		total_runs = config.get_value("Progress", "total_runs", 0)
 		best_time = config.get_value("Progress", "best_time", 0.0)
 		highest_wave = config.get_value("Progress", "highest_wave", 0)
+		pet_blueprints.clear()
+		for blueprint in config.get_value("Progress", "pet_blueprints", []):
+			if blueprint is String:
+				pet_blueprints.append(blueprint)
 		screen_shake_enabled = config.get_value("Settings", "screen_shake_enabled", true)
 		selected_character = config.get_value("Settings", "selected_character", "scavenger")
 		master_volume = config.get_value("Settings", "master_volume", 0.8)
@@ -75,3 +81,9 @@ func spend_gold(amount: int) -> bool:
 		EventBus.gold_changed.emit(gold)
 		return true
 	return false
+
+func unlock_pet_blueprint(blueprint_id: String) -> void:
+	if blueprint_id in pet_blueprints:
+		return
+	pet_blueprints.append(blueprint_id)
+	save_data()

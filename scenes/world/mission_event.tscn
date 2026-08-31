@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://missionevent01"]
+
+[ext_resource type="Script" path="res://scripts/world/mission_event.gd" id="1_mission"]
+
+[sub_resource type="CircleShape2D" id="Circle_mission"]
+radius = 210.0
+
+[node name="MissionEvent" type="Area2D"]
+collision_layer = 0
+collision_mask = 1
+monitoring = true
+script = ExtResource("1_mission")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Circle_mission")

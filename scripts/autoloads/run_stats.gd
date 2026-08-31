@@ -11,6 +11,9 @@ var elite_kills: int = 0
 var scrap: int = 0
 var scrap_multiplier: float = 1.0
 var companion_role: String = ""
+var missions_completed: int = 0
+var evolution_cores: int = 0
+var pet_blueprints: Array[String] = []
 var current_wave: int = 1
 var quest_completed: bool = false
 const KILL_QUEST_TARGET: int = 25
@@ -28,6 +31,10 @@ func start_run(new_map_id: String) -> void:
 	scrap = 0
 	scrap_multiplier = 1.0
 	companion_role = ""
+	missions_completed = 0
+	evolution_cores = 0
+	pet_blueprints.clear()
+	pet_blueprints.append_array(SaveManager.pet_blueprints)
 	EventBus.scrap_changed.emit(scrap)
 	current_wave = 1
 	quest_completed = false
@@ -52,6 +59,25 @@ func register_rescue() -> void:
 
 func set_companion(role: String) -> void:
 	companion_role = role
+
+func register_mission() -> void:
+	missions_completed += 1
+
+func add_evolution_core(amount: int = 1) -> void:
+	evolution_cores += maxi(0, amount)
+
+func consume_evolution_core() -> bool:
+	if evolution_cores <= 0:
+		return false
+	evolution_cores -= 1
+	return true
+
+func add_pet_blueprint(blueprint_id: String) -> bool:
+	if blueprint_id not in pet_blueprints:
+		pet_blueprints.append(blueprint_id)
+		SaveManager.unlock_pet_blueprint(blueprint_id)
+		return true
+	return false
 
 func register_supply_cache() -> void:
 	supply_caches_opened += 1
@@ -88,5 +114,8 @@ func get_summary() -> Dictionary:
 		"survivors_rescued": survivors_rescued,
 		"supply_caches_opened": supply_caches_opened,
 		"elite_kills": elite_kills,
-		"wave": current_wave
+		"wave": current_wave,
+		"missions_completed": missions_completed,
+		"evolution_cores": evolution_cores,
+		"pet_blueprints": pet_blueprints.duplicate()
 	}

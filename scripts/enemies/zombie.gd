@@ -3,11 +3,6 @@ extends CharacterBody2D
 
 const SHAMBLER_WALK_A: Texture2D = preload("res://assets/graphics/zombie_walk_a_v3.png")
 const SHAMBLER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_walk_b_v3.png")
-const RUNNER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_runner_walk_b_v3.png")
-const TANK_WALK_B: Texture2D = preload("res://assets/graphics/zombie_tank_walk_b_v3.png")
-const SPITTER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_spitter_walk_b_v3.png")
-const BOMBER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_bomber_walk_b_v3.png")
-const BLOATER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_bloater_walk_b_v3.png")
 @export var max_health: int = 30
 @export var move_speed: float = 100.0
 @export var attack_damage: int = 10
@@ -62,6 +57,7 @@ const WALL_LOOK_AHEAD: float = 54.0
 const WALL_FOLLOW_TIME: float = 0.45
 
 func _ready() -> void:
+	z_index = 6
 	base_max_health = max_health
 	base_move_speed = move_speed
 	base_attack_damage = attack_damage
@@ -233,6 +229,7 @@ func _attack_ranged() -> void:
 func _update_boss(delta: float) -> float:
 	if not has_meta("is_boss") or not get_meta("is_boss"):
 		return 1.0
+	queue_redraw()
 	var health_ratio := float(health) / float(maxi(1, max_health))
 	var next_phase := 1 if health_ratio > 0.66 else (2 if health_ratio > 0.33 else 3)
 	if next_phase != boss_phase:
@@ -263,10 +260,12 @@ func _update_boss(delta: float) -> float:
 			boss_attack_mode = "summon" if randf() < 0.45 else "shockwave"
 		else:
 			boss_attack_mode = "charge" if randf() < 0.58 else "summon"
+		EventBus.boss_attack_warning.emit(boss_attack_mode, true)
 		sprite.modulate = Color(1.0, 0.22 + float(boss_phase) * 0.08, 0.12, 1.0)
 	return 1.0
 
 func _execute_boss_attack() -> void:
+	EventBus.boss_attack_warning.emit(boss_attack_mode, false)
 	sprite.modulate = base_sprite_modulate
 	match boss_attack_mode:
 		"charge":
@@ -293,6 +292,29 @@ func _summon_boss_escorts(pool_id: String, count: int) -> void:
 			summon.set_meta("pool_id", pool_id)
 			if summon.has_method("set_scaled_max_health"):
 				summon.set_scaled_max_health(1.0 + float(boss_phase) * 0.3)
+
+func _draw() -> void:
+	if not has_meta("is_boss") or not get_meta("is_boss") or boss_telegraph_timer <= 0.0:
+		return
+	var pulse := 0.62 + absf(sin(Time.get_ticks_msec() * 0.012)) * 0.38
+	var warning_color := Color(1.0, 0.18, 0.08, 0.72 * pulse)
+	match boss_attack_mode:
+		"shockwave":
+			var radius := 270.0 + float(boss_phase) * 30.0
+			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 96, warning_color, 9.0, true)
+			draw_arc(Vector2.ZERO, radius * 0.82, 0.0, TAU, 96, Color(warning_color, 0.22), 3.0, true)
+		"charge":
+			if is_instance_valid(player):
+				var target := to_local(player.global_position)
+				draw_line(Vector2.ZERO, target, warning_color, 26.0, true)
+				draw_line(Vector2.ZERO, target, Color(1.0, 0.75, 0.25, 0.9 * pulse), 4.0, true)
+				draw_circle(target, 24.0, Color(1.0, 0.2, 0.08, 0.42 * pulse))
+		"summon":
+			var marker_count := 3 + boss_phase
+			for index in range(marker_count):
+				var marker := Vector2.RIGHT.rotated((TAU / float(marker_count)) * float(index)) * 130.0
+				draw_circle(marker, 34.0, Color(1.0, 0.16, 0.08, 0.26 * pulse))
+				draw_arc(marker, 34.0, 0.0, TAU, 32, warning_color, 6.0, true)
 
 func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0 or is_dying:
@@ -337,37 +359,31 @@ func _animate_visual(delta: float, moving: bool) -> void:
 			bob = absf(stride) * 6.0 * movement_weight
 			sway = stride * 3.0 * movement_weight
 			desired_rotation = stride * 0.065 * movement_weight
-			desired_scale = render_base_scale * Vector2(1.0 + absf(stride) * 0.11, 1.0 - absf(stride) * 0.085)
 		2: # Tank: slow mass shifting and a heavy impact step.
 			var stomp := sin(visual_time * 5.2)
 			bob = absf(stomp) * 2.8 * movement_weight
 			sway = stomp * 1.2 * movement_weight
 			desired_rotation = stomp * 0.026 * movement_weight
-			desired_scale = render_base_scale * Vector2(1.0 + absf(stomp) * 0.05, 1.0 - absf(stomp) * 0.035)
 		3: # Spitter: tense breathing while circling, then a short firing lunge.
 			var breath := sin(visual_time * (5.8 if moving else 2.6))
 			bob = breath * (2.5 if moving else 1.25)
 			sway = sin(visual_time * 3.4) * 1.4
 			desired_rotation = breath * 0.03
-			desired_scale = render_base_scale * Vector2(1.0 + attack_pulse * 0.08, 1.0 - attack_pulse * 0.05)
 		4: # Bomber: an unstable warning pulse that accelerates as it advances.
 			var alarm := sin(visual_time * (10.0 if moving else 6.0))
 			bob = absf(alarm) * 3.6 * movement_weight
 			sway = alarm * 1.7
 			desired_rotation = alarm * 0.045
-			desired_scale = render_base_scale * Vector2(1.0 + absf(alarm) * 0.09 + attack_pulse * 0.1, 1.0 - absf(alarm) * 0.06)
 		5: # Bloater: slow organic swelling, even while standing still.
 			var swell := sin(visual_time * 3.2) + sin(visual_time * 5.1) * 0.35
 			bob = swell * 1.5
 			sway = sin(visual_time * 2.1) * 1.15
 			desired_rotation = sway * 0.024
-			desired_scale = render_base_scale * Vector2(1.0 + swell * 0.055 + attack_pulse * 0.05, 1.0 + swell * 0.035)
 		_: # Shambler: uneven steps with a small side-to-side stagger.
 			var stagger := sin(visual_time * (8.0 if moving else 2.0))
 			bob = absf(stagger) * 4.2 * movement_weight
 			sway = sin(visual_time * 4.1) * 2.1 * movement_weight
 			desired_rotation = stagger * 0.045 * movement_weight
-			desired_scale = render_base_scale * Vector2(1.0 + absf(stagger) * 0.075, 1.0 - absf(stagger) * 0.055)
 
 	hit_recoil = hit_recoil.move_toward(Vector2.ZERO, delta * 30.0)
 	var attack_lunge := Vector2(-attack_pulse * 3.0, 0.0)
@@ -420,26 +436,10 @@ func _update_walk_texture(moving: bool) -> Vector2:
 	if motion_profile == 0:
 		sprite.texture = SHAMBLER_WALK_B if moving and int(visual_time * 6.5) % 2 == 1 else SHAMBLER_WALK_A
 		return base_scale
-	var alternate_frame := moving and int(visual_time * 5.2) % 2 == 1
-	if not alternate_frame:
-		sprite.texture = base_sprite_texture
-		return base_scale
-	match motion_profile:
-		1:
-			sprite.texture = RUNNER_WALK_B
-			return Vector2(0.115, 0.115)
-		2:
-			sprite.texture = TANK_WALK_B
-			return Vector2(0.150, 0.150)
-		3:
-			sprite.texture = SPITTER_WALK_B
-			return Vector2(0.120, 0.120)
-		4:
-			sprite.texture = BOMBER_WALK_B
-			return Vector2(0.120, 0.120)
-		5:
-			sprite.texture = BLOATER_WALK_B
-			return Vector2(0.140, 0.140)
+	# Special zombies keep their scene-assigned identity sprite. Their animations
+	# are positional only; mixing frames with different canvases made them pop in
+	# size and briefly resemble the wrong enemy type.
+	sprite.texture = base_sprite_texture
 	return base_scale
 
 func die() -> void:
@@ -459,6 +459,7 @@ func die() -> void:
 	if has_meta("is_boss") and get_meta("is_boss"):
 		scrap_reward = 30
 		EventBus.boss_status_changed.emit("", -1.0, 0)
+		EventBus.boss_attack_warning.emit("", false)
 	RunStats.add_scrap(scrap_reward)
 	SpatialGrid.remove(self)
 
@@ -478,7 +479,9 @@ func die() -> void:
 	velocity = Vector2.ZERO
 
 	var tween = create_tween()
-	tween.tween_property(sprite, "modulate:a", 0.0, 1.0)
+	# Leave a brief hit-confirmation after death, then return the body to the
+	# pool quickly so crowded waves do not accumulate visible corpses.
+	tween.tween_property(sprite, "modulate:a", 0.0, 0.38)
 	tween.tween_callback(func():
 		collision_layer = 2
 		collision_mask = 5

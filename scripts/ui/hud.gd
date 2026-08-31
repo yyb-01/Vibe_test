@@ -14,11 +14,14 @@ extends CanvasLayer
 @onready var threat_label: Label = $ThreatLabel
 @onready var wave_banner: Label = $WaveBanner
 @onready var boss_label: Label = $BossLabel
+@onready var boss_warning_label: Label = $BossWarningLabel
+var mission_status := ""
 @onready var pause_confirm: Control = $PauseConfirm
 @onready var pause_confirm_button: Button = $PauseConfirm/Panel/VBoxContainer/Buttons/ConfirmButton
 @onready var pause_cancel_button: Button = $PauseConfirm/Panel/VBoxContainer/Buttons/CancelButton
 
 var time_elapsed: float = 0.0
+var boss_warning_tween: Tween
 
 func _ready() -> void:
 	EventBus.player_health_changed.connect(_on_player_health_changed)
@@ -32,7 +35,11 @@ func _ready() -> void:
 	_on_scrap_changed(RunStats.scrap)
 	EventBus.wave_started.connect(_on_wave_started)
 	EventBus.boss_status_changed.connect(_on_boss_status_changed)
+	EventBus.boss_attack_warning.connect(_on_boss_attack_warning)
+	EventBus.mission_status_changed.connect(_on_mission_status_changed)
+	EventBus.mission_completed.connect(_on_mission_completed)
 	boss_label.visible = false
+	boss_warning_label.visible = false
 
 func _process(delta: float) -> void:
 	if get_tree().paused:
@@ -44,6 +51,8 @@ func _process(delta: float) -> void:
 	wave_label.text = "WAVE %02d" % (int(time_elapsed / 30.0) + 1)
 	threat_label.text = "위협 %03d" % _get_active_enemy_count()
 	objective_label.text = "구조 신호: %d/1" % RunStats.survivors_rescued
+	if not mission_status.is_empty():
+		objective_label.text += "  ·  " + mission_status
 	if not RunStats.companion_role.is_empty():
 		objective_label.text += "  ·  동료: %s" % _companion_display_name(RunStats.companion_role)
 	if RunStats.map_id in ["map_3", "map_4"]:
@@ -97,6 +106,30 @@ func _on_boss_status_changed(boss_name: String, health_ratio: float, phase: int)
 	var filled := clampi(int(round(health_ratio * segments)), 0, segments)
 	boss_label.text = "%s  ·  위상 %d  [%s%s]" % [boss_name, phase, "■".repeat(filled), "□".repeat(segments - filled)]
 	boss_label.visible = true
+
+func _on_boss_attack_warning(attack_name: String, active: bool) -> void:
+	if boss_warning_tween:
+		boss_warning_tween.kill()
+	if not active:
+		boss_warning_label.visible = false
+		return
+	match attack_name:
+		"shockwave": boss_warning_label.text = "⚠ 충격파 준비 · 표시된 원 밖으로 이동"
+		"charge": boss_warning_label.text = "⚠ 돌진 준비 · 붉은 선에서 이탈"
+		"summon": boss_warning_label.text = "⚠ 증원 소환 · 표시된 지점을 비우기"
+		_: boss_warning_label.text = "⚠ 보스 공격 준비"
+	boss_warning_label.visible = true
+	boss_warning_label.modulate.a = 1.0
+	boss_warning_tween = create_tween()
+	boss_warning_tween.set_loops()
+	boss_warning_tween.tween_property(boss_warning_label, "modulate:a", 0.35, 0.22)
+	boss_warning_tween.tween_property(boss_warning_label, "modulate:a", 1.0, 0.22)
+
+func _on_mission_status_changed(title: String, status: String, _progress: float) -> void:
+	mission_status = "%s: %s" % [title, status]
+
+func _on_mission_completed(title: String, reward: int) -> void:
+	mission_status = "%s 완료  ·  +%dG  ·  진화 코어 +1" % [title, reward]
 
 func _on_player_health_changed(current_hp: int, max_hp: int) -> void:
 	hp_bar.max_value = max_hp

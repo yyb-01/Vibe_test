@@ -24,7 +24,7 @@ grow_vertical = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
-theme_override_constants/separation = 40
+theme_override_constants/separation = 24
 
 [node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
@@ -33,6 +33,7 @@ text = "레벨 업! 강화 카드를 선택하세요"
 horizontal_alignment = 1
 
 [node name="HBoxContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(940, 360)
 layout_mode = 2
 theme_override_constants/separation = 20
 

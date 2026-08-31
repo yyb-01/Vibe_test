@@ -11,6 +11,7 @@ const ZOMBIE_SPITTER: PackedScene = preload("res://scenes/enemies/zombie_spitter
 const ZOMBIE_BOMBER: PackedScene = preload("res://scenes/enemies/zombie_bomber.tscn")
 const ZOMBIE_BLOATER: PackedScene = preload("res://scenes/enemies/zombie_bloater.tscn")
 const WAVE_SHOP: PackedScene = preload("res://scenes/ui/wave_shop.tscn")
+const MISSION_EVENT: PackedScene = preload("res://scenes/world/mission_event.tscn")
 
 var spawn_points_nodes: Array[Node2D] = []
 var time_elapsed: float = 0.0
@@ -27,8 +28,10 @@ var last_announced_wave: int = 1
 
 var spawn_debt: float = 0.0
 var boss_spawned: bool = false
+var boss_data_hacked: bool = false
 
 func _ready() -> void:
+	add_to_group("spawn_manager")
 	get_tree().paused = false # Absolute guarantee on map load
 	var pool_parent := get_tree().current_scene
 	if not is_instance_valid(pool_parent):
@@ -43,7 +46,19 @@ func _ready() -> void:
 	# first physics tick. Heavy pre-warming is deferred until the parent is ready.
 	_register_pools(pool_parent)
 	_ensure_wave_shop(pool_parent)
+	_ensure_mission_event(pool_parent)
 	call_deferred("_warm_pools")
+
+func _ensure_mission_event(scene_root: Node) -> void:
+	var mission := MISSION_EVENT.instantiate()
+	scene_root.call_deferred("add_child", mission)
+	mission.call_deferred("configure_for_map", RunStats.map_id)
+
+func spawn_event_enemy(pool_id: String, spawn_position: Vector2) -> Node:
+	var enemy = ObjectPoolManager.acquire(pool_id, spawn_position)
+	if enemy:
+		enemy.set_meta("pool_id", pool_id)
+	return enemy
 
 func _ensure_wave_shop(scene_root: Node) -> void:
 	if get_tree().get_first_node_in_group("wave_shop"):
@@ -129,9 +144,10 @@ func _spawn_boss() -> void:
 	if boss:
 		boss.set_meta("pool_id", "zombie_tank")
 		boss.set_meta("is_boss", true)
-		boss.set_scaled_max_health(50.0) # Massive HP multiplier
+		boss.set_scaled_max_health(38.0 if boss_data_hacked else 50.0)
 		boss.scale = Vector2(3.0, 3.0)
 		boss.modulate = Color.RED
+		boss.set_meta("boss_data_hacked", boss_data_hacked)
 
 func _spawn_zombie() -> bool:
 	if _get_active_enemy_count() >= MAX_ACTIVE_ENEMIES:

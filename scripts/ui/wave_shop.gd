@@ -299,7 +299,8 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 
 	var buy_button := Button.new()
 	buy_button.custom_minimum_size = Vector2(0, 46)
-	buy_button.text = "구매 완료" if bool(offer.get("purchased", false)) else "구매  ·  %d 스크랩" % int(offer.cost)
+	var free_evolution := String(offer.kind) == "evolution" and RunStats.evolution_cores > 0
+	buy_button.text = "구매 완료" if bool(offer.get("purchased", false)) else ("진화 코어 사용" if free_evolution else "구매  ·  %d 스크랩" % int(offer.cost))
 	buy_button.add_theme_font_size_override("font_size", 16)
 	buy_button.add_theme_color_override("font_color", Color(0.9, 1.0, 0.97, 1.0))
 	var buy_normal := StyleBoxFlat.new()
@@ -312,7 +313,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	buy_button.add_theme_stylebox_override("normal", buy_normal)
 	buy_button.add_theme_stylebox_override("hover", buy_hover)
 	buy_button.add_theme_stylebox_override("focus", buy_hover)
-	buy_button.disabled = bool(offer.get("purchased", false)) or RunStats.scrap < int(offer.cost)
+	buy_button.disabled = bool(offer.get("purchased", false)) or (not free_evolution and RunStats.scrap < int(offer.cost))
 	buy_button.pressed.connect(func() -> void: _buy_offer(index))
 	content.add_child(buy_button)
 
@@ -340,7 +341,7 @@ func _offer_name(offer: Dictionary) -> String:
 		"weapon_upgrade":
 			var weapon := offer.item as Weapon
 			return "%s\nLv %d → %d" % [weapon.data.weapon_name, weapon.current_level, weapon.current_level + 1]
-		"evolution": return "%s ★" % (offer.item as Weapon).data.weapon_name
+		"evolution": return (offer.item as Weapon).get_display_name()
 		"contract": return String(offer.name)
 		_: return String(offer.name)
 
@@ -349,7 +350,7 @@ func _offer_description(offer: Dictionary) -> String:
 		"passive": return (offer.item as PerkData).description
 		"weapon_new": return (offer.item as WeaponUpgradeData).description
 		"weapon_upgrade": return "피해량과 성능을 강화합니다.\n다음 단계의 화력을 준비하세요."
-		"evolution": return "최대 레벨 무기를 진화시켜\n특수 성능을 해금합니다."
+		"evolution": return "%s\n진화 코어가 있으면 무료로 진화합니다." % (offer.item as Weapon).get_evolution_description()
 		"contract": return String(offer.description)
 		_: return String(offer.description)
 
@@ -368,7 +369,8 @@ func _offer_text(offer: Dictionary) -> String:
 			return "[무기 강화]\n%s  Lv %d → %d\n\n피해량과 성능을 강화합니다.\n\n%d 스크랩" % [weapon.data.weapon_name, weapon.current_level, weapon.current_level + 1, offer.cost]
 		"evolution":
 			var evolution_weapon := offer.item as Weapon
-			return "[변이 코어]\n%s ★\n\n최대 레벨 무기를 진화시켜 특수 성능을 해금합니다.\n\n%d 스크랩" % [evolution_weapon.data.weapon_name, offer.cost]
+			var evolution_cost := "진화 코어 1개" if RunStats.evolution_cores > 0 else "%d 스크랩" % offer.cost
+			return "[무기 진화]\n%s\n\n%s\n\n비용: %s" % [evolution_weapon.get_display_name(), evolution_weapon.get_evolution_description(), evolution_cost]
 		_:
 			return "[보급]\n%s\n\n%s\n\n%d 스크랩" % [offer.name, offer.description, offer.cost]
 
@@ -405,7 +407,8 @@ func _reroll() -> void:
 
 func _buy_offer(index: int) -> void:
 	var offer := offers[index]
-	if bool(offer.get("purchased", false)) or not RunStats.spend_scrap(int(offer.cost)):
+	var free_evolution := String(offer.kind) == "evolution" and RunStats.evolution_cores > 0
+	if bool(offer.get("purchased", false)) or (not free_evolution and not RunStats.spend_scrap(int(offer.cost))):
 		return
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if not player:
@@ -416,7 +419,10 @@ func _buy_offer(index: int) -> void:
 			var weapon_data := offer.item as WeaponUpgradeData
 			player.add_weapon(weapon_data.weapon_script, weapon_data.weapon_data)
 		"weapon_upgrade": (offer.item as Weapon).upgrade()
-		"evolution": (offer.item as Weapon).evolve()
+		"evolution":
+			if free_evolution:
+				RunStats.consume_evolution_core()
+			(offer.item as Weapon).evolve()
 		"repair": player.heal(35)
 		"plating":
 			player.max_health += 20
