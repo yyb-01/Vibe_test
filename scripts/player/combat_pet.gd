@@ -15,6 +15,11 @@ var ability_color := Color(0.4, 0.9, 1.0, 1.0)
 var pet_sprite: Sprite2D
 var sprite_base_scale := Vector2.ONE
 var animation_time: float = 0.0
+var lunge_offset := Vector2.ZERO
+
+const FOLLOW_SPEED: float = 620.0
+const LUNGE_DISTANCE: float = 145.0
+const LUNGE_RECOVERY_SPEED: float = 540.0
 
 func _ready() -> void:
 	z_index = 8
@@ -49,7 +54,9 @@ func _physics_process(delta: float) -> void:
 	visual_timer = maxf(0.0, visual_timer - delta)
 	var orbit_angle := Time.get_ticks_msec() * 0.0015 + float(get_instance_id() % 10)
 	var follow_offset := Vector2(-72.0, 26.0) + Vector2(cos(orbit_angle), sin(orbit_angle)) * 12.0
-	global_position = global_position.lerp(owner_player.global_position + follow_offset, minf(1.0, delta * 7.5))
+	var follow_target := owner_player.global_position + follow_offset + lunge_offset
+	global_position = global_position.move_toward(follow_target, FOLLOW_SPEED * delta)
+	lunge_offset = lunge_offset.move_toward(Vector2.ZERO, LUNGE_RECOVERY_SPEED * delta)
 	_animate_pet(delta)
 	if attack_timer <= 0.0:
 		_use_combat_ability()
@@ -92,7 +99,8 @@ func _use_combat_ability() -> void:
 		"rescue_hound":
 			var direction := global_position.direction_to(target.global_position)
 			target.take_damage(int(22.0 * owner_player.damage_mult), direction)
-			global_position = global_position.lerp(target.global_position - direction * 38.0, 0.7)
+			# Keep the attack readable without snapping across the arena in one frame.
+			lunge_offset = owner_player.global_position.direction_to(target.global_position) * LUNGE_DISTANCE
 			ability_color = Color(1.0, 0.7, 0.28, 1.0)
 			attack_timer = 1.15
 		"toxic_crow":

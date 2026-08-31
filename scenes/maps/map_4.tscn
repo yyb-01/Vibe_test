@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://map444lab"]
+[gd_scene load_steps=18 format=3 uid="uid://map444lab"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
@@ -11,7 +11,6 @@
 [ext_resource type="Texture2D" path="res://assets/graphics/wall_obstacle_v2.png" id="9_wall"]
 [ext_resource type="Texture2D" path="res://assets/graphics/lab_console_obstacle_v2.png" id="10_console"]
 [ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
-[ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="12_toxic"]
 [ext_resource type="Texture2D" path="res://assets/graphics/lab_bulkhead_v3.png" id="13_bulkhead"]
 
 [sub_resource type="RectangleShape2D" id="WallHorizontal"]
@@ -173,16 +172,6 @@ texture = ExtResource("10_console")
 position = Vector2(8400, 1520)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("10_console")
-
-[node name="ToxicA" type="Sprite2D" parent="Decoration"]
-position = Vector2(4320, 8720)
-scale = Vector2(1.1, 1.1)
-texture = ExtResource("12_toxic")
-
-[node name="ToxicB" type="Sprite2D" parent="Decoration"]
-position = Vector2(12720, 1680)
-scale = Vector2(0.8, 0.8)
-texture = ExtResource("12_toxic")
 
 [node name="DebrisA" type="Sprite2D" parent="Decoration"]
 position = Vector2(1440, 8560)

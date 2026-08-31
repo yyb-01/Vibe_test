@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://map123test"]
+[gd_scene load_steps=17 format=3 uid="uid://map123test"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
@@ -9,7 +9,6 @@
 [ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
 [ext_resource type="Texture2D" path="res://assets/graphics/barricade_v2.png" id="8_barricade"]
 [ext_resource type="Texture2D" path="res://assets/graphics/wreck_obstacle_v2.png" id="9_wreck"]
-[ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="10_toxic"]
 [ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
 [ext_resource type="Texture2D" path="res://assets/graphics/wall_obstacle_v2.png" id="12_wall"]
 
@@ -153,16 +152,6 @@ position = Vector2(7920, 4520)
 rotation = 2.75
 scale = Vector2(0.82, 0.82)
 texture = ExtResource("9_wreck")
-
-[node name="ToxicPoolNorth" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(3160, 1000)
-scale = Vector2(0.8, 0.8)
-texture = ExtResource("10_toxic")
-
-[node name="ToxicPoolSouth" type="Sprite2D" parent="TopDownDecoration"]
-position = Vector2(6440, 4440)
-scale = Vector2(0.72, 0.72)
-texture = ExtResource("10_toxic")
 
 [node name="BarricadeNorth" type="Sprite2D" parent="TopDownDecoration"]
 position = Vector2(4880, 1080)

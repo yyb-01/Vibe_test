@@ -3,11 +3,6 @@ extends CharacterBody2D
 
 const SHAMBLER_WALK_A: Texture2D = preload("res://assets/graphics/zombie_walk_a_v3.png")
 const SHAMBLER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_walk_b_v3.png")
-const RUNNER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_runner_walk_b_v3.png")
-const TANK_WALK_B: Texture2D = preload("res://assets/graphics/zombie_tank_walk_b_v3.png")
-const SPITTER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_spitter_walk_b_v3.png")
-const BOMBER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_bomber_walk_b_v3.png")
-const BLOATER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_bloater_walk_b_v3.png")
 @export var max_health: int = 30
 @export var move_speed: float = 100.0
 @export var attack_damage: int = 10
@@ -460,25 +455,11 @@ func _update_walk_texture(moving: bool) -> Vector2:
 	if motion_profile == 0:
 		sprite.texture = SHAMBLER_WALK_B if moving and int(visual_time * 6.5) % 2 == 1 else SHAMBLER_WALK_A
 		return base_scale
-	var walk_texture := _get_special_walk_texture()
-	var animation_rate := 7.5 if motion_profile in [1, 4] else (4.2 if motion_profile in [2, 5] else 5.4)
-	var use_stride_frame := moving and int(visual_time * animation_rate) % 2 == 1
-	sprite.texture = walk_texture if use_stride_frame else base_sprite_texture
-	if not use_stride_frame or not walk_texture:
-		return base_scale
-	# The authored stride frames use a larger transparent canvas. Normalize by
-	# width so switching frames preserves the on-screen footprint.
-	var size_ratio := float(base_sprite_texture.get_width()) / float(maxi(1, walk_texture.get_width()))
-	return base_scale * size_ratio
-
-func _get_special_walk_texture() -> Texture2D:
-	match motion_profile:
-		1: return RUNNER_WALK_B
-		2: return TANK_WALK_B
-		3: return SPITTER_WALK_B
-		4: return BOMBER_WALK_B
-		5: return BLOATER_WALK_B
-		_: return null
+	# Special variants animate through positional bob and rotation only. Keeping
+	# one authored texture prevents differently sized frame canvases from making
+	# the body pulse larger and smaller while walking.
+	sprite.texture = base_sprite_texture
+	return base_scale
 
 func die() -> void:
 	if is_dying:
