@@ -138,9 +138,9 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -300.0
+offset_left = -500.0
 offset_top = -220.0
-offset_right = 300.0
+offset_right = 500.0
 offset_bottom = 325.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -151,11 +151,17 @@ theme_override_colors/font_selected_color = Color(0.66, 1, 0.84, 1)
 layout_mode = 2
 name = "Play"
 
-[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/PlayTab"]
+[node name="PlayColumns" type="HBoxContainer" parent="TabContainer/PlayTab"]
+layout_mode = 2
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="LoadoutColumn" type="VBoxContainer" parent="TabContainer/PlayTab/PlayColumns"]
+custom_minimum_size = Vector2(440, 0)
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="CharacterSelect" type="OptionButton" parent="TabContainer/PlayTab/VBoxContainer"]
+[node name="CharacterSelect" type="OptionButton" parent="TabContainer/PlayTab/PlayColumns/LoadoutColumn"]
 custom_minimum_size = Vector2(300, 48)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -166,7 +172,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
 tooltip_text = "생존자는 시작 능력치와 플레이 스타일이 다릅니다."
 
-[node name="CharacterInfoLabel" type="Label" parent="TabContainer/PlayTab/VBoxContainer"]
+[node name="CharacterInfoLabel" type="Label" parent="TabContainer/PlayTab/PlayColumns/LoadoutColumn"]
 custom_minimum_size = Vector2(420, 38)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.58, 0.82, 0.76, 1)
@@ -175,7 +181,13 @@ autowrap_mode = 2
 text = "생존자를 선택하면 시작 능력과 플레이 스타일을 확인할 수 있습니다."
 horizontal_alignment = 1
 
-[node name="Map1Button" type="Button" parent="TabContainer/PlayTab/VBoxContainer"]
+[node name="MapColumn" type="VBoxContainer" parent="TabContainer/PlayTab/PlayColumns"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Map1Button" type="Button" parent="TabContainer/PlayTab/PlayColumns/MapColumn"]
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -186,7 +198,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
 text = "출동 01  ·  폐허 지구"
 
-[node name="Map2Button" type="Button" parent="TabContainer/PlayTab/VBoxContainer"]
+[node name="Map2Button" type="Button" parent="TabContainer/PlayTab/PlayColumns/MapColumn"]
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -197,7 +209,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
 text = "출동 02  ·  봉쇄 교차로"
 
-[node name="Map3Button" type="Button" parent="TabContainer/PlayTab/VBoxContainer"]
+[node name="Map3Button" type="Button" parent="TabContainer/PlayTab/PlayColumns/MapColumn"]
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -208,7 +220,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
 text = "출동 03  ·  침수 격리 지구"
 
-[node name="Map4Button" type="Button" parent="TabContainer/PlayTab/VBoxContainer"]
+[node name="Map4Button" type="Button" parent="TabContainer/PlayTab/PlayColumns/MapColumn"]
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 size_flags_horizontal = 4

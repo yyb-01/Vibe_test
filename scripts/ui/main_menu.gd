@@ -1,18 +1,18 @@
 class_name MainMenu
 extends CanvasLayer
 
-@onready var map_1_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map1Button
-@onready var map_2_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map2Button
-@onready var map_3_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map3Button
-@onready var map_4_btn: Button = $TabContainer/PlayTab/VBoxContainer/Map4Button
+@onready var map_1_btn: Button = $TabContainer/PlayTab/PlayColumns/MapColumn/Map1Button
+@onready var map_2_btn: Button = $TabContainer/PlayTab/PlayColumns/MapColumn/Map2Button
+@onready var map_3_btn: Button = $TabContainer/PlayTab/PlayColumns/MapColumn/Map3Button
+@onready var map_4_btn: Button = $TabContainer/PlayTab/PlayColumns/MapColumn/Map4Button
 
 @onready var hp_upgrade_btn: Button = $TabContainer/ShopTab/VBoxContainer/HPUpgradeBtn
 @onready var dmg_upgrade_btn: Button = $TabContainer/ShopTab/VBoxContainer/DmgUpgradeBtn
 @onready var spd_upgrade_btn: Button = $TabContainer/ShopTab/VBoxContainer/SpdUpgradeBtn
 @onready var gold_label: Label = $GoldLabel
 @onready var progress_label: Label = $ProgressLabel
-@onready var character_select: OptionButton = $TabContainer/PlayTab/VBoxContainer/CharacterSelect
-@onready var character_info_label: Label = $TabContainer/PlayTab/VBoxContainer/CharacterInfoLabel
+@onready var character_select: OptionButton = $TabContainer/PlayTab/PlayColumns/LoadoutColumn/CharacterSelect
+@onready var character_info_label: Label = $TabContainer/PlayTab/PlayColumns/LoadoutColumn/CharacterInfoLabel
 @onready var screen_shake_toggle: CheckButton = $TabContainer/ShopTab/VBoxContainer/ScreenShakeToggle
 @onready var volume_slider: HSlider = $TabContainer/ShopTab/VBoxContainer/VolumeSlider
 
