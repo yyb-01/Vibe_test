@@ -32,6 +32,9 @@ var invulnerable: bool = false
 # The carbine artwork's barrel rises slightly above its grip, so this keeps
 # the visible barrel and the muzzle-origin projectile line aligned.
 const GUN_BARREL_ALIGNMENT_OFFSET := deg_to_rad(14.0)
+# The survivor artwork is authored facing local up (-Y), unlike the carbine
+# which faces local right (+X).
+const BODY_FACING_OFFSET := PI * 0.5
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var gun_pivot: Node2D = $GunPivot
@@ -94,8 +97,9 @@ func _animate_topdown_body(delta: float) -> void:
 		sprite.scale = sprite.scale.lerp(sprite_base_scale, minf(delta * 10.0, 1.0))
 		gun_pivot.position = gun_pivot.position.lerp(gun_base_position, minf(delta * 10.0, 1.0))
 
-	# Keep the body stable and rotate only the weapon toward the aim point.
-	sprite.rotation = lerp_angle(sprite.rotation, 0.0, minf(delta * 18.0, 1.0))
+	# Rotate the body visual and gun toward the muzzle aim. The physics body
+	# and camera remain unrotated, so collisions and camera limits stay stable.
+	sprite.rotation = lerp_angle(sprite.rotation, aim_angle + BODY_FACING_OFFSET, minf(delta * 18.0, 1.0))
 	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, aim_angle + GUN_BARREL_ALIGNMENT_OFFSET, minf(delta * 24.0, 1.0))
 
 func get_muzzle_global_position() -> Vector2:
