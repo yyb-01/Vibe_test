@@ -1,10 +1,16 @@
 class_name Player
 extends CharacterBody2D
 
-const WALK_FRAME_A: Texture2D = preload("res://assets/graphics/player_walk_a_v4.png")
-const WALK_FRAME_B: Texture2D = preload("res://assets/graphics/player_walk_b_v4.png")
-const AIM_UP: Texture2D = preload("res://assets/graphics/player_aim_up_v1.png")
-const AIM_DOWN: Texture2D = preload("res://assets/graphics/player_aim_down_v1.png")
+const CHARACTER_SHEETS := {
+	"scavenger": preload("res://assets/graphics/animated/player_scavenger_sheet_v1.png"),
+	"medic": preload("res://assets/graphics/animated/player_medic_sheet_v1.png"),
+	"ranger": preload("res://assets/graphics/animated/player_ranger_sheet_v1.png"),
+	"bulwark": preload("res://assets/graphics/animated/player_bulwark_sheet_v1.png"),
+	"pyro": preload("res://assets/graphics/animated/player_pyro_sheet_v1.png"),
+	"engineer": preload("res://assets/graphics/animated/player_engineer_sheet_v1.png"),
+	"reaper": preload("res://assets/graphics/animated/player_reaper_sheet_v1.png"),
+	"chronomancer": preload("res://assets/graphics/animated/player_chronomancer_sheet_v1.png")
+}
 const COMBAT_PET: PackedScene = preload("res://scenes/player/combat_pet.tscn")
 const MUZZLE_FLASH_SCRIPT: Script = preload("res://scripts/effects/muzzle_flash.gd")
 const UNIQUE_SKILL_EFFECT_SCRIPT: Script = preload("res://scripts/effects/unique_skill_effect.gd")
@@ -63,6 +69,7 @@ func _ready() -> void:
 		sprite.material = sprite.material.duplicate()
 	character_id = SaveManager.selected_character
 	_apply_character_preset()
+	_configure_character_sprite()
 	if not RunStats.run_active:
 		var scene_root := get_tree().current_scene
 		if not is_instance_valid(scene_root):
@@ -118,13 +125,13 @@ func _animate_topdown_body(delta: float) -> void:
 	_update_facing_from_aim()
 	if moving:
 		walk_time += delta * 9.5
-		var frame_index := int(walk_time * 1.7) % 2
-		sprite.texture = WALK_FRAME_A if frame_index == 0 else WALK_FRAME_B
+		var frame_index := int(walk_time * 1.7) % 4
+		_set_character_frame(frame_index)
 		var stride := absf(sin(walk_time))
 		target_position += Vector2(sin(walk_time * 0.5) * 1.2, -stride * 2.7)
 	else:
 		walk_time = lerpf(walk_time, 0.0, minf(delta * 8.0, 1.0))
-		sprite.texture = WALK_FRAME_A
+		_set_character_frame(0)
 		var breath := sin(animation_time * 2.2)
 		target_position += Vector2(0.0, -breath * 0.8)
 	if facing == "up" or facing == "down":
@@ -157,19 +164,16 @@ func _update_facing_pose(delta: float) -> void:
 	sprite.flip_h = false
 	match facing:
 		"left":
-			sprite.texture = WALK_FRAME_A if velocity.length() <= 8.0 else sprite.texture
 			sprite.flip_h = true
 			desired_gun_position = GUN_MOUNT_LEFT
 			desired_gun_rotation = 0.0
 			gun_sprite.flip_h = true
 			muzzle_offset = Vector2(-88.0, -35.0)
 		"up":
-			sprite.texture = AIM_UP
 			gun_sprite.visible = false
 			desired_gun_position = Vector2.ZERO
 			muzzle_offset = Vector2(0.0, -96.0)
 		"down":
-			sprite.texture = AIM_DOWN
 			gun_sprite.visible = false
 			desired_gun_position = Vector2.ZERO
 			muzzle_offset = Vector2(0.0, 96.0)
@@ -180,6 +184,25 @@ func _update_facing_pose(delta: float) -> void:
 	var recoil_direction := 1.0 if facing == "left" else -1.0
 	gun_pivot.position += Vector2(gun_recoil * recoil_direction, 0.0)
 	muzzle_anchor.position = muzzle_anchor.position.lerp(muzzle_offset + sprite.position, minf(delta * 22.0, 1.0))
+
+func _configure_character_sprite() -> void:
+	var original_width := float(maxi(1, sprite.texture.get_width()))
+	var sheet: Texture2D = CHARACTER_SHEETS.get(character_id, CHARACTER_SHEETS["scavenger"])
+	var cell_width := float(sheet.get_width()) / 4.0
+	sprite.texture = sheet
+	sprite.region_enabled = true
+	sprite_base_scale *= original_width / cell_width
+	sprite.scale = sprite_base_scale
+	_set_character_frame(0)
+
+func _set_character_frame(frame_index: int) -> void:
+	if not sprite.region_enabled or not sprite.texture:
+		return
+	var cell_size := Vector2(float(sprite.texture.get_width()) / 4.0, float(sprite.texture.get_height()) / 4.0)
+	var row := 1
+	if facing == "down": row = 0
+	elif facing == "up": row = 3
+	sprite.region_rect = Rect2(Vector2(float(frame_index % 4) * cell_size.x, float(row) * cell_size.y), cell_size)
 
 func trigger_weapon_recoil(amount: float = 3.5) -> void:
 	gun_recoil = maxf(gun_recoil, amount)

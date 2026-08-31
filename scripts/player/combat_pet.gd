@@ -1,9 +1,11 @@
 class_name CombatPet
 extends Node2D
 
-const RESCUE_HOUND_TEXTURE: Texture2D = preload("res://assets/graphics/pet_rescue_hound_v1.png")
-const TOXIC_CROW_TEXTURE: Texture2D = preload("res://assets/graphics/pet_toxic_crow_v1.png")
-const LAB_DRONE_TEXTURE: Texture2D = preload("res://assets/graphics/pet_lab_drone_v1.png")
+const PET_SHEETS := {
+	"rescue_hound": preload("res://assets/graphics/animated/pet_rescue_hound_sheet_v1.png"),
+	"toxic_crow": preload("res://assets/graphics/animated/pet_toxic_crow_sheet_v1.png"),
+	"lab_drone": preload("res://assets/graphics/animated/pet_lab_drone_sheet_v1.png")
+}
 
 var pet_id: String = ""
 var owner_player: Player
@@ -30,16 +32,21 @@ func _ready() -> void:
 func _create_pet_sprite() -> void:
 	pet_sprite = Sprite2D.new()
 	pet_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	var old_texture: Texture2D
 	match pet_id:
 		"rescue_hound":
-			pet_sprite.texture = RESCUE_HOUND_TEXTURE
+			old_texture = preload("res://assets/graphics/pet_rescue_hound_v1.png")
 			pet_sprite.scale = Vector2.ONE * 0.052
 		"toxic_crow":
-			pet_sprite.texture = TOXIC_CROW_TEXTURE
+			old_texture = preload("res://assets/graphics/pet_toxic_crow_v1.png")
 			pet_sprite.scale = Vector2.ONE * 0.048
 		_:
-			pet_sprite.texture = LAB_DRONE_TEXTURE
+			old_texture = preload("res://assets/graphics/pet_lab_drone_v1.png")
 			pet_sprite.scale = Vector2.ONE * 0.046
+	var sheet: Texture2D = PET_SHEETS.get(pet_id, PET_SHEETS["lab_drone"])
+	pet_sprite.texture = sheet
+	pet_sprite.region_enabled = true
+	pet_sprite.scale *= float(old_texture.get_width()) / (float(sheet.get_width()) / 4.0)
 	pet_sprite.z_index = 1
 	sprite_base_scale = pet_sprite.scale
 	add_child(pet_sprite)
@@ -72,22 +79,26 @@ func _animate_pet(delta: float) -> void:
 		return
 	var facing_target := target_position if visual_timer > 0.0 else owner_player.global_position
 	pet_sprite.flip_h = facing_target.x < global_position.x
+	var animation_rate := 11.0 if pet_id == "rescue_hound" else (8.0 if pet_id == "toxic_crow" else 5.5)
+	var frame := int(animation_time * animation_rate) % 4
+	var cell_size := Vector2(float(pet_sprite.texture.get_width()) / 4.0, float(pet_sprite.texture.get_height()))
+	pet_sprite.region_rect = Rect2(Vector2(float(frame) * cell_size.x, 0.0), cell_size)
 	match pet_id:
 		"rescue_hound":
 			var stride := sin(animation_time * 13.0)
 			pet_sprite.position.y = -absf(stride) * 5.0
 			pet_sprite.rotation = lerpf(pet_sprite.rotation, stride * 0.035, minf(delta * 12.0, 1.0))
-			pet_sprite.scale = sprite_base_scale * Vector2(1.0 + absf(stride) * 0.035, 1.0 - absf(stride) * 0.025)
+			pet_sprite.scale = sprite_base_scale
 		"toxic_crow":
 			var flap := sin(animation_time * 10.5)
 			pet_sprite.position.y = -10.0 + sin(animation_time * 4.0) * 5.0
 			pet_sprite.rotation = flap * 0.045
-			pet_sprite.scale = sprite_base_scale * Vector2(1.0 + flap * 0.025, 1.0 - flap * 0.08)
+			pet_sprite.scale = sprite_base_scale
 		_:
 			var hover := sin(animation_time * 5.2)
 			pet_sprite.position.y = -8.0 + hover * 4.0
 			pet_sprite.rotation = lerpf(pet_sprite.rotation, hover * 0.025, minf(delta * 8.0, 1.0))
-			pet_sprite.scale = sprite_base_scale * (1.0 + hover * 0.018)
+			pet_sprite.scale = sprite_base_scale
 
 func _use_combat_ability() -> void:
 	var target := _nearest_enemy(520.0)

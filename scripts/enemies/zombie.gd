@@ -1,8 +1,14 @@
 class_name Zombie
 extends CharacterBody2D
 
-const SHAMBLER_WALK_A: Texture2D = preload("res://assets/graphics/zombie_walk_a_v3.png")
-const SHAMBLER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_walk_b_v3.png")
+const WALK_SHEETS := {
+	0: preload("res://assets/graphics/animated/zombie_shambler_walk_v1.png"),
+	1: preload("res://assets/graphics/animated/zombie_runner_walk_v1.png"),
+	2: preload("res://assets/graphics/animated/zombie_tank_walk_v1.png"),
+	3: preload("res://assets/graphics/animated/zombie_spitter_walk_v1.png"),
+	4: preload("res://assets/graphics/animated/zombie_bomber_walk_v1.png"),
+	5: preload("res://assets/graphics/animated/zombie_bloater_walk_v1.png")
+}
 @export var max_health: int = 30
 @export var move_speed: float = 100.0
 @export var attack_damage: int = 10
@@ -69,6 +75,7 @@ func _ready() -> void:
 	base_sprite_position = sprite.position
 	base_sprite_modulate = sprite.modulate
 	base_sprite_texture = sprite.texture
+	_configure_walk_sheet()
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
 	reset()
@@ -88,7 +95,9 @@ func reset() -> void:
 	scale = base_body_scale
 	rotation = 0.0
 	sprite.modulate = base_sprite_modulate
-	sprite.texture = base_sprite_texture
+	# Pooled instances must restore the configured animation sheet, not the
+	# original single-frame texture captured during scene warm-up.
+	sprite.texture = WALK_SHEETS.get(motion_profile, WALK_SHEETS[0])
 	sprite.scale = base_scale
 	sprite.position = base_sprite_position
 	sprite.rotation = 0.0
@@ -452,14 +461,22 @@ func _update_special_pattern(delta: float, distance_to_player: float, dir_to_pla
 	return 1.0
 
 func _update_walk_texture(moving: bool) -> Vector2:
-	if motion_profile == 0:
-		sprite.texture = SHAMBLER_WALK_B if moving and int(visual_time * 6.5) % 2 == 1 else SHAMBLER_WALK_A
-		return base_scale
-	# Special variants animate through positional bob and rotation only. Keeping
-	# one authored texture prevents differently sized frame canvases from making
-	# the body pulse larger and smaller while walking.
-	sprite.texture = base_sprite_texture
+	var rate := 10.0 if motion_profile in [1, 4] else (4.5 if motion_profile in [2, 5] else 6.0)
+	var frame := int(visual_time * rate) % 4 if moving else 0
+	if sprite.region_enabled and sprite.texture:
+		var cell_size := Vector2(float(sprite.texture.get_width()) / 4.0, float(sprite.texture.get_height()))
+		sprite.region_rect = Rect2(Vector2(float(frame) * cell_size.x, 0.0), cell_size)
 	return base_scale
+
+func _configure_walk_sheet() -> void:
+	var sheet: Texture2D = WALK_SHEETS.get(motion_profile, WALK_SHEETS[0])
+	var original_width := float(maxi(1, base_sprite_texture.get_width()))
+	var cell_width := float(sheet.get_width()) / 4.0
+	sprite.texture = sheet
+	sprite.region_enabled = true
+	base_scale *= original_width / cell_width
+	sprite.scale = base_scale
+	_update_walk_texture(false)
 
 func die() -> void:
 	if is_dying:
