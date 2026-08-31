@@ -17,6 +17,7 @@ attack_damage = 35
 attack_range = 48.0
 knockback_resistance = 0.1
 explodes_on_contact = true
+motion_profile = 4
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 5

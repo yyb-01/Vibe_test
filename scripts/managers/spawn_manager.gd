@@ -10,6 +10,7 @@ const ZOMBIE_TANK: PackedScene = preload("res://scenes/enemies/zombie_tank.tscn"
 const ZOMBIE_SPITTER: PackedScene = preload("res://scenes/enemies/zombie_spitter.tscn")
 const ZOMBIE_BOMBER: PackedScene = preload("res://scenes/enemies/zombie_bomber.tscn")
 const ZOMBIE_BLOATER: PackedScene = preload("res://scenes/enemies/zombie_bloater.tscn")
+const WAVE_SHOP: PackedScene = preload("res://scenes/ui/wave_shop.tscn")
 
 var spawn_points_nodes: Array[Node2D] = []
 var time_elapsed: float = 0.0
@@ -39,7 +40,14 @@ func _ready() -> void:
 	# Register definitions immediately so auto-fire can acquire objects on the
 	# first physics tick. Heavy pre-warming is deferred until the parent is ready.
 	_register_pools(pool_parent)
+	_ensure_wave_shop(pool_parent)
 	call_deferred("_warm_pools")
+
+func _ensure_wave_shop(scene_root: Node) -> void:
+	if get_tree().get_first_node_in_group("wave_shop"):
+		return
+	var shop := WAVE_SHOP.instantiate()
+	scene_root.call_deferred("add_child", shop)
 
 func _register_pools(pool_parent: Node) -> void:
 	ObjectPoolManager.register_pool("zombie_base", ZOMBIE_BASE, pool_parent)
@@ -74,6 +82,8 @@ func _process(delta: float) -> void:
 	current_wave = int(time_elapsed / WAVE_DURATION) + 1
 	if current_wave > last_announced_wave:
 		last_announced_wave = current_wave
+		RunStats.add_scrap(8 + current_wave * 2)
+		EventBus.wave_shop_requested.emit(current_wave)
 		EventBus.wave_started.emit(current_wave)
 		if current_wave > 2:
 			SaveManager.add_gold(5 + current_wave * 2)

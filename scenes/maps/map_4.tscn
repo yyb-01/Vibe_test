@@ -1,15 +1,15 @@
-[gd_scene load_steps=17 format=3 uid="uid://map444lab"]
+[gd_scene load_steps=18 format=3 uid="uid://map444lab"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 [ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
-[ext_resource type="Texture2D" path="res://assets/graphics/floor_v2.png" id="6_floor"]
+[ext_resource type="Texture2D" path="res://assets/graphics/floor_lab_v3.png" id="6_floor"]
 [ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
 [ext_resource type="PackedScene" path="res://scenes/world/supply_cache.tscn" id="8_cache"]
-[ext_resource type="Texture2D" path="res://assets/graphics/wall.svg" id="9_wall"]
-[ext_resource type="Texture2D" path="res://assets/graphics/lab_console.svg" id="10_console"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wall_obstacle_v2.png" id="9_wall"]
+[ext_resource type="Texture2D" path="res://assets/graphics/lab_console_obstacle_v2.png" id="10_console"]
 [ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
 [ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="12_toxic"]
 
@@ -24,6 +24,9 @@ size = Vector2(980, 34)
 
 [sub_resource type="RectangleShape2D" id="LabWingVertical"]
 size = Vector2(34, 620)
+
+[sub_resource type="RectangleShape2D" id="ConsoleCover"]
+size = Vector2(150, 100)
 
 [node name="UndergroundLab" type="Node2D"]
 
@@ -43,7 +46,6 @@ texture_repeat = 2
 texture = ExtResource("6_floor")
 expand_mode = 1
 stretch_mode = 1
-modulate = Color(0.72, 0.82, 0.9, 1)
 
 [node name="Walls" type="StaticBody2D" parent="."]
 collision_mask = 3
@@ -80,30 +82,48 @@ shape = SubResource("LabWingVertical")
 position = Vector2(3500, 1300)
 shape = SubResource("LabWingVertical")
 
+[node name="ConsoleACover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(580, 560)
+shape = SubResource("ConsoleCover")
+
+[node name="ConsoleBCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(3620, 2040)
+rotation = 3.1416
+shape = SubResource("ConsoleCover")
+
+[node name="ConsoleCCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(2100, 380)
+scale = Vector2(0.8, 0.8)
+shape = SubResource("ConsoleCover")
+
 [node name="WallTopArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(2100, 0)
-scale = Vector2(21.875, 0.5)
+texture_filter = 2
+scale = Vector2(1.934, 0.0442)
 texture = ExtResource("9_wall")
 
 [node name="WallBottomArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(2100, 2600)
-scale = Vector2(21.875, 0.5)
+texture_filter = 2
+scale = Vector2(1.934, 0.0442)
 texture = ExtResource("9_wall")
 
 [node name="WallLeftArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(0, 1300)
 rotation = 1.5708
-scale = Vector2(13.55, 0.5)
+texture_filter = 2
+scale = Vector2(1.197, 0.0442)
 texture = ExtResource("9_wall")
 
 [node name="WallRightArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(4200, 1300)
 rotation = 1.5708
-scale = Vector2(13.55, 0.5)
+texture_filter = 2
+scale = Vector2(1.197, 0.0442)
 texture = ExtResource("9_wall")
 
 [node name="NorthWingArt" type="ColorRect" parent="Walls"]

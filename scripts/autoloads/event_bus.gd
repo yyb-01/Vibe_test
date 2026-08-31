@@ -11,6 +11,8 @@ signal perk_selected(perk: Resource)
 signal camera_shake_requested()
 
 signal gold_changed(total_gold: int)
+signal scrap_changed(total_scrap: int)
+signal wave_shop_requested(wave: int)
 signal game_over(is_victory: bool)
 signal inventory_updated(weapons: Array, passives: Array)
 signal survivor_rescued(total_rescued: int)

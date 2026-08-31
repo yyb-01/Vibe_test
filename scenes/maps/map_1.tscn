@@ -1,23 +1,29 @@
-[gd_scene load_steps=16 format=3 uid="uid://map123test"]
+[gd_scene load_steps=18 format=3 uid="uid://map123test"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 [ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
-[ext_resource type="Texture2D" path="res://assets/graphics/floor_v2.png" id="6_floor"]
+[ext_resource type="Texture2D" path="res://assets/graphics/floor_quarantine_v3.png" id="6_floor"]
 [ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
-[ext_resource type="Texture2D" path="res://assets/graphics/barricade.svg" id="8_barricade"]
-[ext_resource type="Texture2D" path="res://assets/graphics/wreck.svg" id="9_wreck"]
+[ext_resource type="Texture2D" path="res://assets/graphics/barricade_v2.png" id="8_barricade"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wreck_obstacle_v2.png" id="9_wreck"]
 [ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="10_toxic"]
 [ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
-[ext_resource type="Texture2D" path="res://assets/graphics/wall.svg" id="12_wall"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wall_obstacle_v2.png" id="12_wall"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(2400, 20)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
 size = Vector2(20, 1400)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wreck_cover"]
+size = Vector2(130, 150)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_barricade_cover"]
+size = Vector2(160, 80)
 
 [node name="TestRoom" type="Node2D"]
 
@@ -57,6 +63,27 @@ shape = SubResource("RectangleShape2D_wall_v")
 position = Vector2(2410, 700)
 shape = SubResource("RectangleShape2D_wall_v")
 
+[node name="WreckWestCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(420, 280)
+rotation = -0.2
+shape = SubResource("RectangleShape2D_wreck_cover")
+
+[node name="WreckEastCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1980, 1130)
+rotation = 2.75
+scale = Vector2(0.82, 0.82)
+shape = SubResource("RectangleShape2D_wreck_cover")
+
+[node name="BarricadeNorthCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1220, 270)
+rotation = 0.08
+shape = SubResource("RectangleShape2D_barricade_cover")
+
+[node name="BarricadeSouthCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1180, 1120)
+rotation = 3.1
+shape = SubResource("RectangleShape2D_barricade_cover")
+
 [node name="TopWallRect" type="ColorRect" parent="Walls"]
 offset_right = 2400.0
 offset_bottom = 20.0
@@ -86,27 +113,31 @@ color = Color(0.12, 0.22, 0.23, 1)
 [node name="TopWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(1200, 0)
-scale = Vector2(12.5, 0.5)
+texture_filter = 2
+scale = Vector2(1.105, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="BottomWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(1200, 1400)
-scale = Vector2(12.5, 0.5)
+texture_filter = 2
+scale = Vector2(1.105, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="LeftWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(0, 700)
 rotation = 1.5708
-scale = Vector2(7.3, 0.5)
+texture_filter = 2
+scale = Vector2(0.645, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="RightWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(2400, 700)
 rotation = 1.5708
-scale = Vector2(7.3, 0.5)
+texture_filter = 2
+scale = Vector2(0.645, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="TopDownDecoration" type="Node2D" parent="."]

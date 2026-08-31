@@ -1,17 +1,17 @@
-[gd_scene load_steps=19 format=3 uid="uid://map333flood"]
+[gd_scene load_steps=21 format=3 uid="uid://map333flood"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 [ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
-[ext_resource type="Texture2D" path="res://assets/graphics/floor_v2.png" id="6_floor"]
+[ext_resource type="Texture2D" path="res://assets/graphics/floor_flooded_v3.png" id="6_floor"]
 [ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
-[ext_resource type="Texture2D" path="res://assets/graphics/barricade.svg" id="8_barricade"]
-[ext_resource type="Texture2D" path="res://assets/graphics/wreck.svg" id="9_wreck"]
+[ext_resource type="Texture2D" path="res://assets/graphics/barricade_v2.png" id="8_barricade"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wreck_obstacle_v2.png" id="9_wreck"]
 [ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="10_toxic"]
 [ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
-[ext_resource type="Texture2D" path="res://assets/graphics/wall.svg" id="12_wall"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wall_obstacle_v2.png" id="12_wall"]
 [ext_resource type="PackedScene" path="res://scenes/world/supply_cache.tscn" id="13_cache"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
@@ -25,6 +25,12 @@ size = Vector2(720, 28)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gate"]
 size = Vector2(28, 520)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wreck_cover"]
+size = Vector2(130, 150)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_barricade_cover"]
+size = Vector2(160, 80)
 
 [node name="FloodedDistrict" type="Node2D"]
 
@@ -44,7 +50,6 @@ texture_repeat = 2
 texture = ExtResource("6_floor")
 expand_mode = 1
 stretch_mode = 1
-modulate = Color(0.78, 0.94, 0.9, 1)
 
 [node name="Walls" type="StaticBody2D" parent="."]
 collision_mask = 3
@@ -77,30 +82,61 @@ shape = SubResource("RectangleShape2D_cover")
 position = Vector2(1800, 1100)
 shape = SubResource("RectangleShape2D_gate")
 
+[node name="WreckACover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(420, 420)
+rotation = 0.35
+shape = SubResource("RectangleShape2D_wreck_cover")
+
+[node name="WreckBCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(3170, 1760)
+rotation = -2.4
+scale = Vector2(0.85, 0.85)
+shape = SubResource("RectangleShape2D_wreck_cover")
+
+[node name="WreckCCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(3020, 430)
+rotation = 2.7
+scale = Vector2(0.7, 0.7)
+shape = SubResource("RectangleShape2D_wreck_cover")
+
+[node name="BarricadeACover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1800, 320)
+rotation = 0.05
+shape = SubResource("RectangleShape2D_barricade_cover")
+
+[node name="BarricadeBCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1800, 1880)
+rotation = 3.1
+shape = SubResource("RectangleShape2D_barricade_cover")
+
 [node name="TopWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(1800, 0)
-scale = Vector2(18.75, 0.5)
+texture_filter = 2
+scale = Vector2(1.657, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="BottomWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(1800, 2200)
-scale = Vector2(18.75, 0.5)
+texture_filter = 2
+scale = Vector2(1.657, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="LeftWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(0, 1100)
 rotation = 1.5708
-scale = Vector2(11.45, 0.5)
+texture_filter = 2
+scale = Vector2(1.012, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="RightWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(3600, 1100)
 rotation = 1.5708
-scale = Vector2(11.45, 0.5)
+texture_filter = 2
+scale = Vector2(1.012, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="CoverNorthArt" type="ColorRect" parent="Walls"]

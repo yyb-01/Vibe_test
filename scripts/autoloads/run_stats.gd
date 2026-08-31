@@ -8,6 +8,7 @@ var damage_taken: int = 0
 var survivors_rescued: int = 0
 var supply_caches_opened: int = 0
 var elite_kills: int = 0
+var scrap: int = 0
 var current_wave: int = 1
 var quest_completed: bool = false
 const KILL_QUEST_TARGET: int = 25
@@ -22,6 +23,8 @@ func start_run(new_map_id: String) -> void:
 	survivors_rescued = 0
 	supply_caches_opened = 0
 	elite_kills = 0
+	scrap = 0
+	EventBus.scrap_changed.emit(scrap)
 	current_wave = 1
 	quest_completed = false
 
@@ -51,6 +54,19 @@ func register_elite_kill() -> void:
 	if elite_kills == 5:
 		SaveManager.add_gold(75)
 		EventBus.quest_completed.emit("elite_breaker", 75)
+
+func add_scrap(amount: int) -> void:
+	if amount <= 0:
+		return
+	scrap += amount
+	EventBus.scrap_changed.emit(scrap)
+
+func spend_scrap(amount: int) -> bool:
+	if amount <= 0 or scrap < amount:
+		return false
+	scrap -= amount
+	EventBus.scrap_changed.emit(scrap)
+	return true
 
 func finish_run() -> Dictionary:
 	run_active = false

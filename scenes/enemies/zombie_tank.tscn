@@ -16,6 +16,7 @@ move_speed = 60.0
 attack_damage = 25
 attack_range = 60.0
 knockback_resistance = 0.8
+motion_profile = 2
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 5

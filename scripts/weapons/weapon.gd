@@ -36,6 +36,7 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	cooldown_timer = actual_fire_rate
 	if data.magazine_size > 0:
 		ammo_in_magazine -= 1
+	player.trigger_weapon_recoil()
 	return true
 
 func reload(player: Player) -> void:
@@ -51,8 +52,15 @@ func upgrade() -> void:
 	if current_level >= MAX_LEVEL:
 		return
 	current_level += 1
-	if current_level >= MAX_LEVEL:
-		evolved = true
+
+func can_evolve() -> bool:
+	return current_level >= MAX_LEVEL and not evolved
+
+func evolve() -> bool:
+	if not can_evolve():
+		return false
+	evolved = true
+	return true
 
 func get_display_name() -> String:
 	if evolved:

@@ -23,9 +23,10 @@ var auto_fire_enabled: bool = true
 var character_id: String = "scavenger"
 var active_synergies: Array[String] = []
 var walk_time: float = 0.0
+var animation_time: float = 0.0
+var gun_recoil: float = 0.0
 var sprite_base_scale: Vector2
 var sprite_base_position: Vector2
-var gun_base_position: Vector2
 var aim_angle: float = 0.0
 var invulnerable: bool = false
 
@@ -35,6 +36,10 @@ const GUN_BARREL_ALIGNMENT_OFFSET := deg_to_rad(14.0)
 # The survivor artwork is authored facing local up (-Y), unlike the carbine
 # which faces local right (+X).
 const BODY_FACING_OFFSET := PI * 0.5
+# Local offset from the sprite origin to the survivor's hands. This anchor is
+# rotated with the body so the rifle stays in the hands instead of drifting to
+# the head while aiming in another direction.
+const GUN_MOUNT_LOCAL := Vector2(0.0, -4.0)
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var gun_pivot: Node2D = $GunPivot
@@ -43,7 +48,6 @@ const BODY_FACING_OFFSET := PI * 0.5
 func _ready() -> void:
 	sprite_base_scale = sprite.scale
 	sprite_base_position = sprite.position
-	gun_base_position = gun_pivot.position
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
 	character_id = SaveManager.selected_character
@@ -83,27 +87,37 @@ func _physics_process(_delta: float) -> void:
 
 func _animate_topdown_body(delta: float) -> void:
 	var moving := velocity.length() > 8.0
+	animation_time += delta
+	var body_angle := aim_angle + BODY_FACING_OFFSET
 	var bob := 0.0
 	if moving:
 		walk_time += delta * 9.0
 		var step := sin(walk_time)
 		bob = absf(step)
-		sprite.position = sprite_base_position + Vector2(0.0, -bob * 2.2)
+		sprite.position = sprite_base_position + Vector2(0.0, -bob * 2.2).rotated(body_angle)
 		sprite.scale = sprite_base_scale * Vector2(1.0 + bob * 0.025, 1.0 - bob * 0.02)
-		gun_pivot.position = gun_base_position + Vector2(0.0, -bob * 1.5)
+		gun_pivot.position = (GUN_MOUNT_LOCAL + Vector2(0.0, -bob * 1.5)).rotated(body_angle)
 	else:
 		walk_time = lerpf(walk_time, 0.0, minf(delta * 8.0, 1.0))
-		sprite.position = sprite.position.lerp(sprite_base_position, minf(delta * 10.0, 1.0))
-		sprite.scale = sprite.scale.lerp(sprite_base_scale, minf(delta * 10.0, 1.0))
-		gun_pivot.position = gun_pivot.position.lerp(gun_base_position, minf(delta * 10.0, 1.0))
+		var breath := sin(animation_time * 2.2)
+		var idle_body_position := sprite_base_position + Vector2(0.0, -breath * 0.8).rotated(body_angle)
+		var idle_gun_position := (GUN_MOUNT_LOCAL + Vector2(0.0, -breath * 0.55)).rotated(body_angle)
+		sprite.position = sprite.position.lerp(idle_body_position, minf(delta * 10.0, 1.0))
+		sprite.scale = sprite.scale.lerp(sprite_base_scale * Vector2(1.0 - breath * 0.008, 1.0 + breath * 0.008), minf(delta * 10.0, 1.0))
+		gun_pivot.position = gun_pivot.position.lerp(idle_gun_position, minf(delta * 12.0, 1.0))
 
 	# Rotate the body visual and gun toward the muzzle aim. The physics body
 	# and camera remain unrotated, so collisions and camera limits stay stable.
 	sprite.rotation = lerp_angle(sprite.rotation, aim_angle + BODY_FACING_OFFSET, minf(delta * 18.0, 1.0))
 	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, aim_angle + GUN_BARREL_ALIGNMENT_OFFSET, minf(delta * 24.0, 1.0))
+	gun_recoil = move_toward(gun_recoil, 0.0, delta * 48.0)
+	gun_pivot.position += Vector2(-gun_recoil, 0.0).rotated(gun_pivot.rotation)
 
 func get_muzzle_global_position() -> Vector2:
 	return muzzle.global_position
+
+func trigger_weapon_recoil(amount: float = 3.5) -> void:
+	gun_recoil = maxf(gun_recoil, amount)
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")

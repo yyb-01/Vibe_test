@@ -14,6 +14,7 @@ extends CharacterBody2D
 @export var detonates_on_death: bool = false
 @export var detonation_radius: float = 140.0
 @export var detonation_damage: int = 16
+@export_enum("Shambler", "Runner", "Tank", "Spitter", "Bomber", "Bloater") var motion_profile: int = 0
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -26,9 +27,14 @@ var is_dying: bool = false
 var base_max_health: int
 var base_move_speed: float
 var base_attack_damage: int
+var base_body_scale: Vector2
 var base_scale: Vector2
+var base_sprite_position: Vector2
 var base_sprite_modulate: Color
 var walk_time: float = 0.0
+var visual_time: float = 0.0
+var hit_recoil: Vector2 = Vector2.ZERO
+var attack_pulse: float = 0.0
 var previous_pos: Vector2
 var wall_follow_direction: Vector2 = Vector2.ZERO
 var wall_follow_timer: float = 0.0
@@ -43,7 +49,9 @@ func _ready() -> void:
 	base_max_health = max_health
 	base_move_speed = move_speed
 	base_attack_damage = attack_damage
+	base_body_scale = scale
 	base_scale = sprite.scale
+	base_sprite_position = sprite.position
 	base_sprite_modulate = sprite.modulate
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
@@ -60,12 +68,17 @@ func reset() -> void:
 	collision_layer = 2
 	collision_mask = 5
 	modulate = Color.WHITE
+	scale = base_body_scale
 	rotation = 0.0
 	sprite.modulate = base_sprite_modulate
 	sprite.scale = base_scale
+	sprite.position = base_sprite_position
 	sprite.rotation = 0.0
 	sprite.flip_h = false
 	walk_time = 0.0
+	visual_time = randf() * TAU
+	hit_recoil = Vector2.ZERO
+	attack_pulse = 0.0
 	wall_follow_direction = Vector2.ZERO
 	wall_follow_timer = 0.0
 	ranged_can_attack = true
@@ -91,7 +104,7 @@ func set_elite() -> void:
 	health = max_health
 	move_speed *= 1.12
 	attack_damage = int(float(attack_damage) * 1.25)
-	scale = base_scale * 1.2
+	scale = base_body_scale * 1.2
 	sprite.modulate = Color(1.0, 0.72, 0.25, 1.0)
 
 func _physics_process(delta: float) -> void:
@@ -105,12 +118,10 @@ func _physics_process(delta: float) -> void:
 	var distance_to_player := global_position.distance_to(player.global_position)
 	var dir_to_player := global_position.direction_to(player.global_position)
 
-	# The artwork is a top-down silhouette. Rotating the whole CharacterBody2D
-	# made the body and collision shape twist while walking around the player.
-	# Keep the body stable and communicate facing with a horizontal flip only.
+	# Keep physics and collision upright. Facing is communicated by a horizontal
+	# flip while the sprite itself receives only a tiny procedural sway.
 	if absf(dir_to_player.x) > 0.1:
 		sprite.flip_h = dir_to_player.x < 0.0
-	sprite.rotation = 0.0
 
 	# Knockback decay
 	knockback = knockback.move_toward(Vector2.ZERO, 500 * delta)
@@ -143,13 +154,7 @@ func _physics_process(delta: float) -> void:
 		SpatialGrid.update_entity(self, previous_pos, global_position)
 		previous_pos = global_position
 
-		# Procedural Animation (Squash & Stretch)
-		walk_time += delta * (move_speed / 20.0)
-		var stretch = sin(walk_time) * 0.1
-		var squash = cos(walk_time) * 0.1
-		sprite.scale = base_scale + Vector2(stretch, squash)
-	else:
-		sprite.scale = base_scale
+	_animate_visual(delta, needs_movement)
 
 	if ranged_attack and distance_to_player <= attack_range:
 		_attack_ranged()
@@ -161,6 +166,7 @@ func _physics_process(delta: float) -> void:
 func _attack_player() -> void:
 	if can_attack and player.has_method("take_damage"):
 		can_attack = false
+		attack_pulse = 0.6
 		player.take_damage(attack_damage, global_position.direction_to(player.global_position))
 		if explodes_on_contact:
 			AudioManager.play_named("impact", -4.0)
@@ -174,6 +180,7 @@ func _attack_ranged() -> void:
 	if not ranged_can_attack or not is_instance_valid(player):
 		return
 	ranged_can_attack = false
+	attack_pulse = 1.0
 	var projectile = ObjectPoolManager.acquire("acid_projectile", global_position)
 	if projectile:
 		projectile.direction = global_position.direction_to(player.global_position)
@@ -213,6 +220,7 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 
 	# Knockback
 	knockback = hit_direction * 200.0 * (1.0 - knockback_resistance)
+	hit_recoil = hit_direction * 4.0 * (1.0 - knockback_resistance * 0.55)
 
 	# White Flash Shader
 	if sprite.material is ShaderMaterial:
@@ -226,6 +234,61 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	if health <= 0:
 		die()
 
+func _animate_visual(delta: float, moving: bool) -> void:
+	visual_time += delta
+	attack_pulse = maxf(0.0, attack_pulse - delta * 3.8)
+	var movement_weight := 1.0 if moving else 0.24
+	var bob := 0.0
+	var sway := 0.0
+	var desired_rotation := 0.0
+	var desired_scale := base_scale
+
+	match motion_profile:
+		1: # Runner: sharp, fast strides and a forward rush.
+			var stride := sin(visual_time * 15.0)
+			bob = absf(stride) * 3.4 * movement_weight
+			sway = stride * 1.6 * movement_weight
+			desired_rotation = stride * 0.035 * movement_weight
+			desired_scale = base_scale * Vector2(1.0 + absf(stride) * 0.065, 1.0 - absf(stride) * 0.055)
+		2: # Tank: slow mass shifting and a heavy impact step.
+			var stomp := sin(visual_time * 5.2)
+			bob = absf(stomp) * 1.35 * movement_weight
+			sway = stomp * 0.55 * movement_weight
+			desired_rotation = stomp * 0.012 * movement_weight
+			desired_scale = base_scale * Vector2(1.0 + absf(stomp) * 0.024, 1.0 - absf(stomp) * 0.018)
+		3: # Spitter: tense breathing while circling, then a short firing lunge.
+			var breath := sin(visual_time * (5.8 if moving else 2.6))
+			bob = breath * (1.25 if moving else 0.75)
+			sway = sin(visual_time * 3.4) * 0.65
+			desired_rotation = breath * 0.014
+			desired_scale = base_scale * Vector2(1.0 + attack_pulse * 0.08, 1.0 - attack_pulse * 0.05)
+		4: # Bomber: an unstable warning pulse that accelerates as it advances.
+			var alarm := sin(visual_time * (10.0 if moving else 6.0))
+			bob = absf(alarm) * 1.7 * movement_weight
+			sway = alarm * 0.8
+			desired_rotation = alarm * 0.022
+			desired_scale = base_scale * Vector2(1.0 + absf(alarm) * 0.055 + attack_pulse * 0.1, 1.0 - absf(alarm) * 0.035)
+		5: # Bloater: slow organic swelling, even while standing still.
+			var swell := sin(visual_time * 3.2) + sin(visual_time * 5.1) * 0.35
+			bob = swell * 0.72
+			sway = sin(visual_time * 2.1) * 0.55
+			desired_rotation = sway * 0.012
+			desired_scale = base_scale * Vector2(1.0 + swell * 0.028 + attack_pulse * 0.05, 1.0 + swell * 0.018)
+		_: # Shambler: uneven steps with a small side-to-side stagger.
+			var stagger := sin(visual_time * (8.0 if moving else 2.0))
+			bob = absf(stagger) * 1.9 * movement_weight
+			sway = sin(visual_time * 4.1) * 0.8 * movement_weight
+			desired_rotation = stagger * 0.02 * movement_weight
+			desired_scale = base_scale * Vector2(1.0 + absf(stagger) * 0.035, 1.0 - absf(stagger) * 0.028)
+
+	hit_recoil = hit_recoil.move_toward(Vector2.ZERO, delta * 30.0)
+	var attack_lunge := Vector2(-attack_pulse * 3.0, 0.0)
+	if sprite.flip_h:
+		attack_lunge.x *= -1.0
+	sprite.position = sprite.position.lerp(base_sprite_position + Vector2(sway, -bob) + hit_recoil + attack_lunge, minf(delta * 16.0, 1.0))
+	sprite.scale = sprite.scale.lerp(desired_scale, minf(delta * 15.0, 1.0))
+	sprite.rotation = lerp_angle(sprite.rotation, desired_rotation, minf(delta * 14.0, 1.0))
+
 func die() -> void:
 	if is_dying:
 		return
@@ -236,8 +299,13 @@ func die() -> void:
 
 	EventBus.zombie_died.emit(global_position)
 	RunStats.register_kill()
+	var scrap_reward := 1
 	if get_meta("is_elite", false):
 		RunStats.register_elite_kill()
+		scrap_reward = 5
+	if has_meta("is_boss") and get_meta("is_boss"):
+		scrap_reward = 30
+	RunStats.add_scrap(scrap_reward)
 	SpatialGrid.remove(self)
 
 	if has_meta("is_boss") and get_meta("is_boss"):

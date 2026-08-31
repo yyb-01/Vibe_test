@@ -10,6 +10,7 @@ extends CanvasLayer
 @onready var passives_label: Label = $MarginContainer/VBoxContainer/InventoryBox/PassivesLabel
 @onready var objective_label: Label = $MarginContainer/VBoxContainer/ObjectiveLabel
 @onready var gold_label: Label = $GoldLabel
+@onready var scrap_label: Label = $ScrapLabel
 @onready var threat_label: Label = $ThreatLabel
 @onready var wave_banner: Label = $WaveBanner
 @onready var pause_confirm: Control = $PauseConfirm
@@ -23,9 +24,11 @@ func _ready() -> void:
 	EventBus.exp_changed.connect(_on_exp_changed)
 	EventBus.inventory_updated.connect(_on_inventory_updated)
 	EventBus.gold_changed.connect(_on_gold_changed)
+	EventBus.scrap_changed.connect(_on_scrap_changed)
 	pause_confirm_button.pressed.connect(_confirm_return_to_menu)
 	pause_cancel_button.pressed.connect(_cancel_return_to_menu)
 	_on_gold_changed(SaveManager.gold)
+	_on_scrap_changed(RunStats.scrap)
 	EventBus.wave_started.connect(_on_wave_started)
 
 func _process(delta: float) -> void:
@@ -51,6 +54,9 @@ func _process(delta: float) -> void:
 
 func _on_gold_changed(total_gold: int) -> void:
 	gold_label.text = "골드  %d" % total_gold
+
+func _on_scrap_changed(total_scrap: int) -> void:
+	scrap_label.text = "스크랩  %d" % total_scrap
 
 func _on_wave_started(wave: int) -> void:
 	wave_banner.text = "WAVE %02d  ·  위협 단계 상승" % wave

@@ -19,6 +19,7 @@ knockback_resistance = 0.75
 detonates_on_death = true
 detonation_radius = 155.0
 detonation_damage = 14
+motion_profile = 5
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 5

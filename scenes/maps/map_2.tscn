@@ -1,17 +1,17 @@
-[gd_scene load_steps=16 format=3 uid="uid://map222cross"]
+[gd_scene load_steps=18 format=3 uid="uid://map222cross"]
 
 [ext_resource type="PackedScene" uid="uid://b8v7a3d2e1f" path="res://scenes/player/player.tscn" id="1_plyr"]
 [ext_resource type="Script" path="res://scripts/managers/spawn_manager.gd" id="2_wvmgr"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b6n2" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" uid="uid://ci1d3m4h5b9x1" path="res://scenes/ui/perk_selection.tscn" id="4_perk"]
 [ext_resource type="PackedScene" uid="uid://ci3d4m5h6b7o" path="res://scenes/ui/game_over_ui.tscn" id="5_govr"]
-[ext_resource type="Texture2D" path="res://assets/graphics/floor_v2.png" id="6_floor"]
+[ext_resource type="Texture2D" path="res://assets/graphics/floor_industrial_v3.png" id="6_floor"]
 [ext_resource type="PackedScene" path="res://scenes/world/survivor.tscn" id="7_survivor"]
-[ext_resource type="Texture2D" path="res://assets/graphics/barricade.svg" id="8_barricade"]
-[ext_resource type="Texture2D" path="res://assets/graphics/wreck.svg" id="9_wreck"]
+[ext_resource type="Texture2D" path="res://assets/graphics/barricade_v2.png" id="8_barricade"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wreck_obstacle_v2.png" id="9_wreck"]
 [ext_resource type="Texture2D" path="res://assets/graphics/toxic_pool.svg" id="10_toxic"]
 [ext_resource type="Texture2D" path="res://assets/graphics/debris.svg" id="11_debris"]
-[ext_resource type="Texture2D" path="res://assets/graphics/wall.svg" id="12_wall"]
+[ext_resource type="Texture2D" path="res://assets/graphics/wall_obstacle_v2.png" id="12_wall"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(3000, 20)
@@ -21,6 +21,12 @@ size = Vector2(20, 1800)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_pillar"]
 size = Vector2(260, 200)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wreck_cover"]
+size = Vector2(130, 150)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_barricade_cover"]
+size = Vector2(160, 80)
 
 [node name="Map2" type="Node2D"]
 
@@ -89,27 +95,31 @@ color = Color(0.22, 0.12, 0.16, 1)
 [node name="TopWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(1500, 0)
-scale = Vector2(15.625, 0.5)
+texture_filter = 2
+scale = Vector2(1.381, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="BottomWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(1500, 1800)
-scale = Vector2(15.625, 0.5)
+texture_filter = 2
+scale = Vector2(1.381, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="LeftWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(0, 900)
 rotation = 1.5708
-scale = Vector2(9.375, 0.5)
+texture_filter = 2
+scale = Vector2(0.829, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="RightWallArt" type="Sprite2D" parent="Walls"]
 z_index = 1
 position = Vector2(3000, 900)
 rotation = 1.5708
-scale = Vector2(9.375, 0.5)
+texture_filter = 2
+scale = Vector2(0.829, 0.0442)
 texture = ExtResource("12_wall")
 
 [node name="CenterPillar1" type="CollisionShape2D" parent="Walls"]
@@ -131,6 +141,27 @@ shape = SubResource("RectangleShape2D_pillar")
 [node name="CenterPillar5" type="CollisionShape2D" parent="Walls"]
 position = Vector2(1500, 900)
 shape = SubResource("RectangleShape2D_pillar")
+
+[node name="WreckACover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(360, 320)
+rotation = 0.25
+shape = SubResource("RectangleShape2D_wreck_cover")
+
+[node name="WreckBCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(2640, 1500)
+rotation = -2.7
+scale = Vector2(0.85, 0.85)
+shape = SubResource("RectangleShape2D_wreck_cover")
+
+[node name="BarricadeACover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1500, 260)
+rotation = 0.05
+shape = SubResource("RectangleShape2D_barricade_cover")
+
+[node name="BarricadeBCover" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1500, 1540)
+rotation = 3.12
+shape = SubResource("RectangleShape2D_barricade_cover")
 
 [node name="TopDownDecoration" type="Node2D" parent="."]
 z_index = -2

@@ -19,4 +19,6 @@
 - `assets/graphics/player_body_v2.png`, `player_carbine_v2.png`: 몸통과 조준 총기를 분리한 플레이어 전용 에셋
 - `assets/graphics/zombie_v2.png`부터 `zombie_bloater_v2.png`: 일반·러너·탱커·스피터·폭발·블로터의 구분 가능한 좀비 세트
 - `assets/graphics/acid_v2.png`, `supply_cache_v2.png`, `survivor_beacon_v2.png`: 산성 투사체·보급 상자·구조 신호용 특수 오브젝트 에셋
+- `assets/graphics/barricade_v2.png`, `wall_obstacle_v2.png`, `wreck_obstacle_v2.png`, `lab_console_obstacle_v2.png`: 맵 경계·엄폐물·실험실 구조물용 장애물 에셋
+- `assets/graphics/floor_quarantine_v3.png`, `floor_industrial_v3.png`, `floor_flooded_v3.png`, `floor_lab_v3.png`: 맵별 격리 도시·산업지대·침수 구역·지하 연구소용 바닥 배경 에셋
 - 생성 프롬프트와 제작 목적은 `GAME_AUDIT.md`에 기록했습니다.
