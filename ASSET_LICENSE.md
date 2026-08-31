@@ -16,4 +16,7 @@
 
 - `assets/graphics/menu_backdrop_v2.png`: OpenAI 이미지 생성 도구로 이 프로젝트 전용 제작
 - `assets/graphics/floor_v2.png`: OpenAI 이미지 생성 도구로 이 프로젝트 전용 제작 후 512x512로 최적화
+- `assets/graphics/player_body_v2.png`, `player_carbine_v2.png`: 몸통과 조준 총기를 분리한 플레이어 전용 에셋
+- `assets/graphics/zombie_v2.png`부터 `zombie_bloater_v2.png`: 일반·러너·탱커·스피터·폭발·블로터의 구분 가능한 좀비 세트
+- `assets/graphics/acid_v2.png`, `supply_cache_v2.png`, `survivor_beacon_v2.png`: 산성 투사체·보급 상자·구조 신호용 특수 오브젝트 에셋
 - 생성 프롬프트와 제작 목적은 `GAME_AUDIT.md`에 기록했습니다.

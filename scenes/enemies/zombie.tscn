@@ -1,11 +1,11 @@
 [gd_scene load_steps=5 format=3 uid="uid://d1v7a3d2e1f"]
 
 [ext_resource type="Script" path="res://scripts/enemies/zombie.gd" id="1_a2b3c"]
-[ext_resource type="Texture2D" path="res://assets/graphics/zombie.svg" id="2_e6f7g"]
+[ext_resource type="Texture2D" path="res://assets/graphics/zombie_v2.png" id="2_e6f7g"]
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="2_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_z9x8w"]
-radius = 20.0
+radius = 23.0
 
 [node name="Zombie" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
@@ -17,6 +17,8 @@ attack_range = 45.0
 z_index = 5
 material = ExtResource("2_mat")
 texture = ExtResource("2_e6f7g")
+texture_filter = 2
+scale = Vector2(0.5, 0.5)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_z9x8w")

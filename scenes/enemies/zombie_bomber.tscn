@@ -1,11 +1,11 @@
 [gd_scene load_steps=5 format=3 uid="uid://zombiebomber01"]
 
 [ext_resource type="Script" path="res://scripts/enemies/zombie.gd" id="1_zombie"]
-[ext_resource type="Texture2D" path="res://assets/graphics/zombie_bomber.svg" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/graphics/zombie_bomber_v2.png" id="2_tex"]
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape_bomber"]
-radius = 20.0
+radius = 22.0
 
 [node name="ZombieBomber" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
@@ -22,6 +22,8 @@ explodes_on_contact = true
 z_index = 5
 material = ExtResource("3_mat")
 texture = ExtResource("2_tex")
+texture_filter = 2
+scale = Vector2(0.48, 0.48)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape_bomber")

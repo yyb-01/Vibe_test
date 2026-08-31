@@ -1,10 +1,10 @@
 [gd_scene load_steps=4 format=3 uid="uid://acidprojectile01"]
 
 [ext_resource type="Script" path="res://scripts/weapons/acid_projectile.gd" id="1_acid"]
-[ext_resource type="Texture2D" path="res://assets/graphics/acid.svg" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/graphics/acid_v2.png" id="2_tex"]
 
 [sub_resource type="CircleShape2D" id="Circle_acid"]
-radius = 7.0
+radius = 9.0
 
 [node name="AcidProjectile" type="Area2D"]
 collision_layer = 4
@@ -13,6 +13,8 @@ script = ExtResource("1_acid")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_tex")
+texture_filter = 2
+scale = Vector2(0.2, 0.2)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("Circle_acid")

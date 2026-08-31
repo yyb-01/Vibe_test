@@ -14,12 +14,15 @@ func reset() -> void:
 	direction = Vector2.ZERO
 	damage = 8
 	life_time = 0.0
+	rotation = 0.0
 
 func _physics_process(delta: float) -> void:
 	life_time += delta
 	if life_time >= 3.0:
 		ObjectPoolManager.release(self)
 		return
+	if direction != Vector2.ZERO:
+		rotation = direction.angle()
 	position += direction * speed * delta
 
 func _on_body_entered(body: Node2D) -> void:

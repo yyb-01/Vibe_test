@@ -1,11 +1,11 @@
 [gd_scene load_steps=5 format=3 uid="uid://d2x3y4z5tank"]
 
 [ext_resource type="Script" path="res://scripts/enemies/zombie.gd" id="1_a2b3c"]
-[ext_resource type="Texture2D" path="res://assets/graphics/zombie_tank.svg" id="2_e6f7g"]
+[ext_resource type="Texture2D" path="res://assets/graphics/zombie_tank_v2.png" id="2_e6f7g"]
 [ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="2_mat"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_z9x8w"]
-radius = 35.0
+radius = 38.0
 
 [node name="ZombieTank" type="CharacterBody2D" groups=["enemies"]]
 collision_layer = 2
@@ -20,7 +20,8 @@ knockback_resistance = 0.8
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 5
 material = ExtResource("2_mat")
-scale = Vector2(1.5, 1.5)
+texture_filter = 2
+scale = Vector2(0.62, 0.62)
 texture = ExtResource("2_e6f7g")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

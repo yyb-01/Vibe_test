@@ -25,14 +25,22 @@ var active_synergies: Array[String] = []
 var walk_time: float = 0.0
 var sprite_base_scale: Vector2
 var sprite_base_position: Vector2
+var gun_base_position: Vector2
 var aim_angle: float = 0.0
 var invulnerable: bool = false
 
+# The carbine artwork's barrel rises slightly above its grip, so this keeps
+# the visible barrel and the muzzle-origin projectile line aligned.
+const GUN_BARREL_ALIGNMENT_OFFSET := deg_to_rad(14.0)
+
 @onready var sprite: Sprite2D = $Sprite2D
+@onready var gun_pivot: Node2D = $GunPivot
+@onready var muzzle: Marker2D = $GunPivot/GunSprite/Muzzle
 
 func _ready() -> void:
 	sprite_base_scale = sprite.scale
 	sprite_base_position = sprite.position
+	gun_base_position = gun_pivot.position
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
 	character_id = SaveManager.selected_character
@@ -73,24 +81,25 @@ func _physics_process(_delta: float) -> void:
 func _animate_topdown_body(delta: float) -> void:
 	var moving := velocity.length() > 8.0
 	var bob := 0.0
-	var lean := 0.0
 	if moving:
 		walk_time += delta * 9.0
 		var step := sin(walk_time)
 		bob = absf(step)
-		lean = step * 0.025
 		sprite.position = sprite_base_position + Vector2(0.0, -bob * 2.2)
 		sprite.scale = sprite_base_scale * Vector2(1.0 + bob * 0.025, 1.0 - bob * 0.02)
+		gun_pivot.position = gun_base_position + Vector2(0.0, -bob * 1.5)
 	else:
 		walk_time = lerpf(walk_time, 0.0, minf(delta * 8.0, 1.0))
 		sprite.position = sprite.position.lerp(sprite_base_position, minf(delta * 10.0, 1.0))
 		sprite.scale = sprite.scale.lerp(sprite_base_scale, minf(delta * 10.0, 1.0))
+		gun_pivot.position = gun_pivot.position.lerp(gun_base_position, minf(delta * 10.0, 1.0))
 
-	# Keep the CharacterBody2D and its Camera2D unrotated. Rotating the parent
-	# to aim also rotated the camera, which made camera-limit corrections look
-	# like abrupt player teleports. Only the visual needs to face the cursor.
-	var target_rotation := aim_angle + lean
-	sprite.rotation = lerp_angle(sprite.rotation, target_rotation, minf(delta * 18.0, 1.0))
+	# Keep the body stable and rotate only the weapon toward the aim point.
+	sprite.rotation = lerp_angle(sprite.rotation, 0.0, minf(delta * 18.0, 1.0))
+	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, aim_angle + GUN_BARREL_ALIGNMENT_OFFSET, minf(delta * 24.0, 1.0))
+
+func get_muzzle_global_position() -> Vector2:
+	return muzzle.global_position
 
 func _handle_movement() -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -98,8 +107,7 @@ func _handle_movement() -> void:
 	move_and_slide()
 
 func _handle_shooting() -> void:
-	# The player illustration is drawn facing local +X, so rotate the sprite,
-	# never the body. This preserves stable collision and camera transforms.
+	# The gun illustration is drawn facing local +X; the body remains fixed.
 	var target_pos := get_global_mouse_position()
 	if not target_pos.is_equal_approx(global_position):
 		aim_angle = global_position.angle_to_point(target_pos)

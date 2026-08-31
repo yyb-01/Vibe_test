@@ -7,8 +7,9 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	if not super.fire(player, target_pos):
 		return false
 
-	var direction := (target_pos - player.global_position).normalized()
-	var bullet = ObjectPoolManager.acquire("bullet", player.global_position)
+	var muzzle_pos := player.get_muzzle_global_position()
+	var direction := (target_pos - muzzle_pos).normalized()
+	var bullet = ObjectPoolManager.acquire("bullet", muzzle_pos)
 	if bullet:
 		bullet.direction = direction
 		var scaled_damage: float = data.damage + ((current_level - 1) * 12)
@@ -19,6 +20,6 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	var tracer := Line2D.new()
 	tracer.set_script(SKILL_TRACER_SCRIPT)
 	get_tree().current_scene.add_child(tracer)
-	tracer.call("setup_arc", PackedVector2Array([player.global_position, player.global_position + direction * 980.0]), Color(0.3, 0.9, 1.0, 1.0), 9.0, 0.13)
+	tracer.call("setup_arc", PackedVector2Array([muzzle_pos, muzzle_pos + direction * 980.0]), Color(0.3, 0.9, 1.0, 1.0), 9.0, 0.13)
 	AudioManager.play_named("impact", -5.0, randf_range(0.72, 0.86))
 	return true

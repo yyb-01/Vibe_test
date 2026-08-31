@@ -5,9 +5,10 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	if not super.fire(player, target_pos):
 		return false
 
-	var bullet = ObjectPoolManager.acquire("bullet", player.global_position)
+	var muzzle_pos := player.get_muzzle_global_position()
+	var bullet = ObjectPoolManager.acquire("bullet", muzzle_pos)
 	if bullet:
-		var dir := (target_pos - player.global_position).normalized()
+		var dir := (target_pos - muzzle_pos).normalized()
 		bullet.direction = dir
 		# Level scaling logic: base damage + 5 per level
 		var scaled_damage = data.damage + ((current_level - 1) * 5)
