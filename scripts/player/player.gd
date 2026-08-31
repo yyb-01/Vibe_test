@@ -1,6 +1,9 @@
 class_name Player
 extends CharacterBody2D
 
+const WALK_FRAME_A: Texture2D = preload("res://assets/graphics/player_walk_a_v4.png")
+const WALK_FRAME_B: Texture2D = preload("res://assets/graphics/player_walk_b_v4.png")
+const GUN_MOUNT_RIGHT := Vector2(38.0, -20.0)
 @export var max_health: int = 100
 @export var move_speed: float = 200.0
 @export var invulnerability_duration: float = 0.35
@@ -29,9 +32,11 @@ var sprite_base_scale: Vector2
 var sprite_base_position: Vector2
 var aim_angle: float = 0.0
 var invulnerable: bool = false
+var facing_left := false
 
 @onready var sprite: Sprite2D = $Sprite2D
-@onready var muzzle: Marker2D = $Sprite2D/Muzzle
+@onready var gun_pivot: Node2D = $GunPivot
+@onready var muzzle: Marker2D = $GunPivot/GunSprite/Muzzle
 
 func _ready() -> void:
 	sprite_base_scale = sprite.scale
@@ -78,26 +83,34 @@ func _animate_topdown_body(delta: float) -> void:
 	animation_time += delta
 	var target_position := sprite_base_position
 	var target_scale := sprite_base_scale
+	var gun_mount := GUN_MOUNT_RIGHT
+	if absf(cos(aim_angle)) > 0.12:
+		facing_left = cos(aim_angle) < 0.0
+	sprite.flip_h = facing_left
+	if facing_left:
+		gun_mount.x = -gun_mount.x
 	if moving:
-		walk_time += delta * 11.5
-		var step := sin(walk_time)
-		var stride := absf(step)
-		# A deliberately visible walk cycle: the complete armed character rises
-		# and settles with each step, while its rifle remains locked in both hands.
-		target_position += Vector2(-gun_recoil, -stride * 4.6).rotated(aim_angle)
-		target_scale = sprite_base_scale * Vector2(1.0 + stride * 0.055, 1.0 - stride * 0.045)
+		walk_time += delta * 9.5
+		var frame_index := int(walk_time * 1.7) % 2
+		sprite.texture = WALK_FRAME_A if frame_index == 0 else WALK_FRAME_B
+		var stride := absf(sin(walk_time))
+		target_position += Vector2(0.0, -stride * 2.7)
+		target_scale = sprite_base_scale * Vector2(1.0 + stride * 0.025, 1.0 - stride * 0.02)
 	else:
 		walk_time = lerpf(walk_time, 0.0, minf(delta * 8.0, 1.0))
+		sprite.texture = WALK_FRAME_A
 		var breath := sin(animation_time * 2.2)
-		target_position += Vector2(-gun_recoil, -breath * 1.4).rotated(aim_angle)
+		target_position += Vector2(0.0, -breath * 0.8)
 		target_scale = sprite_base_scale * Vector2(1.0 - breath * 0.014, 1.0 + breath * 0.014)
 
-	# The whole survivor faces the aim direction because the gun is painted in
-	# their hands. Physics and camera remain upright, and the muzzle marker is
-	# a child of this sprite so firing direction cannot drift away from the rifle.
+	# The body only faces left or right. The independent rifle can aim freely at
+	# the cursor without making the entire survivor spin through 360 degrees.
 	sprite.position = sprite.position.lerp(target_position, minf(delta * 16.0, 1.0))
 	sprite.scale = sprite.scale.lerp(target_scale, minf(delta * 14.0, 1.0))
-	sprite.rotation = lerp_angle(sprite.rotation, aim_angle, minf(delta * 20.0, 1.0))
+	sprite.rotation = 0.0
+	gun_pivot.position = gun_pivot.position.lerp(gun_mount, minf(delta * 18.0, 1.0))
+	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, aim_angle, minf(delta * 24.0, 1.0))
+	gun_pivot.position += Vector2(-gun_recoil, 0.0).rotated(gun_pivot.rotation)
 	gun_recoil = move_toward(gun_recoil, 0.0, delta * 48.0)
 
 func get_muzzle_global_position() -> Vector2:
@@ -112,7 +125,7 @@ func _handle_movement() -> void:
 	move_and_slide()
 
 func _handle_shooting() -> void:
-	# The armed survivor art faces local +X and rotates as one natural pose.
+	# The rifle alone follows the full 360-degree mouse direction.
 	var target_pos := get_global_mouse_position()
 	if not target_pos.is_equal_approx(global_position):
 		aim_angle = global_position.angle_to_point(target_pos)

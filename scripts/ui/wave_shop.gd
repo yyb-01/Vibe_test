@@ -74,32 +74,34 @@ func _build_interface() -> void:
 	panel.anchor_top = 0.5
 	panel.anchor_right = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left = -590.0
-	panel.offset_top = -305.0
-	panel.offset_right = 590.0
-	panel.offset_bottom = 305.0
+	# Fixed 1160x640 layout fits a 720p screen and prevents the five offers
+	# from overflowing outside the panel.
+	panel.offset_left = -580.0
+	panel.offset_top = -320.0
+	panel.offset_right = 580.0
+	panel.offset_bottom = 320.0
 	panel.add_theme_stylebox_override("panel", _panel_style())
 	overlay.add_child(panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_bottom", 24)
+	margin.add_theme_constant_override("margin_left", 26)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 26)
+	margin.add_theme_constant_override("margin_bottom", 20)
 	panel.add_child(margin)
 
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 14)
+	content.add_theme_constant_override("separation", 10)
 	margin.add_child(content)
 
 	title_label = Label.new()
-	title_label.add_theme_font_size_override("font_size", 34)
+	title_label.add_theme_font_size_override("font_size", 30)
 	title_label.add_theme_color_override("font_color", Color(0.75, 1.0, 0.92, 1.0))
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(title_label)
 
 	scrap_label = Label.new()
-	scrap_label.add_theme_font_size_override("font_size", 21)
+	scrap_label.add_theme_font_size_override("font_size", 18)
 	scrap_label.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0, 1.0))
 	scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(scrap_label)
@@ -107,7 +109,7 @@ func _build_interface() -> void:
 	offer_row = HBoxContainer.new()
 	offer_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	offer_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	offer_row.add_theme_constant_override("separation", 12)
+	offer_row.add_theme_constant_override("separation", 10)
 	content.add_child(offer_row)
 
 	var actions := HBoxContainer.new()
@@ -236,44 +238,102 @@ func _render() -> void:
 	for index in offers.size():
 		offer_row.add_child(_create_offer_card(index, offers[index]))
 
-func _create_offer_card(index: int, offer: Dictionary) -> VBoxContainer:
-	var card := VBoxContainer.new()
-	card.custom_minimum_size = Vector2(205, 370)
+func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(198, 390)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_theme_constant_override("separation", 8)
-
-	var buy_button := Button.new()
-	buy_button.custom_minimum_size = Vector2(205, 300)
-	buy_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	buy_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	buy_button.add_theme_font_size_override("font_size", 17)
-	buy_button.add_theme_color_override("font_color", Color(0.88, 0.98, 0.95, 1.0))
 	var accent := _offer_color(String(offer.kind))
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = Color(0.025, 0.07, 0.08, 0.98)
 	normal.border_color = Color(accent, 0.8)
 	normal.set_border_width_all(2)
 	normal.set_corner_radius_all(8)
-	normal.set_content_margin_all(14.0)
-	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = Color(accent, 0.24)
-	hover.border_color = accent
-	hover.set_border_width_all(3)
-	buy_button.add_theme_stylebox_override("normal", normal)
-	buy_button.add_theme_stylebox_override("hover", hover)
-	buy_button.add_theme_stylebox_override("focus", hover)
-	buy_button.text = _offer_text(offer)
+	normal.set_content_margin_all(10.0)
+	card.add_theme_stylebox_override("panel", normal)
+
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 6)
+	card.add_child(content)
+
+	var kind_label := Label.new()
+	kind_label.text = _offer_kind_label(String(offer.kind))
+	kind_label.add_theme_font_size_override("font_size", 14)
+	kind_label.add_theme_color_override("font_color", accent)
+	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(kind_label)
+
+	var name_label := Label.new()
+	name_label.text = _offer_name(offer)
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.custom_minimum_size = Vector2(0, 46)
+	name_label.add_theme_font_size_override("font_size", 18)
+	name_label.add_theme_color_override("font_color", Color(0.92, 0.98, 0.96, 1.0))
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	content.add_child(name_label)
+
+	var description_label := Label.new()
+	description_label.text = _offer_description(offer)
+	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description_label.custom_minimum_size = Vector2(0, 174)
+	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	description_label.add_theme_font_size_override("font_size", 14)
+	description_label.add_theme_color_override("font_color", Color(0.72, 0.86, 0.84, 1.0))
+	description_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	content.add_child(description_label)
+
+	var buy_button := Button.new()
+	buy_button.custom_minimum_size = Vector2(0, 46)
+	buy_button.text = "구매 완료" if bool(offer.get("purchased", false)) else "구매  ·  %d 스크랩" % int(offer.cost)
+	buy_button.add_theme_font_size_override("font_size", 16)
+	buy_button.add_theme_color_override("font_color", Color(0.9, 1.0, 0.97, 1.0))
+	var buy_normal := StyleBoxFlat.new()
+	buy_normal.bg_color = Color(accent, 0.2)
+	buy_normal.border_color = accent
+	buy_normal.set_border_width_all(2)
+	buy_normal.set_corner_radius_all(6)
+	var buy_hover := buy_normal.duplicate() as StyleBoxFlat
+	buy_hover.bg_color = Color(accent, 0.44)
+	buy_button.add_theme_stylebox_override("normal", buy_normal)
+	buy_button.add_theme_stylebox_override("hover", buy_hover)
+	buy_button.add_theme_stylebox_override("focus", buy_hover)
 	buy_button.disabled = bool(offer.get("purchased", false)) or RunStats.scrap < int(offer.cost)
 	buy_button.pressed.connect(func() -> void: _buy_offer(index))
-	card.add_child(buy_button)
+	content.add_child(buy_button)
 
 	var lock_button := Button.new()
-	lock_button.custom_minimum_size = Vector2(205, 42)
+	lock_button.custom_minimum_size = Vector2(0, 34)
 	lock_button.text = "🔒 잠금 해제" if bool(offer.get("locked", false)) else "잠금: 새로고침 때 유지"
 	lock_button.disabled = bool(offer.get("purchased", false))
 	lock_button.pressed.connect(func() -> void: _toggle_lock(index))
-	card.add_child(lock_button)
+	content.add_child(lock_button)
 	return card
+
+func _offer_kind_label(kind: String) -> String:
+	match kind:
+		"passive": return "패시브"
+		"weapon_new": return "신규 무기"
+		"weapon_upgrade": return "무기 강화"
+		"evolution": return "변이 코어"
+		_: return "보급품"
+
+func _offer_name(offer: Dictionary) -> String:
+	match String(offer.kind):
+		"passive": return (offer.item as PerkData).perk_name
+		"weapon_new": return (offer.item as WeaponUpgradeData).weapon_name
+		"weapon_upgrade":
+			var weapon := offer.item as Weapon
+			return "%s\nLv %d → %d" % [weapon.data.weapon_name, weapon.current_level, weapon.current_level + 1]
+		"evolution": return "%s ★" % (offer.item as Weapon).data.weapon_name
+		_: return String(offer.name)
+
+func _offer_description(offer: Dictionary) -> String:
+	match String(offer.kind):
+		"passive": return (offer.item as PerkData).description
+		"weapon_new": return (offer.item as WeaponUpgradeData).description
+		"weapon_upgrade": return "피해량과 성능을 강화합니다.\n다음 단계의 화력을 준비하세요."
+		"evolution": return "최대 레벨 무기를 진화시켜\n특수 성능을 해금합니다."
+		_: return String(offer.description)
 
 func _offer_text(offer: Dictionary) -> String:
 	if bool(offer.get("purchased", false)):

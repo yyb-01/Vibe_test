@@ -1,6 +1,13 @@
 class_name Zombie
 extends CharacterBody2D
 
+const SHAMBLER_WALK_A: Texture2D = preload("res://assets/graphics/zombie_walk_a_v3.png")
+const SHAMBLER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_walk_b_v3.png")
+const RUNNER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_runner_walk_b_v3.png")
+const TANK_WALK_B: Texture2D = preload("res://assets/graphics/zombie_tank_walk_b_v3.png")
+const SPITTER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_spitter_walk_b_v3.png")
+const BOMBER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_bomber_walk_b_v3.png")
+const BLOATER_WALK_B: Texture2D = preload("res://assets/graphics/zombie_bloater_walk_b_v3.png")
 @export var max_health: int = 30
 @export var move_speed: float = 100.0
 @export var attack_damage: int = 10
@@ -31,6 +38,7 @@ var base_body_scale: Vector2
 var base_scale: Vector2
 var base_sprite_position: Vector2
 var base_sprite_modulate: Color
+var base_sprite_texture: Texture2D
 var walk_time: float = 0.0
 var visual_time: float = 0.0
 var hit_recoil: Vector2 = Vector2.ZERO
@@ -41,6 +49,11 @@ var wall_follow_timer: float = 0.0
 var ranged_can_attack: bool = true
 var boss_attack_timer: float = 4.0
 var boss_telegraph_timer: float = 0.0
+var runner_dash_time: float = 0.0
+var runner_dash_cooldown: float = 0.0
+var tank_stomp_cooldown: float = 0.0
+var bloater_spit_cooldown: float = 1.5
+var strafe_sign: float = 1.0
 
 const WALL_LOOK_AHEAD: float = 54.0
 const WALL_FOLLOW_TIME: float = 0.45
@@ -53,6 +66,7 @@ func _ready() -> void:
 	base_scale = sprite.scale
 	base_sprite_position = sprite.position
 	base_sprite_modulate = sprite.modulate
+	base_sprite_texture = sprite.texture
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
 	reset()
@@ -71,6 +85,7 @@ func reset() -> void:
 	scale = base_body_scale
 	rotation = 0.0
 	sprite.modulate = base_sprite_modulate
+	sprite.texture = base_sprite_texture
 	sprite.scale = base_scale
 	sprite.position = base_sprite_position
 	sprite.rotation = 0.0
@@ -84,6 +99,11 @@ func reset() -> void:
 	ranged_can_attack = true
 	boss_attack_timer = 4.0
 	boss_telegraph_timer = 0.0
+	runner_dash_time = 0.0
+	runner_dash_cooldown = randf_range(0.6, 1.4)
+	tank_stomp_cooldown = randf_range(1.0, 2.2)
+	bloater_spit_cooldown = randf_range(1.5, 3.5)
+	strafe_sign = -1.0 if randf() < 0.5 else 1.0
 	set_meta("is_boss", false)
 	set_meta("is_elite", false)
 
@@ -118,6 +138,7 @@ func _physics_process(delta: float) -> void:
 	var distance_to_player := global_position.distance_to(player.global_position)
 	var dir_to_player := global_position.direction_to(player.global_position)
 	var position_before_move := global_position
+	var profile_speed_multiplier := _update_special_pattern(delta, distance_to_player, dir_to_player)
 
 	# Keep physics and collision upright. Facing is communicated by a horizontal
 	# flip while the sprite itself receives only a tiny procedural sway.
@@ -139,6 +160,9 @@ func _physics_process(delta: float) -> void:
 			move_dir = _get_wall_aware_direction(dir_to_player, delta)
 		elif ranged_attack and distance_to_player < preferred_attack_distance:
 			move_dir = _get_wall_aware_direction(-dir_to_player, delta)
+		if motion_profile == 3 and move_dir != Vector2.ZERO:
+			# Spitters sidestep while maintaining their preferred firing distance.
+			move_dir = (move_dir + dir_to_player.orthogonal() * strafe_sign * 0.52).normalized()
 
 		# Soft Collision Separation using Grid O(1)
 		var separation_vector := Vector2.ZERO
@@ -151,7 +175,7 @@ func _physics_process(delta: float) -> void:
 
 		move_dir = (move_dir * move_speed + separation_vector * 5.0).normalized()
 
-		velocity = move_dir * move_speed + knockback
+		velocity = move_dir * move_speed * profile_speed_multiplier + knockback
 		# move_and_slide resolves the wall contact while the steering probe keeps the
 		# enemy moving along the wall instead of pressing into it forever.
 		move_and_slide()
@@ -188,10 +212,16 @@ func _attack_ranged() -> void:
 		return
 	ranged_can_attack = false
 	attack_pulse = 1.0
-	var projectile = ObjectPoolManager.acquire("acid_projectile", global_position)
-	if projectile:
-		projectile.direction = global_position.direction_to(player.global_position)
-		projectile.damage = projectile_damage
+	var aim_direction := global_position.direction_to(player.global_position)
+	var spread := PackedFloat32Array([0.0])
+	if motion_profile == 3:
+		# The spitter is identifiable in play: it spits a short, dodgeable fan.
+		spread = PackedFloat32Array([-0.16, 0.0, 0.16])
+	for angle_offset in spread:
+		var projectile = ObjectPoolManager.acquire("acid_projectile", global_position)
+		if projectile:
+			projectile.direction = aim_direction.rotated(angle_offset)
+			projectile.damage = projectile_damage if is_zero_approx(angle_offset) else max(1, projectile_damage - 2)
 	var timer := get_tree().create_timer(attack_cooldown)
 	timer.timeout.connect(func() -> void: ranged_can_attack = true)
 
@@ -244,11 +274,12 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 func _animate_visual(delta: float, moving: bool) -> void:
 	visual_time += delta
 	attack_pulse = maxf(0.0, attack_pulse - delta * 3.8)
+	var render_base_scale := _update_walk_texture(moving)
 	var movement_weight := 1.0 if moving else 0.24
 	var bob := 0.0
 	var sway := 0.0
 	var desired_rotation := 0.0
-	var desired_scale := base_scale
+	var desired_scale := render_base_scale
 
 	match motion_profile:
 		1: # Runner: sharp, fast strides and a forward rush.
@@ -256,37 +287,37 @@ func _animate_visual(delta: float, moving: bool) -> void:
 			bob = absf(stride) * 6.0 * movement_weight
 			sway = stride * 3.0 * movement_weight
 			desired_rotation = stride * 0.065 * movement_weight
-			desired_scale = base_scale * Vector2(1.0 + absf(stride) * 0.11, 1.0 - absf(stride) * 0.085)
+			desired_scale = render_base_scale * Vector2(1.0 + absf(stride) * 0.11, 1.0 - absf(stride) * 0.085)
 		2: # Tank: slow mass shifting and a heavy impact step.
 			var stomp := sin(visual_time * 5.2)
 			bob = absf(stomp) * 2.8 * movement_weight
 			sway = stomp * 1.2 * movement_weight
 			desired_rotation = stomp * 0.026 * movement_weight
-			desired_scale = base_scale * Vector2(1.0 + absf(stomp) * 0.05, 1.0 - absf(stomp) * 0.035)
+			desired_scale = render_base_scale * Vector2(1.0 + absf(stomp) * 0.05, 1.0 - absf(stomp) * 0.035)
 		3: # Spitter: tense breathing while circling, then a short firing lunge.
 			var breath := sin(visual_time * (5.8 if moving else 2.6))
 			bob = breath * (2.5 if moving else 1.25)
 			sway = sin(visual_time * 3.4) * 1.4
 			desired_rotation = breath * 0.03
-			desired_scale = base_scale * Vector2(1.0 + attack_pulse * 0.08, 1.0 - attack_pulse * 0.05)
+			desired_scale = render_base_scale * Vector2(1.0 + attack_pulse * 0.08, 1.0 - attack_pulse * 0.05)
 		4: # Bomber: an unstable warning pulse that accelerates as it advances.
 			var alarm := sin(visual_time * (10.0 if moving else 6.0))
 			bob = absf(alarm) * 3.6 * movement_weight
 			sway = alarm * 1.7
 			desired_rotation = alarm * 0.045
-			desired_scale = base_scale * Vector2(1.0 + absf(alarm) * 0.09 + attack_pulse * 0.1, 1.0 - absf(alarm) * 0.06)
+			desired_scale = render_base_scale * Vector2(1.0 + absf(alarm) * 0.09 + attack_pulse * 0.1, 1.0 - absf(alarm) * 0.06)
 		5: # Bloater: slow organic swelling, even while standing still.
 			var swell := sin(visual_time * 3.2) + sin(visual_time * 5.1) * 0.35
 			bob = swell * 1.5
 			sway = sin(visual_time * 2.1) * 1.15
 			desired_rotation = sway * 0.024
-			desired_scale = base_scale * Vector2(1.0 + swell * 0.055 + attack_pulse * 0.05, 1.0 + swell * 0.035)
+			desired_scale = render_base_scale * Vector2(1.0 + swell * 0.055 + attack_pulse * 0.05, 1.0 + swell * 0.035)
 		_: # Shambler: uneven steps with a small side-to-side stagger.
 			var stagger := sin(visual_time * (8.0 if moving else 2.0))
 			bob = absf(stagger) * 4.2 * movement_weight
 			sway = sin(visual_time * 4.1) * 2.1 * movement_weight
 			desired_rotation = stagger * 0.045 * movement_weight
-			desired_scale = base_scale * Vector2(1.0 + absf(stagger) * 0.075, 1.0 - absf(stagger) * 0.055)
+			desired_scale = render_base_scale * Vector2(1.0 + absf(stagger) * 0.075, 1.0 - absf(stagger) * 0.055)
 
 	hit_recoil = hit_recoil.move_toward(Vector2.ZERO, delta * 30.0)
 	var attack_lunge := Vector2(-attack_pulse * 3.0, 0.0)
@@ -295,6 +326,71 @@ func _animate_visual(delta: float, moving: bool) -> void:
 	sprite.position = sprite.position.lerp(base_sprite_position + Vector2(sway, -bob) + hit_recoil + attack_lunge, minf(delta * 16.0, 1.0))
 	sprite.scale = sprite.scale.lerp(desired_scale, minf(delta * 15.0, 1.0))
 	sprite.rotation = lerp_angle(sprite.rotation, desired_rotation, minf(delta * 14.0, 1.0))
+
+func _update_special_pattern(delta: float, distance_to_player: float, dir_to_player: Vector2) -> float:
+	match motion_profile:
+		1: # Runner: punctuated lunge that has to be sidestepped.
+			runner_dash_cooldown = maxf(0.0, runner_dash_cooldown - delta)
+			if runner_dash_time > 0.0:
+				runner_dash_time -= delta
+				return 1.72
+			if runner_dash_cooldown <= 0.0 and distance_to_player > 110.0 and distance_to_player < 390.0:
+				runner_dash_time = 0.42
+				runner_dash_cooldown = 2.7
+				attack_pulse = 0.9
+		2: # Tank: a close shock stomp punishes standing directly in front of it.
+			tank_stomp_cooldown = maxf(0.0, tank_stomp_cooldown - delta)
+			if tank_stomp_cooldown <= 0.0 and distance_to_player <= 230.0:
+				tank_stomp_cooldown = 3.8
+				attack_pulse = 1.0
+				if is_instance_valid(player) and player.has_method("take_damage"):
+					player.take_damage(max(8, int(float(attack_damage) * 0.55)), dir_to_player)
+		3: # Spitter: alternates which side it circles from between bursts.
+			if int(visual_time * 0.42) % 2 == 0:
+				strafe_sign = 1.0
+			else:
+				strafe_sign = -1.0
+		4: # Bomber accelerates on approach and visibly swells before contact.
+			if distance_to_player < 310.0:
+				attack_pulse = maxf(attack_pulse, 0.34)
+				return 1.28
+		5: # Bloater occasionally throws a wide acid burst before dying.
+			bloater_spit_cooldown = maxf(0.0, bloater_spit_cooldown - delta)
+			if bloater_spit_cooldown <= 0.0 and distance_to_player > 120.0 and distance_to_player < 350.0:
+				bloater_spit_cooldown = 5.6
+				attack_pulse = 1.0
+				for angle_offset in PackedFloat32Array([-0.34, 0.0, 0.34]):
+					var projectile = ObjectPoolManager.acquire("acid_projectile", global_position)
+					if projectile:
+						projectile.direction = dir_to_player.rotated(angle_offset)
+						projectile.damage = max(3, projectile_damage)
+	return 1.0
+
+func _update_walk_texture(moving: bool) -> Vector2:
+	if motion_profile == 0:
+		sprite.texture = SHAMBLER_WALK_B if moving and int(visual_time * 6.5) % 2 == 1 else SHAMBLER_WALK_A
+		return base_scale
+	var alternate_frame := moving and int(visual_time * 5.2) % 2 == 1
+	if not alternate_frame:
+		sprite.texture = base_sprite_texture
+		return base_scale
+	match motion_profile:
+		1:
+			sprite.texture = RUNNER_WALK_B
+			return Vector2(0.115, 0.115)
+		2:
+			sprite.texture = TANK_WALK_B
+			return Vector2(0.150, 0.150)
+		3:
+			sprite.texture = SPITTER_WALK_B
+			return Vector2(0.120, 0.120)
+		4:
+			sprite.texture = BOMBER_WALK_B
+			return Vector2(0.120, 0.120)
+		5:
+			sprite.texture = BLOATER_WALK_B
+			return Vector2(0.140, 0.140)
+	return base_scale
 
 func die() -> void:
 	if is_dying:

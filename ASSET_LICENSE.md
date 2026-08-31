@@ -23,4 +23,7 @@
 - `assets/graphics/floor_quarantine_v3.png`, `floor_industrial_v3.png`, `floor_flooded_v3.png`, `floor_lab_v3.png`: 맵별 격리 도시·산업지대·침수 구역·지하 연구소용 바닥 배경 에셋
 - `assets/graphics/player_armed_v3.png`: 양손으로 소총을 든 플레이어 일체형 에셋, `orbital_shield_v3.png`: 플레이어 주위를 도는 보호막 드론 에셋
 - `assets/graphics/lab_bulkhead_v3.png`: 지하 연구소 바닥과 어울리도록 제작한 금속 격리벽 장애물 에셋
+- `assets/graphics/player_walk_a_v4.png`, `player_walk_b_v4.png`: 소총을 독립 조준하는 플레이어의 좌우 보행 프레임
+- `assets/graphics/zombie_walk_a_v3.png`, `zombie_walk_b_v3.png`: 일반 좀비의 교대 보행 프레임
+- `assets/graphics/zombie_runner_walk_b_v3.png`부터 `zombie_bloater_walk_b_v3.png`: 러너·탱커·스피터·폭발·블로터의 특수 보행 프레임
 - 생성 프롬프트와 제작 목적은 `GAME_AUDIT.md`에 기록했습니다.
