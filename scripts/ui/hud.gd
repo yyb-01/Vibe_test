@@ -9,6 +9,8 @@ extends CanvasLayer
 @onready var weapons_label: Label = $MarginContainer/VBoxContainer/InventoryBox/WeaponsLabel
 @onready var passives_label: Label = $MarginContainer/VBoxContainer/InventoryBox/PassivesLabel
 @onready var objective_label: Label = $MarginContainer/VBoxContainer/ObjectiveLabel
+@onready var inventory_box: VBoxContainer = $MarginContainer/VBoxContainer/InventoryBox
+@onready var inventory_backplate: Panel = $InventoryBackplate
 @onready var gold_label: Label = $GoldLabel
 @onready var scrap_label: Label = $ScrapLabel
 @onready var threat_label: Label = $ThreatLabel
@@ -26,6 +28,7 @@ var banner_tween: Tween
 var skill_bar: ProgressBar
 var skill_label: Label
 var build_status_label: Label
+var build_toggle_button: Button
 
 func _ready() -> void:
 	_build_information_ui()
@@ -49,12 +52,23 @@ func _ready() -> void:
 	boss_warning_label.visible = false
 
 func _build_information_ui() -> void:
+	build_toggle_button = Button.new()
+	build_toggle_button.position = Vector2(14, 86)
+	build_toggle_button.size = Vector2(154, 34)
+	build_toggle_button.text = "빌드 보기  [TAB]"
+	build_toggle_button.add_theme_font_size_override("font_size", 13)
+	build_toggle_button.tooltip_text = "무기·패시브·진화 조합 정보를 펼치거나 접습니다."
+	build_toggle_button.pressed.connect(_toggle_build_panel)
+	add_child(build_toggle_button)
+	inventory_box.visible = false
+	inventory_backplate.visible = false
+
 	var objective_panel := PanelContainer.new()
 	objective_panel.anchor_top = 1.0
 	objective_panel.anchor_bottom = 1.0
 	objective_panel.offset_left = 14.0
-	objective_panel.offset_top = -150.0
-	objective_panel.offset_right = 600.0
+	objective_panel.offset_top = -134.0
+	objective_panel.offset_right = 520.0
 	objective_panel.offset_bottom = -48.0
 	objective_panel.add_theme_stylebox_override("panel", _info_panel_style(Color(1.0, 0.58, 0.24, 0.75)))
 	add_child(objective_panel)
@@ -66,7 +80,7 @@ func _build_information_ui() -> void:
 	objective_panel.add_child(objective_margin)
 	objective_label.reparent(objective_margin)
 	objective_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	objective_label.add_theme_font_size_override("font_size", 15)
+	objective_label.add_theme_font_size_override("font_size", 13)
 
 	var skill_panel := PanelContainer.new()
 	skill_panel.anchor_left = 1.0
@@ -98,12 +112,18 @@ func _build_information_ui() -> void:
 
 func _info_panel_style(accent: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.008, 0.025, 0.034, 0.92)
+	style.bg_color = Color(0.008, 0.025, 0.034, 0.78)
 	style.border_color = accent
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(7)
 	style.set_content_margin_all(8.0)
 	return style
+
+func _toggle_build_panel() -> void:
+	var expanded := not inventory_box.visible
+	inventory_box.visible = expanded
+	inventory_backplate.visible = expanded
+	build_toggle_button.text = ("빌드 접기" if expanded else "빌드 보기") + "  [TAB]"
 
 func _process(delta: float) -> void:
 	if get_tree().paused:
@@ -272,6 +292,10 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	passives_label.add_theme_color_override("font_color", Color(0.65, 1.0, 0.82, 1.0) if player and not player.active_synergies.is_empty() else Color(0.72, 0.78, 0.78, 1.0))
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_build_panel"):
+		get_viewport().set_input_as_handled()
+		_toggle_build_panel()
+		return
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		if pause_confirm.visible:
