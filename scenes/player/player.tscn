@@ -43,4 +43,5 @@ shape = SubResource("CircleShape2D_z9x8w")
 [node name="Camera2D" type="Camera2D" parent="."]
 enabled = true
 ignore_rotation = true
+zoom = Vector2(0.666667, 0.666667)
 script = ExtResource("4_cam")

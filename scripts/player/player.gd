@@ -7,6 +7,7 @@ const AIM_UP: Texture2D = preload("res://assets/graphics/player_aim_up_v1.png")
 const AIM_DOWN: Texture2D = preload("res://assets/graphics/player_aim_down_v1.png")
 const COMBAT_PET: PackedScene = preload("res://scenes/player/combat_pet.tscn")
 const MUZZLE_FLASH_SCRIPT: Script = preload("res://scripts/effects/muzzle_flash.gd")
+const UNIQUE_SKILL_EFFECT_SCRIPT: Script = preload("res://scripts/effects/unique_skill_effect.gd")
 const GUN_MOUNT_RIGHT := Vector2(38.0, -20.0)
 const GUN_MOUNT_LEFT := Vector2(-38.0, -20.0)
 @export var max_health: int = 100
@@ -152,13 +153,15 @@ func _update_facing_pose(delta: float) -> void:
 	var desired_gun_rotation := 0.0
 	var muzzle_offset := Vector2(88.0, -35.0)
 	gun_sprite.visible = true
+	gun_sprite.flip_h = false
 	sprite.flip_h = false
 	match facing:
 		"left":
 			sprite.texture = WALK_FRAME_A if velocity.length() <= 8.0 else sprite.texture
 			sprite.flip_h = true
 			desired_gun_position = GUN_MOUNT_LEFT
-			desired_gun_rotation = PI
+			desired_gun_rotation = 0.0
+			gun_sprite.flip_h = true
 			muzzle_offset = Vector2(-88.0, -35.0)
 		"up":
 			sprite.texture = AIM_UP
@@ -174,7 +177,8 @@ func _update_facing_pose(delta: float) -> void:
 			desired_gun_position = GUN_MOUNT_RIGHT
 	gun_pivot.position = gun_pivot.position.lerp(desired_gun_position, minf(delta * 18.0, 1.0))
 	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, desired_gun_rotation, minf(delta * 18.0, 1.0))
-	gun_pivot.position += Vector2(-gun_recoil, 0.0).rotated(gun_pivot.rotation)
+	var recoil_direction := 1.0 if facing == "left" else -1.0
+	gun_pivot.position += Vector2(gun_recoil * recoil_direction, 0.0)
 	muzzle_anchor.position = muzzle_anchor.position.lerp(muzzle_offset + sprite.position, minf(delta * 22.0, 1.0))
 
 func trigger_weapon_recoil(amount: float = 3.5) -> void:
@@ -384,6 +388,7 @@ func get_unique_skill_max_cooldown() -> float:
 func use_unique_skill() -> bool:
 	if skill_cooldown > 0.0 or health <= 0:
 		return false
+	_spawn_unique_skill_effect()
 	match character_id:
 		"medic":
 			heal(38)
@@ -415,6 +420,20 @@ func use_unique_skill() -> bool:
 	EventBus.camera_shake_requested.emit()
 	AudioManager.play_named("level_up", -7.0, 1.08)
 	return true
+
+func _spawn_unique_skill_effect() -> void:
+	var effect := Node2D.new()
+	effect.set_script(UNIQUE_SKILL_EFFECT_SCRIPT)
+	get_tree().current_scene.add_child(effect)
+	var target_points := PackedVector2Array()
+	if character_id in ["engineer", "reaper"]:
+		var targets := get_tree().get_nodes_in_group("enemies")
+		targets.sort_custom(func(a, b): return global_position.distance_squared_to(a.global_position) < global_position.distance_squared_to(b.global_position))
+		for index in mini(7, targets.size()):
+			var target = targets[index]
+			if is_instance_valid(target) and (character_id != "reaper" or global_position.distance_to(target.global_position) <= 420.0):
+				target_points.append(target.global_position)
+	effect.call("setup", character_id, global_position, target_points)
 
 func _update_unique_skill(delta: float) -> void:
 	skill_cooldown = maxf(0.0, skill_cooldown - delta * skill_cooldown_rate)

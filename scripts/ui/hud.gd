@@ -125,6 +125,11 @@ func _toggle_build_panel() -> void:
 	inventory_backplate.visible = expanded
 	build_toggle_button.text = ("빌드 접기" if expanded else "빌드 보기") + "  [TAB]"
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and not pause_confirm.visible and (event.keycode == KEY_TAB or event.physical_keycode == KEY_TAB):
+		get_viewport().set_input_as_handled()
+		_toggle_build_panel()
+
 func _process(delta: float) -> void:
 	if get_tree().paused:
 		return
@@ -292,10 +297,6 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	passives_label.add_theme_color_override("font_color", Color(0.65, 1.0, 0.82, 1.0) if player and not player.active_synergies.is_empty() else Color(0.72, 0.78, 0.78, 1.0))
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("toggle_build_panel"):
-		get_viewport().set_input_as_handled()
-		_toggle_build_panel()
-		return
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		if pause_confirm.visible:
