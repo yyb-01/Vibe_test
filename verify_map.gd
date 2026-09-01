@@ -163,6 +163,16 @@ func _process(delta: float) -> void:
             return
 
         if map_index == 0:
+            var mission := (load("res://scenes/world/mission_event.tscn") as PackedScene).instantiate()
+            map_instance.add_child(mission)
+            mission.call("configure_for_map", "map_1")
+            mission.call("_activate")
+            assert(not get_tree().paused, "MissionEvent paused seamless combat")
+            assert(is_instance_valid(mission.choice_layer) and mission.choice_layer.get_parent() != mission, "Mission choice UI is not scene-root independent")
+            assert(mission.choice_layer.process_mode == Node.PROCESS_MODE_ALWAYS, "Mission choice UI cannot process during pause")
+            mission.call("_select_default_if_pending", mission.choice_generation)
+            assert(mission.branch_name == "현장 수색" and not is_instance_valid(mission.choice_layer), "Mission safety fallback did not close the choice UI")
+            mission.queue_free()
             for direction in ["up", "down", "left", "right"]:
                 player.facing = direction
                 player.call("_set_character_frame", 0)

@@ -16,11 +16,16 @@ func request(owner: Node, on_granted: Callable) -> void:
 	_try_grant_next()
 
 func release(owner: Node) -> void:
-	_queue = _queue.filter(func(entry: Dictionary) -> bool: return entry.owner != owner)
-	if owner != _current_owner:
-		return
-	_current_owner = null
-	call_deferred("_try_grant_next")
+	_queue = _queue.filter(func(entry: Dictionary) -> bool:
+		var queued_owner = entry.get("owner")
+		return is_instance_valid(queued_owner) and queued_owner != owner
+	)
+	if owner == _current_owner or not is_instance_valid(_current_owner):
+		_current_owner = null
+		if _queue.is_empty():
+			get_tree().paused = false
+		else:
+			call_deferred("_try_grant_next")
 
 func clear() -> void:
 	_queue.clear()
@@ -28,8 +33,9 @@ func clear() -> void:
 	get_tree().paused = false
 
 func _try_grant_next() -> void:
-	if is_instance_valid(_current_owner):
+	if is_instance_valid(_current_owner) and _current_owner.is_inside_tree():
 		return
+	_current_owner = null
 	while not _queue.is_empty():
 		var entry: Dictionary = _queue.pop_front()
 		var owner := entry.owner as Node
