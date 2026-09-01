@@ -284,8 +284,8 @@ func _spawn_field_supply(announce: bool = true) -> void:
 	if not is_instance_valid(player) or not is_instance_valid(scene_root):
 		return
 	var cache := SUPPLY_CACHE.instantiate()
-	cache.gold_reward = 12
-	cache.heal_amount = 12
+	cache.gold_reward = 20
+	cache.heal_amount = 25
 	cache.lifetime = 50.0
 	var drop_position := player.global_position + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(190.0, 310.0)
 	drop_position.x = clampf(drop_position.x, spawn_bounds.position.x + 100.0, spawn_bounds.end.x - 100.0)

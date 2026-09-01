@@ -45,6 +45,10 @@ func _apply_style() -> void:
 		"heavy":
 			label.modulate = Color(0.35, 0.9, 1.0, 1.0)
 			label.scale = Vector2(1.3, 1.3)
+		"heal":
+			label.modulate = Color(0.25, 1.0, 0.45, 1.0)
+			label.scale = Vector2(1.4, 1.4)
+			label.text = "+%d HP" % amount
 		_:
 			label.modulate = Color.WHITE
 			label.scale = Vector2.ONE

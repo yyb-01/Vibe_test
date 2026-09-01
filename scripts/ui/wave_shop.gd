@@ -274,12 +274,42 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	content.add_theme_constant_override("separation", 6)
 	card.add_child(content)
 
+	var tools := HBoxContainer.new()
+	var shortcut := Label.new()
+	shortcut.text = "[%d]" % (index + 1)
+	shortcut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shortcut.add_theme_color_override("font_color", accent)
+	tools.add_child(shortcut)
+	var lock_button := Button.new()
+	lock_button.custom_minimum_size = Vector2(34, 30)
+	lock_button.text = "🔓" if bool(offer.get("locked", false)) else "🔒"
+	lock_button.tooltip_text = "잠금: 새로고침 때 이 카드를 유지"
+	lock_button.disabled = bool(offer.get("purchased", false))
+	lock_button.pressed.connect(func() -> void: _toggle_lock(index))
+	tools.add_child(lock_button)
+	if RunStats.banishes_remaining > 0 and not bool(offer.get("purchased", false)):
+		var banish_button := Button.new()
+		banish_button.custom_minimum_size = Vector2(34, 30)
+		banish_button.text = "🗑"
+		banish_button.tooltip_text = "이번 런에서 폐기 · %d회 남음" % RunStats.banishes_remaining
+		banish_button.pressed.connect(func() -> void: _banish_offer(index))
+		tools.add_child(banish_button)
+	content.add_child(tools)
+
 	var kind_label := Label.new()
 	kind_label.text = _offer_kind_label(String(offer.kind))
 	kind_label.add_theme_font_size_override("font_size", 14)
 	kind_label.add_theme_color_override("font_color", accent)
 	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(kind_label)
+	var visual := Label.new()
+	visual.text = _offer_icon(String(offer.kind))
+	visual.custom_minimum_size = Vector2(0, 72)
+	visual.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	visual.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	visual.add_theme_font_size_override("font_size", 42)
+	visual.add_theme_color_override("font_color", accent)
+	content.add_child(visual)
 
 	var name_label := Label.new()
 	name_label.text = _offer_name(offer)
@@ -294,7 +324,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var description_label := Label.new()
 	description_label.text = _offer_description(offer)
 	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	description_label.custom_minimum_size = Vector2(0, 174)
+	description_label.custom_minimum_size = Vector2(0, 105)
 	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	description_label.add_theme_font_size_override("font_size", 14)
 	description_label.add_theme_color_override("font_color", Color(0.72, 0.86, 0.84, 1.0))
@@ -304,7 +334,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var buy_button := Button.new()
 	buy_button.custom_minimum_size = Vector2(0, 46)
 	var free_evolution := String(offer.kind) == "evolution" and RunStats.evolution_cores > 0
-	buy_button.text = "구매 완료" if bool(offer.get("purchased", false)) else ("진화 코어 사용" if free_evolution else "구매  ·  %d 스크랩" % int(offer.cost))
+	buy_button.text = "구매 완료" if bool(offer.get("purchased", false)) else ("[%d] 진화 코어 사용" % (index + 1) if free_evolution else "[%d] 구매 · %d 스크랩" % [index + 1, int(offer.cost)])
 	buy_button.add_theme_font_size_override("font_size", 16)
 	buy_button.add_theme_color_override("font_color", Color(0.9, 1.0, 0.97, 1.0))
 	var buy_normal := StyleBoxFlat.new()
@@ -320,19 +350,17 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	buy_button.disabled = bool(offer.get("purchased", false)) or (not free_evolution and RunStats.scrap < int(offer.cost))
 	buy_button.pressed.connect(func() -> void: _buy_offer(index))
 	content.add_child(buy_button)
-
-	var lock_button := Button.new()
-	lock_button.custom_minimum_size = Vector2(0, 34)
-	lock_button.text = "🔒 잠금 해제" if bool(offer.get("locked", false)) else "잠금: 새로고침 때 유지"
-	lock_button.disabled = bool(offer.get("purchased", false))
-	lock_button.pressed.connect(func() -> void: _toggle_lock(index))
-	content.add_child(lock_button)
-	if RunStats.banishes_remaining > 0 and not bool(offer.get("purchased", false)):
-		var banish_button := Button.new()
-		banish_button.text = "폐기  ·  %d회" % RunStats.banishes_remaining
-		banish_button.pressed.connect(func() -> void: _banish_offer(index))
-		content.add_child(banish_button)
+	if buy_button.disabled and not bool(offer.get("purchased", false)):
+		card.modulate = Color(0.58, 0.62, 0.64, 0.72)
 	return card
+
+func _offer_icon(kind: String) -> String:
+	match kind:
+		"weapon_new", "weapon_upgrade": return "⚔"
+		"evolution": return "✦"
+		"passive": return "◆"
+		"contract": return "⚠"
+		_: return "+"
 
 func _offer_kind_label(kind: String) -> String:
 	match kind:
@@ -485,6 +513,13 @@ func _apply_contract(player: Player, contract_id: String) -> void:
 			EventBus.player_health_changed.emit(player.health, player.max_health)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed("ui_cancel"):
+	if not visible or not event.is_pressed() or event.is_echo():
+		return
+	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close_shop()
+	elif event is InputEventKey and event.keycode >= KEY_1 and event.keycode <= KEY_5:
+		var index := int(event.keycode - KEY_1)
+		if index < offers.size():
+			get_viewport().set_input_as_handled()
+			_buy_offer(index)

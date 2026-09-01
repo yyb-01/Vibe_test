@@ -26,6 +26,7 @@ const LUNGE_RECOVERY_SPEED: float = 540.0
 func _ready() -> void:
 	z_index = 8
 	target_position = global_position
+	VisualShadow.attach(self, Vector2(36.0, 12.0), Vector2(0.0, 24.0))
 	_create_pet_sprite()
 	queue_redraw()
 
@@ -46,6 +47,8 @@ func _create_pet_sprite() -> void:
 	var sheet: Texture2D = PET_SHEETS.get(pet_id, PET_SHEETS["lab_drone"])
 	pet_sprite.texture = sheet
 	pet_sprite.region_enabled = true
+	var cell_size := Vector2(float(sheet.get_width()) / 4.0, float(sheet.get_height()))
+	pet_sprite.region_rect = Rect2(Vector2.ZERO, cell_size)
 	pet_sprite.scale *= float(old_texture.get_width()) / (float(sheet.get_width()) / 4.0)
 	pet_sprite.z_index = 1
 	sprite_base_scale = pet_sprite.scale
@@ -116,7 +119,7 @@ func _use_combat_ability() -> void:
 			attack_timer = 1.15
 		"toxic_crow":
 			for enemy in get_tree().get_nodes_in_group("enemies"):
-				if is_instance_valid(enemy) and enemy.global_position.distance_to(target.global_position) <= 145.0:
+				if _is_active_enemy(enemy) and enemy.global_position.distance_to(target.global_position) <= 145.0:
 					enemy.take_damage(int(12.0 * owner_player.damage_mult), target.global_position.direction_to(enemy.global_position))
 			ability_color = Color(0.45, 1.0, 0.25, 1.0)
 			attack_timer = 2.25
@@ -130,13 +133,16 @@ func _nearest_enemy(max_range: float) -> Node2D:
 	var nearest: Node2D
 	var nearest_distance := max_range
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(enemy) or not enemy.has_method("take_damage"):
+		if not _is_active_enemy(enemy):
 			continue
 		var distance := global_position.distance_to(enemy.global_position)
 		if distance < nearest_distance:
 			nearest = enemy
 			nearest_distance = distance
 	return nearest
+
+func _is_active_enemy(enemy: Node) -> bool:
+	return is_instance_valid(enemy) and enemy.has_method("take_damage") and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.get("health") != null and int(enemy.get("health")) > 0 and enemy.get("is_dying") != true
 
 func _draw() -> void:
 	if visual_timer > 0.0:

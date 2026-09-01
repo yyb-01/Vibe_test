@@ -1,6 +1,7 @@
 extends Node
 
 const SAVE_PATH = "user://save_data.cfg"
+const DEFAULT_PETS: Array[String] = ["rescue_hound", "toxic_crow", "lab_drone"]
 
 var gold: int = 0
 
@@ -33,7 +34,7 @@ var upgrade_damage: int = 0
 var total_runs: int = 0
 var best_time: float = 0.0
 var highest_wave: int = 0
-var pet_blueprints: Array[String] = []
+var pet_blueprints: Array[String] = ["rescue_hound", "toxic_crow", "lab_drone"]
 var selected_pet: String = ""
 var selected_character: String = "scavenger"
 var selected_difficulty: String = "normal"
@@ -97,11 +98,14 @@ func load_data() -> void:
 		best_time = config.get_value("Progress", "best_time", 0.0)
 		highest_wave = config.get_value("Progress", "highest_wave", 0)
 		pet_blueprints.clear()
-		for blueprint in config.get_value("Progress", "pet_blueprints", []):
-			if blueprint is String:
+		for blueprint in config.get_value("Progress", "pet_blueprints", ["rescue_hound", "toxic_crow", "lab_drone"]):
+			if blueprint is String and blueprint not in pet_blueprints:
 				pet_blueprints.append(blueprint)
+		for default_pet in DEFAULT_PETS:
+			if default_pet not in pet_blueprints:
+				pet_blueprints.append(default_pet)
 		selected_pet = config.get_value("Progress", "selected_pet", "")
-		if not selected_pet.is_empty() and selected_pet not in pet_blueprints:
+		if selected_pet not in pet_blueprints:
 			selected_pet = ""
 		screen_shake_enabled = config.get_value("Settings", "screen_shake_enabled", true)
 		selected_character = config.get_value("Settings", "selected_character", "scavenger")

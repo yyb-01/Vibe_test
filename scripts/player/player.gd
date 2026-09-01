@@ -137,13 +137,16 @@ func _ready() -> void:
 	call_deferred("_update_ui")
 
 func _spawn_equipped_pet() -> void:
-	if RunStats.equipped_pet.is_empty():
+	var pet_id := RunStats.equipped_pet
+	if pet_id.is_empty():
+		pet_id = SaveManager.selected_pet
+	if pet_id.is_empty():
 		return
 	var pet := COMBAT_PET.instantiate()
-	pet.pet_id = RunStats.equipped_pet
+	pet.pet_id = pet_id
 	pet.owner_player = self
 	pet.position = position
-	get_parent().add_child(pet)
+	get_parent().add_child.call_deferred(pet)
 
 func _update_ui() -> void:
 	EventBus.player_health_changed.emit(health, max_health)
@@ -358,10 +361,27 @@ func die() -> void:
 	EventBus.game_over.emit(false)
 
 func heal(amount: int) -> void:
-	health += amount
-	if health > max_health:
-		health = max_health
+	if amount <= 0:
+		return
+	var recovered := mini(amount, max_health - health)
+	if recovered <= 0:
+		return
+	health += recovered
 	EventBus.player_health_changed.emit(health, max_health)
+
+	var num = ObjectPoolManager.acquire("damage_number", global_position + Vector2(0, -42))
+	if num and num.has_method("configure"):
+		num.configure(recovered, "heal")
+
+	if sprite and sprite.material is ShaderMaterial:
+		sprite.material.set_shader_parameter("flash_color", Color(0.2, 1.0, 0.45, 1.0))
+		sprite.material.set_shader_parameter("active", true)
+		var timer := get_tree().create_timer(0.12)
+		timer.timeout.connect(func() -> void:
+			if is_instance_valid(sprite) and sprite.material is ShaderMaterial:
+				sprite.material.set_shader_parameter("active", false)
+		)
+	AudioManager.play_named("pickup", -2.0, 1.25)
 
 func add_exp(amount: int) -> void:
 	current_exp += roundi(float(amount) * (1.0 + SaveManager.get_upgrade_level("exp_gain") * 0.05))
@@ -373,7 +393,6 @@ func _level_up() -> void:
 	current_level += 1
 	current_exp -= required_exp
 	required_exp = int(float(required_exp) * 1.2) # Exponential exp curve
-
 	EventBus.level_up.emit()
 	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 
@@ -595,10 +614,12 @@ func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critica
 	target.take_damage(final_damage, direction, hit_kind)
 
 func _start_dash() -> void:
-	if dash_cooldown > 0.0 or health <= 0:
+	if get_tree().paused or dash_cooldown > 0.0 or health <= 0:
 		return
 	var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	dash_direction = input_direction.normalized() if input_direction != Vector2.ZERO else Vector2.RIGHT.rotated(aim_angle)
+	if input_direction == Vector2.ZERO:
+		return
+	dash_direction = input_direction.normalized()
 	dash_time = 0.16
 	dash_cooldown = 2.4 * (1.0 - SaveManager.get_upgrade_level("dash_cooldown") * 0.08)
 	invulnerable = true

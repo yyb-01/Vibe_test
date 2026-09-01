@@ -36,6 +36,7 @@ var available_weapons: Array[WeaponUpgradeData] = [
 	preload("res://data/perks/weap_railgun.tres"),
 	preload("res://data/perks/weap_nova.tres")
 ]
+var codex_dialog: AcceptDialog
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -43,6 +44,17 @@ func _ready() -> void:
 	EventBus.level_up.connect(_on_level_up)
 	reroll_button.pressed.connect(_on_reroll_pressed)
 	skip_button.pressed.connect(_on_skip_pressed)
+	skip_button.text = "건너뛰기  ·  +10 골드"
+	var codex_button := Button.new()
+	codex_button.text = "★ 진화 도감 보기"
+	codex_button.custom_minimum_size = Vector2(210, 48)
+	$CenterContainer/VBoxContainer/ActionRow.add_child(codex_button)
+	codex_dialog = AcceptDialog.new()
+	codex_dialog.title = "무기 진화 도감"
+	codex_dialog.dialog_text = _codex_text()
+	codex_dialog.min_size = Vector2i(820, 580)
+	add_child(codex_dialog)
+	codex_button.pressed.connect(func() -> void: codex_dialog.popup_centered(Vector2i(820, 580)))
 
 func _on_level_up() -> void:
 	# Pause game
@@ -133,6 +145,14 @@ func _create_upgrade_button(item: Variant) -> void:
 	kind_label.add_theme_color_override("font_color", accent)
 	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(kind_label)
+	var visual := Label.new()
+	visual.text = "◆" if item is PerkData else "⚔"
+	visual.custom_minimum_size = Vector2(0, 64)
+	visual.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	visual.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	visual.add_theme_font_size_override("font_size", 38)
+	visual.add_theme_color_override("font_color", accent)
+	content.add_child(visual)
 
 	var name_label := Label.new()
 	name_label.custom_minimum_size = Vector2(0, 58)
@@ -166,9 +186,12 @@ func _create_upgrade_button(item: Variant) -> void:
 
 	if item is PerkData:
 		var evolution_links := _get_weapon_evolution_links(item.id)
-		kind_label.text = "[★ 진화 재료]" if not evolution_links.is_empty() else "패시브"
+		kind_label.text = "[★ 진화 시너지]  ·  [NEW 신규]" if not evolution_links.is_empty() else "[NEW 신규]  ·  패시브"
 		if not evolution_links.is_empty():
 			kind_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.24, 1.0))
+			var pulse := create_tween().set_loops()
+			pulse.tween_property(kind_label, "modulate:a", 0.45, 0.55)
+			pulse.tween_property(kind_label, "modulate:a", 1.0, 0.55)
 		name_label.text = item.perk_name
 		description_label.text = item.description + _get_build_recipe_hint(item.id)
 		if not evolution_links.is_empty():
@@ -179,11 +202,11 @@ func _create_upgrade_button(item: Variant) -> void:
 			description_label.tooltip_text = tip
 			select_button.tooltip_text = tip
 	elif item is WeaponUpgradeData:
-		kind_label.text = "신규 무기"
+		kind_label.text = "[NEW 신규]  ·  무기"
 		name_label.text = item.weapon_name
 		description_label.text = item.description
 	elif item is Weapon:
-		kind_label.text = "무기 강화"
+		kind_label.text = "[Lv %d ➔ %d]  ·  무기 강화" % [item.current_level, item.current_level + 1]
 		name_label.text = "%s  Lv %d → %d" % [item.data.weapon_name, item.current_level, item.current_level + 1]
 		description_label.text = "피해량 증가 및 성능 강화\n다음 단계의 화력을 준비하세요."
 
@@ -247,9 +270,14 @@ func _on_banish_pressed(item: Variant) -> void:
 func _on_skip_pressed() -> void:
 	visible = false
 	get_tree().paused = false
-	var player := get_tree().get_first_node_in_group("player") as Player
-	if player:
-		player.add_exp(8)
+	SaveManager.add_gold(10)
+
+func _codex_text() -> String:
+	var lines: Array[String] = []
+	for entry in Weapon.get_evolution_catalog():
+		var requirements: Array = entry["requirements"]
+		lines.append("%s Lv5  +  %s + %s\n→ ★ %s\n%s" % [entry["display"], Weapon.get_perk_label(requirements[0]), Weapon.get_perk_label(requirements[1]), entry["name"], entry["description"]])
+	return "\n\n".join(lines)
 
 func _on_upgrade_selected(item: Variant) -> void:
 	visible = false

@@ -2,7 +2,7 @@ class_name SupplyCache
 extends Area2D
 
 @export var gold_reward: int = 35
-@export var heal_amount: int = 18
+@export var heal_amount: int = 25
 @export var lifetime: float = 0.0
 var opened: bool = false
 var age: float = 0.0
@@ -25,6 +25,5 @@ func _on_body_entered(body: Node2D) -> void:
 	SaveManager.add_gold(gold_reward)
 	if body.has_method("heal"):
 		body.heal(heal_amount)
-	AudioManager.play_named("pickup", -3.0, randf_range(0.82, 0.92))
 	EventBus.supply_cache_opened.emit(RunStats.supply_caches_opened)
 	queue_free()

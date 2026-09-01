@@ -1,6 +1,8 @@
 class_name HUD
 extends CanvasLayer
 
+const STATUS_RING := preload("res://scripts/ui/player_status_ring.gd")
+
 @onready var hp_bar: ProgressBar = $MarginContainer/VBoxContainer/HBoxContainer/HPBar
 @onready var exp_bar: ProgressBar = $MarginContainer/VBoxContainer/HBoxContainer/ExpBar
 @onready var time_label: Label = $MarginContainer/VBoxContainer/WaveInfoBox/TimeLabel
@@ -29,6 +31,13 @@ var skill_bar: ProgressBar
 var skill_label: Label
 var build_status_label: Label
 var build_toggle_button: Button
+var weapon_slots: HBoxContainer
+var passive_slots: HBoxContainer
+var boss_panel: PanelContainer
+var boss_bar: ProgressBar
+var boss_name_label: Label
+var boss_phase_label: Label
+var objective_cache := ""
 
 func _ready() -> void:
 	_build_information_ui()
@@ -50,8 +59,18 @@ func _ready() -> void:
 	EventBus.combat_modifier_changed.connect(_on_combat_modifier_changed)
 	boss_label.visible = false
 	boss_warning_label.visible = false
+	call_deferred("_sync_inventory")
+
+func _sync_inventory() -> void:
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if player:
+		_on_inventory_updated(player.weapons, player.passives)
 
 func _build_information_ui() -> void:
+	_build_inventory_slots()
+	_build_boss_bar()
+	var status_ring := STATUS_RING.new()
+	add_child(status_ring)
 	build_toggle_button = Button.new()
 	build_toggle_button.position = Vector2(14, 86)
 	build_toggle_button.size = Vector2(154, 34)
@@ -62,6 +81,8 @@ func _build_information_ui() -> void:
 	add_child(build_toggle_button)
 	inventory_box.visible = false
 	inventory_backplate.visible = false
+	weapons_label.visible = false
+	passives_label.visible = false
 
 	var objective_panel := PanelContainer.new()
 	objective_panel.anchor_top = 1.0
@@ -110,6 +131,78 @@ func _build_information_ui() -> void:
 	build_status_label.add_theme_color_override("font_color", Color(0.7, 0.92, 1.0, 1.0))
 	skill_content.add_child(build_status_label)
 
+func _build_inventory_slots() -> void:
+	var inventory := VBoxContainer.new()
+	inventory.position = Vector2(14, 88)
+	inventory.add_theme_constant_override("separation", 4)
+	add_child(inventory)
+	for title in ["무기", "패시브"]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 5)
+		var tag := Label.new()
+		tag.custom_minimum_size = Vector2(48, 52)
+		tag.text = title
+		tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tag.add_theme_font_size_override("font_size", 12)
+		tag.add_theme_color_override("font_color", Color(0.58, 0.76, 0.78, 0.9))
+		row.add_child(tag)
+		inventory.add_child(row)
+		if title == "무기": weapon_slots = row
+		else: passive_slots = row
+	for index in 6:
+		weapon_slots.add_child(_make_inventory_slot("", 0, false, true))
+		passive_slots.add_child(_make_inventory_slot("", 0, false, false))
+
+func _make_inventory_slot(title: String, level: int, evolved: bool, weapon: bool) -> PanelContainer:
+	var slot := PanelContainer.new()
+	slot.custom_minimum_size = Vector2(52, 52)
+	var accent := Color(1.0, 0.62, 0.26, 0.9) if weapon else Color(0.28, 0.9, 0.76, 0.9)
+	var style := _info_panel_style(Color(1.0, 0.78, 0.24, 1.0) if evolved else accent)
+	style.bg_color = Color(0.012, 0.035, 0.045, 0.92 if not title.is_empty() else 0.45)
+	style.set_content_margin_all(2.0)
+	slot.add_theme_stylebox_override("panel", style)
+	var icon := Label.new()
+	icon.text = ("★" if evolved else ("◆" if weapon else "●")) if not title.is_empty() else ""
+	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size", 22)
+	icon.add_theme_color_override("font_color", accent)
+	slot.add_child(icon)
+	if level > 0:
+		var badge := Label.new()
+		badge.text = "Lv%d" % level
+		badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		badge.position = Vector2(-27, -17)
+		badge.add_theme_font_size_override("font_size", 10)
+		icon.add_child(badge)
+	slot.tooltip_text = title
+	return slot
+
+func _build_boss_bar() -> void:
+	boss_panel = PanelContainer.new()
+	boss_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	boss_panel.position = Vector2(-310, 88)
+	boss_panel.size = Vector2(620, 66)
+	boss_panel.add_theme_stylebox_override("panel", _info_panel_style(Color(1.0, 0.24, 0.2, 0.95)))
+	add_child(boss_panel)
+	var content := VBoxContainer.new()
+	boss_panel.add_child(content)
+	var header := HBoxContainer.new()
+	content.add_child(header)
+	boss_name_label = Label.new()
+	boss_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	boss_name_label.add_theme_font_size_override("font_size", 17)
+	header.add_child(boss_name_label)
+	boss_phase_label = Label.new()
+	boss_phase_label.add_theme_color_override("font_color", Color(1.0, 0.68, 0.28, 1.0))
+	header.add_child(boss_phase_label)
+	boss_bar = ProgressBar.new()
+	boss_bar.show_percentage = true
+	boss_bar.max_value = 100.0
+	boss_bar.custom_minimum_size.y = 22
+	content.add_child(boss_bar)
+	boss_panel.visible = false
+
 func _info_panel_style(accent: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.008, 0.025, 0.034, 0.78)
@@ -149,8 +242,10 @@ func _process(delta: float) -> void:
 
 func _update_objective_panel() -> void:
 	var lines: Array[String] = []
-	var quest_text := "완료 +%dG" % RunStats.KILL_QUEST_REWARD if RunStats.quest_completed else "%d/%d" % [RunStats.kills, RunStats.KILL_QUEST_TARGET]
-	lines.append("주요 목표  ·  구조 %d/1  ·  처치 의뢰 %s  ·  엘리트 %d/5" % [RunStats.survivors_rescued, quest_text, RunStats.elite_kills])
+	var rescue_text := "✓ 구조" if RunStats.survivors_rescued > 0 else "구조 %d/1" % RunStats.survivors_rescued
+	var quest_text := "✓ 처치 의뢰" if RunStats.quest_completed else "처치 %d/%d" % [RunStats.kills, RunStats.KILL_QUEST_TARGET]
+	var elite_text := "✓ 정예" if RunStats.elite_kills >= 5 else "정예 %d/5" % RunStats.elite_kills
+	lines.append("목표  ·  %s  ·  %s  ·  %s" % [rescue_text, quest_text, elite_text])
 	if not mission_status.is_empty():
 		lines.append("맵 사건  ·  " + mission_status)
 	if RunStats.active_challenge != "none":
@@ -159,7 +254,10 @@ func _update_objective_panel() -> void:
 	if not RunStats.companion_role.is_empty(): support.append("동료 " + _companion_display_name(RunStats.companion_role))
 	if not RunStats.equipped_pet.is_empty(): support.append("펫 " + _pet_display_name(RunStats.equipped_pet))
 	if not support.is_empty(): lines.append("지원 전력  ·  " + "  ·  ".join(support))
-	objective_label.text = "\n".join(lines)
+	var next_text := "\n".join(lines)
+	if next_text != objective_cache:
+		objective_cache = next_text
+		objective_label.text = next_text
 
 func _update_skill_panel(player: Player) -> void:
 	var cooldown := player.get_unique_skill_cooldown()
@@ -228,12 +326,12 @@ func _pet_display_name(pet_id: String) -> String:
 
 func _on_boss_status_changed(boss_name: String, health_ratio: float, phase: int) -> void:
 	if health_ratio < 0.0:
-		boss_label.visible = false
+		boss_panel.visible = false
 		return
-	var segments := 18
-	var filled := clampi(int(round(health_ratio * segments)), 0, segments)
-	boss_label.text = "%s  ·  위상 %d  [%s%s]" % [boss_name, phase, "■".repeat(filled), "□".repeat(segments - filled)]
-	boss_label.visible = true
+	boss_name_label.text = boss_name
+	boss_phase_label.text = "PHASE %d" % phase
+	boss_bar.value = clampf(health_ratio * 100.0, 0.0, 100.0)
+	boss_panel.visible = true
 
 func _on_boss_attack_warning(attack_name: String, active: bool) -> void:
 	if boss_warning_tween:
@@ -270,6 +368,17 @@ func _on_exp_changed(current_exp: int, required_exp: int, level: int) -> void:
 	exp_bar.get_node("LevelLabel").text = "Lv " + str(level)
 
 func _on_inventory_updated(weapons: Array, passives: Array) -> void:
+	for child in weapon_slots.get_children(): child.queue_free()
+	for child in passive_slots.get_children(): child.queue_free()
+	for index in 6:
+		if index < weapons.size():
+			var weapon: Weapon = weapons[index]
+			weapon_slots.add_child(_make_inventory_slot(weapon.get_display_name(), weapon.current_level, weapon.evolved, true))
+		else: weapon_slots.add_child(_make_inventory_slot("", 0, false, true))
+		if index < passives.size():
+			var passive: PerkData = passives[index]
+			passive_slots.add_child(_make_inventory_slot(passive.perk_name, 1, false, false))
+		else: passive_slots.add_child(_make_inventory_slot("", 0, false, false))
 	var weapon_names: Array[String] = []
 	for w in weapons:
 		var weapon_text := "◆ %s Lv%d" % [w.get_display_name(), w.current_level]

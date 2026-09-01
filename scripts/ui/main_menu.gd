@@ -32,6 +32,19 @@ const CHARACTER_DESCRIPTIONS := [
 	"처형자 · 속도/피해 증가, HP -20 · [Space] 사신의 표식: 부상당한 적 즉시 처형",
 	"시간 연구원 · 이동/재장전 강화 · [Space] 시간 붕괴: 주변 적 피해 및 둔화"
 ]
+const CHARACTER_SHEETS := [
+	preload("res://assets/graphics/animated/player_scavenger_sheet_v1.png"), preload("res://assets/graphics/animated/player_medic_sheet_v1.png"),
+	preload("res://assets/graphics/animated/player_ranger_sheet_v1.png"), preload("res://assets/graphics/animated/player_bulwark_sheet_v1.png"),
+	preload("res://assets/graphics/animated/player_pyro_sheet_v1.png"), preload("res://assets/graphics/animated/player_engineer_sheet_v1.png"),
+	preload("res://assets/graphics/animated/player_reaper_sheet_v1.png"), preload("res://assets/graphics/animated/player_chronomancer_sheet_v1.png")
+]
+const CHARACTER_STATS := ["HP ■■■  SPD ■■  DMG ■■■", "HP ■■■■  SPD ■■  DMG ■■", "HP ■■  SPD ■■■■  DMG ■■■", "HP ■■■■■  SPD ■  DMG ■■", "HP ■■  SPD ■■  DMG ■■■■", "HP ■■■  SPD ■■  DMG ■■■", "HP ■  SPD ■■■  DMG ■■■■", "HP ■■  SPD ■■■  DMG ■■■"]
+const MAP_CARDS := [
+	["폐허 지구", "보통", "생존자 호송", "res://assets/graphics/floor_quarantine_v3.png", "res://scenes/maps/map_1.tscn"],
+	["봉쇄 교차로", "위험", "발전기 방어", "res://assets/graphics/floor_industrial_v3.png", "res://scenes/maps/map_2.tscn"],
+	["침수 격리 지구", "고위험", "샘플 회수", "res://assets/graphics/floor_flooded_v3.png", "res://scenes/maps/map_3.tscn"],
+	["지하 연구소", "극한", "중앙 단말 해킹", "res://assets/graphics/floor_lab_v3.png", "res://scenes/maps/map_4.tscn"]
+]
 const PET_IDS := ["rescue_hound", "toxic_crow", "lab_drone"]
 const PET_NAMES := {
 	"rescue_hound": "구조견 · 근접 돌진",
@@ -68,6 +81,7 @@ func _ready() -> void:
 	_update_character_info(selected_character_index)
 	_build_pet_selector()
 	_build_run_settings()
+	_build_visual_selectors()
 	_build_evolution_codex()
 	_build_trait_tree()
 	screen_shake_toggle.button_pressed = SaveManager.screen_shake_enabled
@@ -78,6 +92,76 @@ func _ready() -> void:
 	_update_shop_ui()
 	_update_progress_ui()
 	map_1_btn.grab_focus()
+	$TabContainer.tab_changed.connect(_animate_tab)
+
+func _build_visual_selectors() -> void:
+	character_select.hide()
+	var character_grid := GridContainer.new()
+	character_grid.columns = 2
+	character_grid.add_theme_constant_override("h_separation", 8)
+	character_grid.add_theme_constant_override("v_separation", 8)
+	character_select.get_parent().add_child(character_grid)
+	character_select.get_parent().move_child(character_grid, 0)
+	for index in CHARACTER_IDS.size():
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(210, 82)
+		button.text = "%s\n%s" % [CHARACTER_NAMES[index].get_slice(" · ", 0), CHARACTER_STATS[index]]
+		button.tooltip_text = CHARACTER_DESCRIPTIONS[index]
+		button.icon = _portrait(CHARACTER_SHEETS[index] as Texture2D)
+		button.add_theme_constant_override("icon_max_width", 54)
+		button.expand_icon = true
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_font_size_override("font_size", 12)
+		_style_selection_button(button, index == maxi(0, CHARACTER_IDS.find(SaveManager.selected_character)), Color(0.3, 0.9, 0.78, 1.0))
+		button.pressed.connect(_select_character_card.bind(index, character_grid))
+		character_grid.add_child(button)
+	for button in [map_1_btn, map_2_btn, map_3_btn, map_4_btn]: button.hide()
+	var map_column := map_1_btn.get_parent()
+	for index in MAP_CARDS.size():
+		var data := MAP_CARDS[index] as Array
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(340, 86)
+		button.text = "%02d  %s  ·  [%s]\n주요 목표  %s" % [index + 1, data[0], data[1], data[2]]
+		button.icon = load(String(data[3])) as Texture2D
+		button.add_theme_constant_override("icon_max_width", 74)
+		button.expand_icon = true
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_font_size_override("font_size", 14)
+		_style_selection_button(button, false, Color(1.0, 0.5, 0.24, 1.0))
+		button.pressed.connect(_load_map.bind(String(data[4])))
+		map_column.add_child(button)
+
+func _portrait(sheet: Texture2D) -> AtlasTexture:
+	var portrait := AtlasTexture.new()
+	portrait.atlas = sheet
+	portrait.region = Rect2(0, 0, float(sheet.get_width()) / 4.0, sheet.get_height())
+	return portrait
+
+func _style_selection_button(button: Button, selected: bool, accent: Color) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(accent, 0.24 if selected else 0.08)
+	style.border_color = accent if selected else Color(accent, 0.45)
+	style.set_border_width_all(3 if selected else 1)
+	style.set_corner_radius_all(7)
+	style.set_content_margin_all(7.0)
+	button.add_theme_stylebox_override("normal", style)
+	var hover := style.duplicate() as StyleBoxFlat
+	hover.bg_color = Color(accent, 0.28)
+	hover.set_border_width_all(2)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("focus", hover)
+
+func _select_character_card(index: int, grid: GridContainer) -> void:
+	SaveManager.selected_character = CHARACTER_IDS[index]
+	SaveManager.save_data()
+	_update_character_info(index)
+	for child_index in grid.get_child_count():
+		_style_selection_button(grid.get_child(child_index) as Button, child_index == index, Color(0.3, 0.9, 0.78, 1.0))
+
+func _animate_tab(tab_index: int) -> void:
+	var page := $TabContainer.get_child(tab_index) as Control
+	page.modulate.a = 0.0
+	create_tween().tween_property(page, "modulate:a", 1.0, 0.18)
 
 func _build_evolution_codex() -> void:
 	var button := Button.new()
@@ -158,6 +242,7 @@ func _refresh_trait_tree() -> void:
 			button.custom_minimum_size = Vector2(880, 72)
 			button.text = "%s   Lv %d / %d\n%s · %s   |   %s" % [definition.name, level, max_level, definition.effect, definition.description, "MAX" if level >= max_level else "%d G" % SaveManager.get_upgrade_cost(upgrade_id)]
 			button.disabled = level >= max_level or SaveManager.gold < SaveManager.get_upgrade_cost(upgrade_id)
+			_style_selection_button(button, not button.disabled, Color(0.32, 0.88, 0.68, 1.0))
 			button.pressed.connect(_buy_trait.bind(String(upgrade_id)))
 			list.add_child(button)
 
@@ -168,7 +253,9 @@ func _buy_trait(upgrade_id: String) -> void:
 
 func _confirm_trait_reset() -> void:
 	var confirmation := ConfirmationDialog.new()
-	confirmation.dialog_text = "구매한 모든 특성을 초기화하고 사용한 골드를 100% 환급하시겠습니까?"
+	confirmation.title = "경고 · 영구 성장 초기화"
+	confirmation.dialog_text = "구매한 모든 특성이 초기화됩니다.\n사용한 골드는 100% 환급됩니다. 계속하시겠습니까?"
+	confirmation.ok_button_text = "초기화 및 전액 환급"
 	confirmation.confirmed.connect(func() -> void:
 		SaveManager.reset_all_upgrades()
 		_refresh_trait_tree()
