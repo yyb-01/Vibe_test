@@ -24,6 +24,9 @@ var difficulty: String = "normal"
 var endless_mode: bool = false
 var active_challenge: String = "none"
 var challenge_completed: bool = false
+var rerolls_remaining: int = 0
+var banishes_remaining: int = 0
+var banished_ids: Array[String] = []
 const KILL_QUEST_TARGET: int = 25
 const KILL_QUEST_REWARD: int = 100
 
@@ -39,7 +42,7 @@ func start_run(new_map_id: String) -> void:
 	survivors_rescued = 0
 	supply_caches_opened = 0
 	elite_kills = 0
-	scrap = 0
+	scrap = SaveManager.get_upgrade_level("start_gold") * 40
 	scrap_multiplier = 1.0
 	companion_role = ""
 	missions_completed = 0
@@ -54,6 +57,9 @@ func start_run(new_map_id: String) -> void:
 	endless_mode = SaveManager.endless_mode
 	active_challenge = SaveManager.selected_challenge
 	challenge_completed = false
+	rerolls_remaining = SaveManager.get_upgrade_level("reroll_count")
+	banishes_remaining = SaveManager.get_upgrade_level("banish_count")
+	banished_ids.clear()
 
 func _process(delta: float) -> void:
 	if run_active and not get_tree().paused:

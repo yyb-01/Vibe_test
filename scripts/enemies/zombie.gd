@@ -69,12 +69,20 @@ var tank_stomp_cooldown: float = 0.0
 var bloater_spit_cooldown: float = 1.5
 var strafe_sign: float = 1.0
 var hit_stop_timer: float = 0.0
+var detonation_countdown: float = -1.0
+var detonation_duration: float = 0.8
+var warning_overlay: Node2D
 
 const WALL_LOOK_AHEAD: float = 54.0
 const WALL_FOLLOW_TIME: float = 0.45
 
 func _ready() -> void:
 	z_index = 6
+	warning_overlay = Node2D.new()
+	warning_overlay.z_as_relative = false
+	warning_overlay.z_index = 35
+	warning_overlay.draw.connect(_draw_warning)
+	add_child(warning_overlay)
 	base_max_health = max_health
 	base_move_speed = move_speed
 	base_attack_damage = attack_damage
@@ -130,6 +138,8 @@ func reset() -> void:
 	bloater_spit_cooldown = randf_range(1.5, 3.5)
 	strafe_sign = -1.0 if randf() < 0.5 else 1.0
 	hit_stop_timer = 0.0
+	detonation_countdown = -1.0
+	warning_overlay.queue_redraw()
 	set_meta("is_boss", false)
 	set_meta("is_elite", false)
 
@@ -154,6 +164,15 @@ func set_elite() -> void:
 	sprite.modulate = Color(1.0, 0.72, 0.25, 1.0)
 
 func _physics_process(delta: float) -> void:
+	if detonation_countdown >= 0.0:
+		detonation_countdown -= delta
+		warning_overlay.queue_redraw()
+		if detonation_countdown <= 0.0:
+			detonation_countdown = -1.0
+			if explodes_on_contact:
+				_detonate()
+			die()
+		return
 	if health <= 0:
 		return
 	if hit_stop_timer > 0.0:
@@ -226,11 +245,10 @@ func _attack_player() -> void:
 	if can_attack and player.has_method("take_damage"):
 		can_attack = false
 		attack_pulse = 0.6
-		player.take_damage(attack_damage, global_position.direction_to(player.global_position))
 		if explodes_on_contact:
-			AudioManager.play_named("impact", -4.0)
-			die()
+			_start_detonation(0.75)
 			return
+		player.take_damage(attack_damage, global_position.direction_to(player.global_position))
 
 		var timer := get_tree().create_timer(attack_cooldown)
 		timer.timeout.connect(func() -> void: can_attack = true)
@@ -379,7 +397,30 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, hit_kind: S
 		)
 
 	if health <= 0:
-		die()
+		if detonates_on_death:
+			_start_detonation(0.8)
+		else:
+			die()
+
+func _start_detonation(duration: float) -> void:
+	if detonation_countdown >= 0.0:
+		return
+	detonation_duration = duration
+	detonation_countdown = duration
+	velocity = Vector2.ZERO
+	can_attack = false
+	warning_overlay.queue_redraw()
+
+func _draw_warning() -> void:
+	if detonation_countdown < 0.0:
+		return
+	var progress := 1.0 - detonation_countdown / detonation_duration
+	var flash := 0.55 + absf(sin(progress * progress * 34.0)) * 0.45
+	var radius := detonation_radius if detonates_on_death else 120.0
+	warning_overlay.draw_circle(Vector2.ZERO, radius, Color(1.0, 0.05, 0.0, 0.12 + progress * 0.16))
+	warning_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.12, 0.02, flash), 10.0, true)
+	warning_overlay.draw_arc(Vector2.ZERO, radius * (1.0 - progress * 0.7), 0.0, TAU, 48, Color(1.0, 0.78, 0.08, flash), 5.0, true)
+	sprite.modulate = base_sprite_modulate.lerp(Color(1.0, 0.08, 0.02, 1.0), flash * 0.72)
 
 func _animate_visual(delta: float, moving: bool) -> void:
 	visual_time += delta
@@ -493,6 +534,8 @@ func die() -> void:
 		return
 	is_dying = true
 	health = 0
+	if randf() < 0.28:
+		AudioManager.play_named("zombie_hurt", -12.0)
 	if detonates_on_death:
 		_detonate()
 
@@ -546,7 +589,7 @@ func _detonate() -> void:
 	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
 	if impact and impact.has_method("configure"):
 		impact.configure(Color(1.0, 0.5, 0.12, 1.0), detonation_radius)
-	AudioManager.play_named("impact", -2.0, randf_range(0.72, 0.86))
+	AudioManager.play_named("explosion", -2.0)
 
 func _get_melee_engagement_range() -> float:
 	if not is_instance_valid(player):

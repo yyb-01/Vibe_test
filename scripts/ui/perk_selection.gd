@@ -97,7 +97,7 @@ func _on_level_up() -> void:
 		elif item is WeaponUpgradeData: item_id = item.weapon_id
 		elif item is Weapon: item_id = item.data.weapon_name
 
-		if item_id in shown_ids: continue
+		if item_id in shown_ids or item_id in RunStats.banished_ids: continue
 		shown_ids.append(item_id)
 
 		_create_upgrade_button(item)
@@ -165,9 +165,19 @@ func _create_upgrade_button(item: Variant) -> void:
 	content.add_child(select_button)
 
 	if item is PerkData:
-		kind_label.text = "패시브"
+		var evolution_links := _get_weapon_evolution_links(item.id)
+		kind_label.text = "[★ 진화 재료]" if not evolution_links.is_empty() else "패시브"
+		if not evolution_links.is_empty():
+			kind_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.24, 1.0))
 		name_label.text = item.perk_name
 		description_label.text = item.description + _get_build_recipe_hint(item.id)
+		if not evolution_links.is_empty():
+			var tip := "보유 무기 진화 연계\n" + "\n".join(evolution_links)
+			card.tooltip_text = tip
+			kind_label.tooltip_text = tip
+			name_label.tooltip_text = tip
+			description_label.tooltip_text = tip
+			select_button.tooltip_text = tip
 	elif item is WeaponUpgradeData:
 		kind_label.text = "신규 무기"
 		name_label.text = item.weapon_name
@@ -179,7 +189,22 @@ func _create_upgrade_button(item: Variant) -> void:
 
 	select_button.text = "이 강화 선택"
 	select_button.pressed.connect(func() -> void: _on_upgrade_selected(item))
+	if RunStats.banishes_remaining > 0:
+		var banish_button := Button.new()
+		banish_button.text = "불량품 폐기  ·  %d회" % RunStats.banishes_remaining
+		banish_button.pressed.connect(func() -> void: _on_banish_pressed(item))
+		content.add_child(banish_button)
 	container.add_child(card)
+
+func _get_weapon_evolution_links(perk_id: String) -> Array[String]:
+	var links: Array[String] = []
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if not player:
+		return links
+	for weapon in player.weapons:
+		if not weapon.evolved and perk_id in weapon.get_evolution_requirements():
+			links.append("%s  Lv %d/5  ·  %s" % [weapon.get_display_name(), weapon.current_level, weapon.get_evolution_requirement_text()])
+	return links
 
 func _get_build_recipe_hint(perk_id: String) -> String:
 	match perk_id:
@@ -201,12 +226,23 @@ func _get_build_recipe_hint(perk_id: String) -> String:
 		_: return ""
 
 func _update_reroll_button() -> void:
-	reroll_button.text = "카드 리롤  ·  %dG" % REROLL_COST
-	reroll_button.disabled = SaveManager.gold < REROLL_COST
+	reroll_button.text = "무료 카드 리롤  ·  %d회" % RunStats.rerolls_remaining if RunStats.rerolls_remaining > 0 else "카드 리롤  ·  %dG" % REROLL_COST
+	reroll_button.disabled = RunStats.rerolls_remaining <= 0 and SaveManager.gold < REROLL_COST
 
 func _on_reroll_pressed() -> void:
-	if SaveManager.spend_gold(REROLL_COST):
+	if RunStats.rerolls_remaining > 0:
+		RunStats.rerolls_remaining -= 1
 		_on_level_up()
+	elif SaveManager.spend_gold(REROLL_COST):
+		_on_level_up()
+
+func _on_banish_pressed(item: Variant) -> void:
+	if RunStats.banishes_remaining <= 0:
+		return
+	var item_id := item.id if item is PerkData else (item.weapon_id if item is WeaponUpgradeData else item.data.weapon_name)
+	RunStats.banished_ids.append(String(item_id))
+	RunStats.banishes_remaining -= 1
+	_on_level_up()
 
 func _on_skip_pressed() -> void:
 	visible = false

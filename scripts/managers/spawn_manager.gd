@@ -45,6 +45,7 @@ var modifier_spawn_mult: float = 1.0
 
 func _ready() -> void:
 	add_to_group("spawn_manager")
+	AudioManager.play_wave_bgm()
 	get_tree().paused = false # Absolute guarantee on map load
 	var pool_parent := get_tree().current_scene
 	if not is_instance_valid(pool_parent):

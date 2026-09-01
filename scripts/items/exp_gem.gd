@@ -15,6 +15,7 @@ func _ready() -> void:
 func reset() -> void:
 	speed = 0.0
 	target = get_tree().get_first_node_in_group("player")
+	magnet_range = 150.0 * (1.0 + SaveManager.get_upgrade_level("magnet_radius") * 0.2)
 	$Sprite2D.position.y = 0
 	set_exp_amount(10)
 

@@ -4,6 +4,28 @@ const SAVE_PATH = "user://save_data.cfg"
 
 var gold: int = 0
 
+const UPGRADE_DEFINITIONS := {
+	"max_hp": {"category": "survival", "name": "강화 장갑", "max": 5, "base_cost": 100, "effect": "최대 체력 +15", "description": "기본 생존 체력 증가"},
+	"health_regen": {"category": "survival", "name": "나노 재생기", "max": 3, "base_cost": 200, "effect": "5초당 체력 +1", "description": "초반 유지력 제공"},
+	"i_frames": {"category": "survival", "name": "비상 회피막", "max": 3, "base_cost": 150, "effect": "피격 무적 +0.05초", "description": "다단히트 즉사 방지"},
+	"revive": {"category": "survival", "name": "최후의 심폐소생", "max": 1, "base_cost": 1000, "effect": "런당 1회 부활", "description": "HP 30% 부활 + 충격파"},
+	"damage": {"category": "combat", "name": "고화력 화약", "max": 5, "base_cost": 100, "effect": "모든 피해 +6%", "description": "기본 피해량 증가"},
+	"crit_chance": {"category": "combat", "name": "정밀 조준경", "max": 5, "base_cost": 150, "effect": "치명타 확률 +3%", "description": "치명타 빌드 기반"},
+	"crit_damage": {"category": "combat", "name": "대구경 탄두", "max": 3, "base_cost": 200, "effect": "치명타 피해 +15%", "description": "치명타 폭딜 강화"},
+	"fire_rate": {"category": "combat", "name": "급탄 모듈", "max": 4, "base_cost": 150, "effect": "공격/재장전 +4%", "description": "DPS 및 연사 강화"},
+	"piercing": {"category": "combat", "name": "철갑탄", "max": 1, "base_cost": 800, "effect": "기본 관통 +1", "description": "웨이브 돌파력 강화"},
+	"speed": {"category": "utility", "name": "경량화 부츠", "max": 5, "base_cost": 100, "effect": "이동 속도 +4%", "description": "카이팅 능력 강화"},
+	"dash_cooldown": {"category": "utility", "name": "오버클럭 슬라이드", "max": 3, "base_cost": 150, "effect": "대시 쿨타임 -8%", "description": "기동 및 탈출 주기 단축"},
+	"magnet_radius": {"category": "utility", "name": "자력 코일", "max": 5, "base_cost": 100, "effect": "흡수 반경 +20%", "description": "파밍 편의성 강화"},
+	"exp_gain": {"category": "utility", "name": "데이터 분석기", "max": 4, "base_cost": 150, "effect": "경험치 +5%", "description": "레벨업 가속"},
+	"start_gold": {"category": "economy", "name": "긴급 지원금", "max": 5, "base_cost": 80, "effect": "시작 스크랩 +40", "description": "초반 상점 자금 확보"},
+	"shop_discount": {"category": "economy", "name": "암시장 할인", "max": 3, "base_cost": 150, "effect": "상점 가격 -6%", "description": "구매 효율 강화"},
+	"reroll_count": {"category": "economy", "name": "작전 재검토", "max": 3, "base_cost": 250, "effect": "무료 리롤 +1", "description": "빌드 완성도 향상"},
+	"banish_count": {"category": "economy", "name": "불량품 폐기", "max": 2, "base_cost": 350, "effect": "카드 제외 +1", "description": "덱 압축 및 진화 지원"},
+	"start_passive": {"category": "economy", "name": "조달 패키지", "max": 1, "base_cost": 1200, "effect": "무작위 패시브 +1", "description": "런 시작 변수 창출"}
+}
+var upgrades: Dictionary = {}
+
 # Permanent Upgrade Levels
 var upgrade_max_hp: int = 0
 var upgrade_speed: int = 0
@@ -22,6 +44,8 @@ var screen_shake_enabled: bool = true
 var master_volume: float = 0.8
 
 func _ready() -> void:
+	for upgrade_id in UPGRADE_DEFINITIONS:
+		upgrades[upgrade_id] = 0
 	load_data()
 
 func _notification(what: int) -> void:
@@ -36,6 +60,7 @@ func save_data() -> void:
 	config.set_value("Upgrades", "max_hp", upgrade_max_hp)
 	config.set_value("Upgrades", "speed", upgrade_speed)
 	config.set_value("Upgrades", "damage", upgrade_damage)
+	config.set_value("Upgrades", "levels", upgrades)
 	config.set_value("Progress", "total_runs", total_runs)
 	config.set_value("Progress", "best_time", best_time)
 	config.set_value("Progress", "highest_wave", highest_wave)
@@ -60,6 +85,14 @@ func load_data() -> void:
 		upgrade_max_hp = config.get_value("Upgrades", "max_hp", 0)
 		upgrade_speed = config.get_value("Upgrades", "speed", 0)
 		upgrade_damage = config.get_value("Upgrades", "damage", 0)
+		var saved_upgrades: Dictionary = config.get_value("Upgrades", "levels", {})
+		if saved_upgrades.is_empty():
+			upgrades["max_hp"] = mini(upgrade_max_hp, 5)
+			upgrades["speed"] = mini(upgrade_speed, 5)
+			upgrades["damage"] = mini(upgrade_damage, 5)
+		else:
+			for upgrade_id in UPGRADE_DEFINITIONS:
+				upgrades[upgrade_id] = clampi(int(saved_upgrades.get(upgrade_id, 0)), 0, int(UPGRADE_DEFINITIONS[upgrade_id].max))
 		total_runs = config.get_value("Progress", "total_runs", 0)
 		best_time = config.get_value("Progress", "best_time", 0.0)
 		highest_wave = config.get_value("Progress", "highest_wave", 0)
@@ -101,6 +134,42 @@ func spend_gold(amount: int) -> bool:
 		EventBus.gold_changed.emit(gold)
 		return true
 	return false
+
+func get_upgrade_level(upgrade_id: String) -> int:
+	return int(upgrades.get(upgrade_id, 0))
+
+func get_upgrade_cost(upgrade_id: String) -> int:
+	var definition: Dictionary = UPGRADE_DEFINITIONS.get(upgrade_id, {})
+	return int(definition.get("base_cost", 0)) * (get_upgrade_level(upgrade_id) + 1)
+
+func buy_upgrade(upgrade_id: String) -> bool:
+	if not UPGRADE_DEFINITIONS.has(upgrade_id):
+		return false
+	var definition: Dictionary = UPGRADE_DEFINITIONS[upgrade_id]
+	var level := get_upgrade_level(upgrade_id)
+	if level >= int(definition.max) or not spend_gold(get_upgrade_cost(upgrade_id)):
+		return false
+	upgrades[upgrade_id] = level + 1
+	save_data()
+	return true
+
+func reset_all_upgrades() -> int:
+	var refund := 0
+	for upgrade_id in upgrades:
+		var base_cost := int(UPGRADE_DEFINITIONS[upgrade_id].base_cost)
+		for level in range(int(upgrades[upgrade_id])):
+			refund += base_cost * (level + 1)
+		upgrades[upgrade_id] = 0
+	add_gold(refund)
+	return refund
+
+func get_upgrade_progress() -> float:
+	var bought := 0
+	var maximum := 0
+	for upgrade_id in UPGRADE_DEFINITIONS:
+		bought += get_upgrade_level(upgrade_id)
+		maximum += int(UPGRADE_DEFINITIONS[upgrade_id].max)
+	return float(bought) / float(maxi(1, maximum))
 
 func unlock_pet_blueprint(blueprint_id: String) -> void:
 	if blueprint_id in pet_blueprints:

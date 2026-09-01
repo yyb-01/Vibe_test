@@ -58,6 +58,8 @@ func open_shop(wave: int) -> void:
 	reroll_cost = BASE_REROLL_COST
 	offers.clear()
 	_roll_offers(player)
+	for index in offers.size():
+		offers[index] = _apply_discount(offers[index])
 	visible = true
 	get_tree().paused = true
 	_render()
@@ -164,7 +166,9 @@ func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 			evolution_candidates.append(weapon)
 	if current_wave >= 3 and not evolution_candidates.is_empty() and randf() < 0.2:
 		var evolution_weapon: Weapon = evolution_candidates.pick_random()
-		return {"kind": "evolution", "id": "evolution_" + evolution_weapon.data.weapon_name, "item": evolution_weapon, "cost": 52, "locked": false}
+		var evolution_id := "evolution_" + evolution_weapon.data.weapon_name
+		if evolution_id not in RunStats.banished_ids:
+			return {"kind": "evolution", "id": evolution_id, "item": evolution_weapon, "cost": 52, "locked": false}
 
 	var roll := randf()
 	if current_wave >= 2 and roll < 0.18:
@@ -185,7 +189,7 @@ func _make_contract_offer(used_ids: Array[String]) -> Dictionary:
 	]
 	var candidates: Array[Dictionary] = []
 	for contract in contracts:
-		if String(contract.id) not in used_ids:
+		if String(contract.id) not in used_ids and String(contract.id) not in RunStats.banished_ids:
 			contract["locked"] = false
 			candidates.append(contract)
 	return _make_supply_offer(used_ids) if candidates.is_empty() else candidates.pick_random()
@@ -196,7 +200,7 @@ func _make_passive_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 		owned_ids.append(passive.id)
 	var candidates: Array[PerkData] = []
 	for passive in PASSIVES:
-		if passive.id not in owned_ids and passive.id not in used_ids:
+		if passive.id not in owned_ids and passive.id not in used_ids and passive.id not in RunStats.banished_ids:
 			candidates.append(passive)
 	if candidates.is_empty():
 		return {}
@@ -207,7 +211,7 @@ func _make_weapon_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	var candidates: Array[Dictionary] = []
 	for weapon in player.weapons:
 		var upgrade_id := "upgrade_" + weapon.data.weapon_name
-		if weapon.current_level < Weapon.MAX_LEVEL and upgrade_id not in used_ids:
+		if weapon.current_level < Weapon.MAX_LEVEL and upgrade_id not in used_ids and upgrade_id not in RunStats.banished_ids:
 			candidates.append({"kind": "weapon_upgrade", "id": upgrade_id, "item": weapon, "cost": 22, "locked": false})
 	if player.weapons.size() < player.max_weapons:
 		for weapon_path in WEAPON_PATHS:
@@ -219,7 +223,7 @@ func _make_weapon_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 				if owned_weapon.data.weapon_name == weapon_data.weapon_data.weapon_name:
 					has_weapon = true
 					break
-			if not has_weapon and weapon_data.weapon_id not in used_ids:
+			if not has_weapon and weapon_data.weapon_id not in used_ids and weapon_data.weapon_id not in RunStats.banished_ids:
 				candidates.append({"kind": "weapon_new", "id": weapon_data.weapon_id, "item": weapon_data, "cost": 34, "locked": false})
 	if candidates.is_empty():
 		return _make_supply_offer(used_ids)
@@ -234,7 +238,7 @@ func _make_supply_offer(used_ids: Array[String]) -> Dictionary:
 	]
 	var candidates: Array[Dictionary] = []
 	for supply in supplies:
-		if String(supply.id) not in used_ids:
+		if String(supply.id) not in used_ids and String(supply.id) not in RunStats.banished_ids:
 			supply["locked"] = false
 			candidates.append(supply)
 	if candidates.is_empty():
@@ -246,8 +250,8 @@ func _make_supply_offer(used_ids: Array[String]) -> Dictionary:
 func _render() -> void:
 	title_label.text = "파동 %02d 종료  ·  야전 상점" % current_wave
 	scrap_label.text = "보유 스크랩  %d   ·   처치 보상과 웨이브 보너스로 획득" % RunStats.scrap
-	reroll_button.text = "진열 새로고침  ·  %d 스크랩" % reroll_cost
-	reroll_button.disabled = RunStats.scrap < reroll_cost
+	reroll_button.text = "무료 진열 새로고침  ·  %d회" % RunStats.rerolls_remaining if RunStats.rerolls_remaining > 0 else "진열 새로고침  ·  %d 스크랩" % reroll_cost
+	reroll_button.disabled = RunStats.rerolls_remaining <= 0 and RunStats.scrap < reroll_cost
 	for child in offer_row.get_children():
 		child.queue_free()
 	for index in offers.size():
@@ -323,6 +327,11 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	lock_button.disabled = bool(offer.get("purchased", false))
 	lock_button.pressed.connect(func() -> void: _toggle_lock(index))
 	content.add_child(lock_button)
+	if RunStats.banishes_remaining > 0 and not bool(offer.get("purchased", false)):
+		var banish_button := Button.new()
+		banish_button.text = "폐기  ·  %d회" % RunStats.banishes_remaining
+		banish_button.pressed.connect(func() -> void: _banish_offer(index))
+		content.add_child(banish_button)
 	return card
 
 func _offer_kind_label(kind: String) -> String:
@@ -389,9 +398,12 @@ func _toggle_lock(index: int) -> void:
 	_render()
 
 func _reroll() -> void:
-	if not RunStats.spend_scrap(reroll_cost):
-		return
-	reroll_cost += 5
+	if RunStats.rerolls_remaining > 0:
+		RunStats.rerolls_remaining -= 1
+	else:
+		if not RunStats.spend_scrap(reroll_cost):
+			return
+		reroll_cost += 5
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if not player:
 		return
@@ -401,9 +413,24 @@ func _reroll() -> void:
 			used_ids.append(String(offer.get("id", "")))
 	for index in offers.size():
 		if not bool(offers[index].get("locked", false)):
-			offers[index] = _make_offer(player, used_ids)
+			offers[index] = _apply_discount(_make_offer(player, used_ids))
 			used_ids.append(String(offers[index].get("id", "")))
 	_render()
+
+func _banish_offer(index: int) -> void:
+	if RunStats.banishes_remaining <= 0:
+		return
+	RunStats.banished_ids.append(String(offers[index].id))
+	RunStats.banishes_remaining -= 1
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if player:
+		offers[index] = _apply_discount(_make_offer(player, []))
+	_render()
+
+func _apply_discount(offer: Dictionary) -> Dictionary:
+	var discount := SaveManager.get_upgrade_level("shop_discount") * 0.06
+	offer["cost"] = maxi(1, ceili(int(offer.get("cost", 0)) * (1.0 - discount)))
+	return offer
 
 func _buy_offer(index: int) -> void:
 	var offer := offers[index]

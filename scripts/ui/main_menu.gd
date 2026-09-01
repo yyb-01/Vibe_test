@@ -43,6 +43,11 @@ var pet_info_label: Label
 var difficulty_select: OptionButton
 var challenge_select: OptionButton
 var endless_toggle: CheckButton
+var evolution_codex: AcceptDialog
+var trait_dialog: AcceptDialog
+var trait_tabs: TabContainer
+var trait_summary: Label
+var trait_progress: ProgressBar
 
 func _ready() -> void:
 	map_1_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_1.tscn"))
@@ -50,9 +55,9 @@ func _ready() -> void:
 	map_3_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_3.tscn"))
 	map_4_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_4.tscn"))
 
-	hp_upgrade_btn.pressed.connect(func(): _buy_upgrade("max_hp"))
-	dmg_upgrade_btn.pressed.connect(func(): _buy_upgrade("damage"))
-	spd_upgrade_btn.pressed.connect(func(): _buy_upgrade("speed"))
+	hp_upgrade_btn.pressed.connect(_open_trait_tree)
+	dmg_upgrade_btn.hide()
+	spd_upgrade_btn.hide()
 	character_select.item_selected.connect(_on_character_selected)
 	screen_shake_toggle.toggled.connect(_on_screen_shake_toggled)
 	volume_slider.value_changed.connect(_on_volume_changed)
@@ -63,6 +68,8 @@ func _ready() -> void:
 	_update_character_info(selected_character_index)
 	_build_pet_selector()
 	_build_run_settings()
+	_build_evolution_codex()
+	_build_trait_tree()
 	screen_shake_toggle.button_pressed = SaveManager.screen_shake_enabled
 	volume_slider.value = SaveManager.master_volume
 	AudioManager.set_master_volume(SaveManager.master_volume)
@@ -71,6 +78,106 @@ func _ready() -> void:
 	_update_shop_ui()
 	_update_progress_ui()
 	map_1_btn.grab_focus()
+
+func _build_evolution_codex() -> void:
+	var button := Button.new()
+	button.text = "★ 진화 도감 (Codex)"
+	button.custom_minimum_size = Vector2(400, 52)
+	button.add_theme_font_size_override("font_size", 20)
+	button.tooltip_text = "8종 무기의 5레벨 진화 조합을 확인합니다."
+	hp_upgrade_btn.get_parent().add_child(button)
+
+	evolution_codex = AcceptDialog.new()
+	evolution_codex.title = "무기 진화 도감"
+	evolution_codex.ok_button_text = "닫기"
+	evolution_codex.min_size = Vector2i(860, 620)
+	var lines: Array[String] = []
+	for entry in Weapon.get_evolution_catalog():
+		var requirements: Array = entry["requirements"]
+		var recipe := "%s + %s" % [Weapon.get_perk_label(requirements[0]), Weapon.get_perk_label(requirements[1])]
+		lines.append("%s  Lv5\n%s  →  ★ %s\n%s" % [entry["display"], recipe, entry["name"], entry["description"]])
+	evolution_codex.dialog_text = "\n\n".join(lines)
+	add_child(evolution_codex)
+	button.pressed.connect(func() -> void: evolution_codex.popup_centered(Vector2i(860, 620)))
+
+func _build_trait_tree() -> void:
+	hp_upgrade_btn.text = "🧬 영구 성장 특성 트리"
+	hp_upgrade_btn.tooltip_text = "18개 영구 특성을 강화하거나 100% 환급합니다."
+	trait_dialog = AcceptDialog.new()
+	trait_dialog.title = "DEAD//SHIFT · 영구 성장 특성 트리"
+	trait_dialog.ok_button_text = "닫기"
+	trait_dialog.min_size = Vector2i(980, 680)
+	add_child(trait_dialog)
+	var content := VBoxContainer.new()
+	content.position = Vector2(24, 18)
+	content.custom_minimum_size = Vector2(920, 580)
+	content.add_theme_constant_override("separation", 10)
+	trait_dialog.add_child(content)
+	trait_summary = Label.new()
+	trait_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	trait_summary.add_theme_font_size_override("font_size", 20)
+	content.add_child(trait_summary)
+	trait_progress = ProgressBar.new()
+	trait_progress.max_value = 100.0
+	trait_progress.show_percentage = true
+	content.add_child(trait_progress)
+	trait_tabs = TabContainer.new()
+	trait_tabs.custom_minimum_size = Vector2(920, 455)
+	trait_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(trait_tabs)
+	var reset_button := Button.new()
+	reset_button.text = "특성 전체 초기화 · 100% 골드 환급"
+	reset_button.pressed.connect(_confirm_trait_reset)
+	content.add_child(reset_button)
+
+func _open_trait_tree() -> void:
+	_refresh_trait_tree()
+	trait_dialog.popup_centered(Vector2i(980, 680))
+
+func _refresh_trait_tree() -> void:
+	trait_summary.text = "보유 골드  %d G   ·   총 업그레이드 달성률" % SaveManager.gold
+	trait_progress.value = SaveManager.get_upgrade_progress() * 100.0
+	for child in trait_tabs.get_children():
+		child.free()
+	var categories := {"survival": "🛡 생존", "combat": "⚔ 전투", "utility": "🧲 유틸", "economy": "💰 경제"}
+	for category_id in categories:
+		var scroll := ScrollContainer.new()
+		scroll.name = categories[category_id]
+		var list := VBoxContainer.new()
+		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		list.add_theme_constant_override("separation", 8)
+		scroll.add_child(list)
+		trait_tabs.add_child(scroll)
+		for upgrade_id in SaveManager.UPGRADE_DEFINITIONS:
+			var definition: Dictionary = SaveManager.UPGRADE_DEFINITIONS[upgrade_id]
+			if String(definition.category) != category_id:
+				continue
+			var level := SaveManager.get_upgrade_level(upgrade_id)
+			var max_level := int(definition.max)
+			var button := Button.new()
+			button.custom_minimum_size = Vector2(880, 72)
+			button.text = "%s   Lv %d / %d\n%s · %s   |   %s" % [definition.name, level, max_level, definition.effect, definition.description, "MAX" if level >= max_level else "%d G" % SaveManager.get_upgrade_cost(upgrade_id)]
+			button.disabled = level >= max_level or SaveManager.gold < SaveManager.get_upgrade_cost(upgrade_id)
+			button.pressed.connect(_buy_trait.bind(String(upgrade_id)))
+			list.add_child(button)
+
+func _buy_trait(upgrade_id: String) -> void:
+	if SaveManager.buy_upgrade(upgrade_id):
+		_refresh_trait_tree()
+		_update_shop_ui()
+
+func _confirm_trait_reset() -> void:
+	var confirmation := ConfirmationDialog.new()
+	confirmation.dialog_text = "구매한 모든 특성을 초기화하고 사용한 골드를 100% 환급하시겠습니까?"
+	confirmation.confirmed.connect(func() -> void:
+		SaveManager.reset_all_upgrades()
+		_refresh_trait_tree()
+		_update_shop_ui()
+	)
+	confirmation.canceled.connect(confirmation.queue_free)
+	confirmation.confirmed.connect(confirmation.queue_free)
+	add_child(confirmation)
+	confirmation.popup_centered()
 
 func _build_pet_selector() -> void:
 	var container := character_info_label.get_parent()
@@ -192,33 +299,7 @@ func _on_volume_changed(value: float) -> void:
 
 func _update_shop_ui() -> void:
 	gold_label.text = "골드  " + str(SaveManager.gold)
-
-	var hp_cost = (SaveManager.upgrade_max_hp + 1) * 100
-	var dmg_cost = (SaveManager.upgrade_damage + 1) * 100
-	var spd_cost = (SaveManager.upgrade_speed + 1) * 100
-
-	hp_upgrade_btn.text = "응급 장갑  ·  Lv %d  ·  %d G" % [SaveManager.upgrade_max_hp, hp_cost]
-	dmg_upgrade_btn.text = "탄약 개조  ·  Lv %d  ·  %d G" % [SaveManager.upgrade_damage, dmg_cost]
-	spd_upgrade_btn.text = "기동 부츠  ·  Lv %d  ·  %d G" % [SaveManager.upgrade_speed, spd_cost]
-
-	hp_upgrade_btn.disabled = SaveManager.gold < hp_cost
-	dmg_upgrade_btn.disabled = SaveManager.gold < dmg_cost
-	spd_upgrade_btn.disabled = SaveManager.gold < spd_cost
-
-func _buy_upgrade(stat: String) -> void:
-	var cost = 0
-	if stat == "max_hp":
-		cost = (SaveManager.upgrade_max_hp + 1) * 100
-		if SaveManager.spend_gold(cost): SaveManager.upgrade_max_hp += 1
-	elif stat == "damage":
-		cost = (SaveManager.upgrade_damage + 1) * 100
-		if SaveManager.spend_gold(cost): SaveManager.upgrade_damage += 1
-	elif stat == "speed":
-		cost = (SaveManager.upgrade_speed + 1) * 100
-		if SaveManager.spend_gold(cost): SaveManager.upgrade_speed += 1
-
-	SaveManager.save_data()
-	_update_shop_ui()
+	hp_upgrade_btn.text = "🧬 영구 성장 특성 트리  ·  %.0f%%" % (SaveManager.get_upgrade_progress() * 100.0)
 
 func _load_map(path: String) -> void:
 	get_tree().paused = false

@@ -13,6 +13,12 @@ const BOSS_PATHS := [
     "res://scenes/enemies/boss_mire_leviathan.tscn",
     "res://scenes/enemies/boss_director_null.tscn"
 ]
+const WEAPON_UPGRADE_PATHS := [
+    "res://data/perks/weap_pistol.tres", "res://data/perks/weap_shotgun.tres",
+    "res://data/perks/weap_smg.tres", "res://data/perks/weap_burst.tres",
+    "res://data/perks/weap_railgun.tres", "res://data/perks/weap_lightning.tres",
+    "res://data/perks/weap_nova.tres", "res://data/perks/weap_orbital.tres"
+]
 var elapsed := 0.0
 var map_scene: PackedScene
 var map_instance: Node
@@ -40,6 +46,27 @@ func _initialize() -> void:
 
     assert(load("res://scripts/effects/boss_skill_effect.gd") != null)
     assert(load("res://scripts/effects/visual_shadow.gd") != null)
+    for sound_paths in AudioManager.SFX_PATHS.values():
+        for audio_path in sound_paths:
+            assert(load(audio_path) != null, "Audio resource missing: " + audio_path)
+    assert(load(AudioManager.WAVE_BGM) != null and load(AudioManager.BOSS_BGM) != null)
+    assert(SaveManager.UPGRADE_DEFINITIONS.size() == 18)
+    for upgrade_id in SaveManager.UPGRADE_DEFINITIONS:
+        var definition: Dictionary = SaveManager.UPGRADE_DEFINITIONS[upgrade_id]
+        assert(int(definition.max) > 0 and int(definition.base_cost) > 0)
+    var zombie_script := load("res://scripts/enemies/zombie.gd")
+    var warning_zombie = zombie_script.new()
+    warning_zombie.detonation_countdown = 0.4
+    warning_zombie.detonation_duration = 0.8
+    assert(is_equal_approx(1.0 - warning_zombie.detonation_countdown / warning_zombie.detonation_duration, 0.5))
+    warning_zombie.free()
+    var weapon_script := load("res://scripts/weapons/weapon.gd")
+    assert(weapon_script.EVOLUTION_CATALOG.size() == WEAPON_UPGRADE_PATHS.size())
+    for upgrade_path in WEAPON_UPGRADE_PATHS:
+        var weapon = weapon_script.new()
+        weapon.data = load(upgrade_path).weapon_data
+        assert(weapon.get_evolution_requirements().size() == 2, "Evolution recipe missing: " + upgrade_path)
+        weapon.free()
     for boss_path in BOSS_PATHS:
         assert(load(boss_path) != null, "Boss scene failed to load: " + boss_path)
 

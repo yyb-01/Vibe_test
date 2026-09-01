@@ -23,6 +23,7 @@ var visual_time: float = 0.0
 var endless_index: int = 0
 var previous_position: Vector2
 var trail_timer: float = 0.0
+var telegraph_overlay: Node2D
 
 const BOSS_SKILL_EFFECT: Script = preload("res://scripts/effects/boss_skill_effect.gd")
 
@@ -35,6 +36,11 @@ const BOSS_COLORS := [
 
 func _ready() -> void:
 	z_index = 9
+	telegraph_overlay = Node2D.new()
+	telegraph_overlay.z_as_relative = false
+	telegraph_overlay.z_index = 40
+	telegraph_overlay.draw.connect(_draw_telegraph)
+	add_child(telegraph_overlay)
 	base_sprite_scale = sprite.scale
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
@@ -75,7 +81,7 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		_update_spatial_position()
 		_check_contact_hit(1.35)
-		queue_redraw()
+		telegraph_overlay.queue_redraw()
 		return
 
 	if telegraph_timer > 0.0:
@@ -85,7 +91,7 @@ func _physics_process(delta: float) -> void:
 		_update_spatial_position()
 		if telegraph_timer <= 0.0:
 			_execute_attack()
-		queue_redraw()
+		telegraph_overlay.queue_redraw()
 		return
 
 	_move_for_profile(delta)
@@ -94,7 +100,7 @@ func _physics_process(delta: float) -> void:
 	if attack_timer <= 0.0:
 		_begin_attack()
 	_check_contact_hit(1.0)
-	queue_redraw()
+	telegraph_overlay.queue_redraw()
 
 func _move_for_profile(delta: float) -> void:
 	var distance := global_position.distance_to(player.global_position)
@@ -293,22 +299,27 @@ func _die() -> void:
 	tween.set_parallel(false)
 	tween.tween_callback(queue_free)
 
-func _draw() -> void:
+func _draw_telegraph() -> void:
 	if telegraph_timer <= 0.0:
 		return
-	var color := BOSS_COLORS[boss_id]
-	var alpha := 0.35 + sin(visual_time * 18.0) * 0.12
+	var pulse := 0.72 + absf(sin(visual_time * 18.0)) * 0.28
+	var red := Color(1.0, 0.04, 0.02, 0.88 * pulse)
+	var orange := Color(1.0, 0.62, 0.05, pulse)
 	match attack_mode:
 		"shield_charge":
 			var target := to_local(player.global_position)
-			draw_line(Vector2.ZERO, target.normalized() * 620.0, Color(color, alpha), 42.0, true)
+			var path := target.normalized() * 720.0
+			telegraph_overlay.draw_line(Vector2.ZERO, path, Color(0.18, 0.0, 0.0, 0.82), 46.0, true)
+			telegraph_overlay.draw_line(Vector2.ZERO, path, red, 18.0, true)
+			telegraph_overlay.draw_line(Vector2.ZERO, path, orange, 4.0, true)
 		"null_blink":
-			draw_circle(to_local(player.global_position), 185.0, Color(color, alpha * 0.45))
+			telegraph_overlay.draw_circle(to_local(player.global_position), 185.0, Color(red, 0.3))
 		"acid_fan":
 			var direction := global_position.direction_to(player.global_position)
 			for offset in [-0.72, 0.0, 0.72]:
-				draw_line(Vector2.ZERO, direction.rotated(offset) * 480.0, Color(color, alpha), 9.0, true)
+				telegraph_overlay.draw_line(Vector2.ZERO, direction.rotated(offset) * 480.0, orange, 9.0, true)
 		_:
 			var radius := 320.0 if attack_mode in ["forge_wave", "toxic_pool"] else 245.0
-			draw_circle(Vector2.ZERO, radius, Color(color, alpha * 0.32))
-			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(color, 0.9), 8.0, true)
+			telegraph_overlay.draw_circle(Vector2.ZERO, radius, Color(red, 0.2))
+			telegraph_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 96, red, 14.0, true)
+			telegraph_overlay.draw_arc(Vector2.ZERO, radius * (0.72 + 0.18 * pulse), 0.0, TAU, 96, orange, 5.0, true)

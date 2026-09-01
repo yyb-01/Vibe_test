@@ -75,11 +75,16 @@ var skill_duration: float = 0.0
 var skill_shield_duration: float = 0.0
 var skill_restore: Dictionary = {}
 var critical_chance_add: float = 0.0
+var critical_damage_mult: float = 1.75
 var execute_threshold: float = 0.0
 var health_regen_per_second: float = 0.0
 var skill_cooldown_rate: float = 1.0
 var regen_accumulator: float = 0.0
 var synergy_kill_counter: int = 0
+var revive_available: bool = false
+var dash_cooldown: float = 0.0
+var dash_time: float = 0.0
+var dash_direction: Vector2 = Vector2.ZERO
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var gun_pivot: Node2D = $GunPivot
@@ -107,11 +112,20 @@ func _ready() -> void:
 	add_weapon(starting_weap_data.weapon_script, starting_weap_data.weapon_data)
 
 	# Apply meta-progression
-	max_health += SaveManager.upgrade_max_hp * 20
-	damage_mult += SaveManager.upgrade_damage * 0.1
-	speed_mult += SaveManager.upgrade_speed * 0.05
+	max_health += SaveManager.get_upgrade_level("max_hp") * 15
+	damage_mult += SaveManager.get_upgrade_level("damage") * 0.06
+	speed_mult += SaveManager.get_upgrade_level("speed") * 0.04
+	health_regen_per_second += SaveManager.get_upgrade_level("health_regen") * 0.2
+	invulnerability_duration += SaveManager.get_upgrade_level("i_frames") * 0.05
+	critical_chance_add += SaveManager.get_upgrade_level("crit_chance") * 0.03
+	critical_damage_mult += SaveManager.get_upgrade_level("crit_damage") * 0.15
+	reload_mult *= 1.0 - SaveManager.get_upgrade_level("fire_rate") * 0.04
+	pierce_add += SaveManager.get_upgrade_level("piercing")
+	revive_available = SaveManager.get_upgrade_level("revive") > 0
 
 	health = max_health
+	if SaveManager.get_upgrade_level("start_passive") > 0:
+		_apply_random_start_passive()
 	_spawn_equipped_pet()
 
 	if not EventBus.perk_selected.is_connected(apply_perk):
@@ -136,6 +150,8 @@ func _update_ui() -> void:
 	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 
 func _physics_process(_delta: float) -> void:
+	dash_cooldown = maxf(0.0, dash_cooldown - _delta)
+	dash_time = maxf(0.0, dash_time - _delta)
 	_update_unique_skill(_delta)
 	_update_build_effects(_delta)
 	_handle_movement()
@@ -242,34 +258,34 @@ func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
 	var flash_size := 24.0
 	var flash_color := Color(1.0, 0.78, 0.32, 1.0)
 	match weapon_name:
-		"산탄총 (Shotgun)":
+		"Shotgun":
 			recoil = 8.5
 			shake = 0.72
 			flash_size = 42.0
 			flash_color = Color(1.0, 0.45, 0.16, 1.0)
-		"레일건 (Railgun)":
+		"Railgun":
 			recoil = 11.0
 			shake = 1.0
 			flash_size = 52.0
 			flash_color = Color(0.28, 0.92, 1.0, 1.0)
-		"기관단총 (SMG)":
+		"SMG":
 			recoil = 2.0
 			shake = 0.1
 			flash_size = 17.0
-		"점사 소총 (Burst)":
+		"Burst Rifle":
 			recoil = 5.0
 			shake = 0.38
 			flash_size = 29.0
-		"체인 라이트닝 (Lightning)":
+		"Lightning":
 			recoil = 2.5
 			shake = 0.28
 			flash_color = Color(0.4, 0.9, 1.0, 1.0)
-		"충격파 발생기 (Nova)":
+		"Shock Nova":
 			recoil = 6.0
 			shake = 0.55
 			flash_size = 36.0
 			flash_color = Color(0.35, 1.0, 0.82, 1.0)
-		"보호막 (Orbital)":
+		"Orbital":
 			return
 	trigger_weapon_recoil(recoil)
 	gun_kick_angle = deg_to_rad(recoil * 0.75) * (1.0 if facing == "left" else -1.0)
@@ -280,6 +296,10 @@ func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
 	flash.call("setup", get_muzzle_global_position(), get_muzzle_global_position().direction_to(target_pos), flash_color, flash_size)
 
 func _handle_movement() -> void:
+	if dash_time > 0.0:
+		velocity = dash_direction * move_speed * speed_mult * 3.2
+		move_and_slide()
+		return
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	velocity = input_dir * (move_speed * speed_mult)
 	move_and_slide()
@@ -297,6 +317,8 @@ func _handle_shooting() -> void:
 		weapon.fire(self, target_pos)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SHIFT:
+		_start_dash()
 	if event.is_action_pressed("toggle_auto_fire"):
 		auto_fire_enabled = not auto_fire_enabled
 	if event.is_action_pressed("reload"):
@@ -326,11 +348,14 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	EventBus.player_health_changed.emit(health, max_health)
 	_play_hit_feedback(hit_direction)
 	AudioManager.play_named("hurt", -4.0)
-	var invulnerability_timer := get_tree().create_timer(invulnerability_duration)
-	invulnerability_timer.timeout.connect(func() -> void: invulnerable = false)
 
 	if health <= 0:
-		die()
+		if revive_available:
+			_revive()
+		else:
+			die()
+	else:
+		get_tree().create_timer(invulnerability_duration).timeout.connect(func() -> void: invulnerable = false)
 
 func _play_hit_feedback(hit_direction: Vector2) -> void:
 	var impact = ObjectPoolManager.acquire("player_hit", global_position)
@@ -357,7 +382,7 @@ func heal(amount: int) -> void:
 	EventBus.player_health_changed.emit(health, max_health)
 
 func add_exp(amount: int) -> void:
-	current_exp += amount
+	current_exp += roundi(float(amount) * (1.0 + SaveManager.get_upgrade_level("exp_gain") * 0.05))
 	while current_exp >= required_exp:
 		_level_up()
 	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
@@ -569,6 +594,7 @@ func _restore_enemy_speed(enemy: Node, original_speed: float) -> void:
 
 func configure_projectile(projectile: Node) -> void:
 	projectile.set("critical_chance", clampf(float(projectile.get("critical_chance")) + critical_chance_add, 0.0, 0.65))
+	projectile.set("critical_damage_multiplier", critical_damage_mult)
 	projectile.set("execute_threshold", execute_threshold)
 
 func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critical_chance: float = 0.0, impact_kind: String = "normal") -> void:
@@ -582,9 +608,37 @@ func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critica
 		final_damage = int(target_health) + 1
 		hit_kind = "execute"
 	elif randf() < clampf(base_critical_chance + critical_chance_add, 0.0, 0.65):
-		final_damage = roundi(float(amount) * 1.75)
+		final_damage = roundi(float(amount) * critical_damage_mult)
 		hit_kind = "critical"
 	target.take_damage(final_damage, direction, hit_kind)
+
+func _start_dash() -> void:
+	if dash_cooldown > 0.0 or health <= 0:
+		return
+	var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	dash_direction = input_direction.normalized() if input_direction != Vector2.ZERO else Vector2.RIGHT.rotated(aim_angle)
+	dash_time = 0.16
+	dash_cooldown = 2.4 * (1.0 - SaveManager.get_upgrade_level("dash_cooldown") * 0.08)
+	invulnerable = true
+	get_tree().create_timer(dash_time).timeout.connect(func() -> void: invulnerable = false)
+
+func _revive() -> void:
+	revive_available = false
+	health = maxi(1, roundi(max_health * 0.3))
+	invulnerable = true
+	EventBus.player_health_changed.emit(health, max_health)
+	_damage_enemies_in_radius(300.0, 60, 650.0)
+	EventBus.camera_shake_requested.emit(1.4)
+	get_tree().create_timer(1.5).timeout.connect(func() -> void: invulnerable = false)
+
+func _apply_random_start_passive() -> void:
+	var candidates: Array[PerkData] = []
+	for file_name in DirAccess.get_files_at("res://data/perks"):
+		var resource := load("res://data/perks/" + file_name)
+		if resource is PerkData:
+			candidates.append(resource)
+	if not candidates.is_empty():
+		apply_perk(candidates.pick_random())
 
 func _update_build_effects(delta: float) -> void:
 	if health_regen_per_second <= 0.0 or health <= 0 or health >= max_health:

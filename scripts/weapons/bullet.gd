@@ -7,6 +7,7 @@ var direction: Vector2 = Vector2.ZERO
 var pierce_count: int = 0
 var hit_targets: Array[Node] = []
 var critical_chance: float = 0.08
+var critical_damage_multiplier: float = 1.75
 var impact_kind: String = "normal"
 var execute_threshold: float = 0.0
 
@@ -22,6 +23,7 @@ func reset() -> void:
 	pierce_count = 0
 	hit_targets.clear()
 	critical_chance = 0.08
+	critical_damage_multiplier = 1.75
 	impact_kind = "normal"
 	execute_threshold = 0.0
 
@@ -43,7 +45,7 @@ func _on_body_entered(body: Node2D) -> void:
 	if body.has_method("take_damage"):
 		hit_targets.append(body)
 		var is_critical := randf() < critical_chance
-		var final_damage := roundi(float(damage) * (1.75 if is_critical else 1.0))
+		var final_damage := roundi(float(damage) * (critical_damage_multiplier if is_critical else 1.0))
 		var hit_kind := "critical" if is_critical else impact_kind
 		var target_health = body.get("health")
 		var target_max_health = body.get("max_health")
@@ -51,8 +53,8 @@ func _on_body_entered(body: Node2D) -> void:
 			final_damage = int(target_health) + 1
 			hit_kind = "execute"
 		body.take_damage(final_damage, direction, hit_kind)
+		AudioManager.play_named("zombie_cut" if hit_kind == "execute" else "zombie_hit", -11.0)
 		if is_critical:
-			AudioManager.play_named("impact", -9.0, randf_range(1.12, 1.26))
 			EventBus.camera_shake_requested.emit(0.34)
 		elif hit_kind == "execute":
 			EventBus.camera_shake_requested.emit(0.7)

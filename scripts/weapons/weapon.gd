@@ -2,6 +2,16 @@ class_name Weapon
 extends Node
 
 const MAX_LEVEL: int = 5
+const EVOLUTION_CATALOG := [
+	{"weapon": "Pistol", "display": "권총 (Pistol)", "id": "deadeye_revolver", "name": "데드아이 리볼버", "requirements": ["heavy_caliber", "piercing_rounds"], "description": "피해량 35% 증가, 관통 +1의 정밀 사격입니다."},
+	{"weapon": "Shotgun", "display": "산탄총 (Shotgun)", "id": "breacher_cannon", "name": "브리처 캐논", "requirements": ["reinforced_vest", "field_rations"], "description": "산탄 +2, 피해량 20% 증가로 좁은 길을 뚫습니다."},
+	{"weapon": "SMG", "display": "기관단총 (SMG)", "id": "overload_smg", "name": "탄막 과부하", "requirements": ["fast_hands", "scavenged_ammo"], "description": "피해량 25% 증가, 관통 +1의 탄막 무기입니다."},
+	{"weapon": "Burst Rifle", "display": "점사 소총 (Burst)", "id": "triad_breaker", "name": "트라이어드 브레이커", "requirements": ["stabilizer", "executioner"], "description": "점사 +1, 피해량 15% 증가의 정밀 사격입니다."},
+	{"weapon": "Railgun", "display": "레일건 (Railgun)", "id": "rail_lance", "name": "레일 랜스", "requirements": ["heavy_caliber", "hollow_point"], "description": "피해량 50% 증가, 추가 관통 +2를 얻습니다."},
+	{"weapon": "Lightning", "display": "체인 라이트닝 (Lightning)", "id": "storm_runner", "name": "스톰 러너", "requirements": ["adrenaline", "momentum"], "description": "연쇄 횟수 +2, 피해량 25% 증가의 번개입니다."},
+	{"weapon": "Shock Nova", "display": "충격파 발생기 (Nova)", "id": "bunker_pulse", "name": "벙커 펄스", "requirements": ["trauma_kit", "field_rations"], "description": "투사체 +4, 피해량 30% 증가, 관통 +1을 얻습니다."},
+	{"weapon": "Orbital", "display": "보호막 (Orbital)", "id": "guardian_orbital", "name": "가디언 오비탈", "requirements": ["medic_kit", "reinforced_vest"], "description": "회전 반경 +30, 피해량 40% 증가의 방패입니다."}
+]
 
 @export var data: WeaponData
 var current_level: int = 1
@@ -77,39 +87,23 @@ func evolve(player: Player) -> bool:
 func get_display_name() -> String:
 	if evolved:
 		return evolution_name + " ★"
-	return data.weapon_name
+	return String(_get_evolution().get("display", data.weapon_name))
 
 func get_evolution_description() -> String:
-	match _get_evolution_id():
-		"deadeye_revolver": return "피해량 35% 증가, 관통 +1의 정밀 사격입니다."
-		"breacher_cannon": return "산탄 +2, 피해량 20% 증가로 좁은 길을 뚫습니다."
-		"overload_smg": return "피해량 25% 증가, 관통 +1의 탄막 무기입니다."
-		"triad_breaker": return "점사 +1, 피해량 15% 증가의 정밀 사격입니다."
-		"rail_lance": return "피해량 50% 증가, 추가 관통 +2를 얻습니다."
-		"storm_runner": return "연쇄 횟수 +2, 피해량 25% 증가의 번개입니다."
-		"bunker_pulse": return "투사체 +4, 피해량 30% 증가, 관통 +1을 얻습니다."
-		"guardian_orbital": return "회전 반경 +30, 피해량 40% 증가의 방패입니다."
-		_: return "무기의 공격 방식과 피해량이 크게 강화됩니다."
+	return String(_get_evolution().get("description", "무기의 공격 방식과 피해량이 크게 강화됩니다."))
 
 func get_evolution_requirements() -> Array[String]:
-	match _get_evolution_id():
-		"deadeye_revolver": return ["heavy_caliber", "piercing_rounds"]
-		"breacher_cannon": return ["reinforced_vest", "field_rations"]
-		"overload_smg": return ["fast_hands", "scavenged_ammo"]
-		"triad_breaker": return ["stabilizer", "executioner"]
-		"rail_lance": return ["heavy_caliber", "hollow_point"]
-		"storm_runner": return ["adrenaline", "momentum"]
-		"bunker_pulse": return ["trauma_kit", "field_rations"]
-		"guardian_orbital": return ["medic_kit", "reinforced_vest"]
-		_: return []
+	var requirements: Array[String] = []
+	requirements.assign(_get_evolution().get("requirements", []))
+	return requirements
 
 func get_evolution_requirement_text() -> String:
 	var labels: Array[String] = []
 	for perk_id in get_evolution_requirements():
-		labels.append(_get_perk_label(perk_id))
+		labels.append(get_perk_label(perk_id))
 	return " + ".join(labels)
 
-func _get_perk_label(perk_id: String) -> String:
+static func get_perk_label(perk_id: String) -> String:
 	match perk_id:
 		"heavy_caliber": return "대구경 탄환"
 		"piercing_rounds": return "철갑탄"
@@ -127,27 +121,17 @@ func _get_perk_label(perk_id: String) -> String:
 		_: return perk_id
 
 func _get_evolution_id() -> String:
-	if not data:
-		return "unknown_evolution"
-	match data.weapon_name:
-		"권총 (Pistol)": return "deadeye_revolver"
-		"산탄총 (Shotgun)": return "breacher_cannon"
-		"기관단총 (SMG)": return "overload_smg"
-		"점사 소총 (Burst)": return "triad_breaker"
-		"레일건 (Railgun)": return "rail_lance"
-		"체인 라이트닝 (Lightning)": return "storm_runner"
-		"충격파 발생기 (Nova)": return "bunker_pulse"
-		"보호막 (Orbital)": return "guardian_orbital"
-		_: return data.weapon_name + "_evolution"
+	return String(_get_evolution().get("id", "unknown_evolution"))
 
 func _get_evolution_name() -> String:
-	match _get_evolution_id():
-		"deadeye_revolver": return "데드아이 리볼버"
-		"breacher_cannon": return "브리처 캐논"
-		"overload_smg": return "탄막 과부하"
-		"triad_breaker": return "트라이어드 브레이커"
-		"rail_lance": return "레일 랜스"
-		"storm_runner": return "스톰 러너"
-		"bunker_pulse": return "벙커 펄스"
-		"guardian_orbital": return "가디언 오비탈"
-		_: return data.weapon_name
+	return String(_get_evolution().get("name", data.weapon_name if data else "알 수 없음"))
+
+func _get_evolution() -> Dictionary:
+	if data:
+		for entry in EVOLUTION_CATALOG:
+			if String(entry["weapon"]) == data.weapon_name:
+				return entry
+	return {}
+
+static func get_evolution_catalog() -> Array:
+	return EVOLUTION_CATALOG.duplicate(true)

@@ -1,66 +1,93 @@
 extends Node
 
-var pool_size: int = 16
+const SFX_PATHS := {
+	"shot": ["res://assets/audio/sfx/pistol_1.wav", "res://assets/audio/sfx/pistol_2.wav"],
+	"shotgun": ["res://assets/audio/sfx/shotgun_1.wav", "res://assets/audio/sfx/shotgun_2.wav"],
+	"casing": ["res://assets/audio/sfx/casing.ogg"],
+	"lightning": ["res://assets/audio/sfx/lightning.ogg"],
+	"impact": ["res://assets/audio/sfx/zombie_hit_1.wav", "res://assets/audio/sfx/zombie_hit_2.wav"],
+	"zombie_hit": ["res://assets/audio/sfx/zombie_hit_1.wav", "res://assets/audio/sfx/zombie_hit_2.wav"],
+	"zombie_cut": ["res://assets/audio/sfx/zombie_cut_1.wav", "res://assets/audio/sfx/zombie_cut_2.wav"],
+	"zombie_hurt": ["res://assets/audio/sfx/zombie_hurt_1.ogg", "res://assets/audio/sfx/zombie_hurt_2.ogg"],
+	"explosion": ["res://assets/audio/sfx/explosion.ogg"],
+	"pickup": ["res://assets/audio/sfx/pickup.ogg"],
+	"hurt": ["res://assets/audio/sfx/zombie_hurt_1.ogg"],
+	"level_up": ["res://assets/audio/sfx/pickup.ogg"]
+}
+const WAVE_BGM := "res://assets/audio/wave_bgm.ogg"
+const BOSS_BGM := "res://assets/audio/boss_bgm.ogg"
+
 var players: Array[AudioStreamPlayer] = []
 var named_sfx: Dictionary = {}
+var bgm_player: AudioStreamPlayer
+var current_bgm: String = ""
 
 func _ready() -> void:
-	# Pre-warm audio players
-	for i in range(pool_size):
-		var p = AudioStreamPlayer.new()
-		p.bus = "Master"
-		add_child(p)
-		players.append(p)
-	named_sfx["shot"] = _make_tone(180.0, 0.07, 0.28)
-	named_sfx["shotgun"] = _make_tone(90.0, 0.16, 0.42)
-	named_sfx["lightning"] = _make_tone(520.0, 0.14, 0.24)
-	named_sfx["impact"] = _make_tone(260.0, 0.06, 0.18)
-	named_sfx["pickup"] = _make_tone(680.0, 0.08, 0.16)
-	named_sfx["hurt"] = _make_tone(110.0, 0.12, 0.3)
-	named_sfx["level_up"] = _make_tone(740.0, 0.32, 0.22)
+	for _index in range(20):
+		var player := AudioStreamPlayer.new()
+		player.bus = "Master"
+		add_child(player)
+		players.append(player)
+	for sound_name in SFX_PATHS:
+		var streams: Array[AudioStream] = []
+		for path in SFX_PATHS[sound_name]:
+			var stream := load(path) as AudioStream
+			if stream:
+				streams.append(stream)
+		named_sfx[sound_name] = streams
+	bgm_player = AudioStreamPlayer.new()
+	bgm_player.bus = "Master"
+	bgm_player.volume_db = -12.0
+	add_child(bgm_player)
+	EventBus.boss_status_changed.connect(_on_boss_status_changed)
 	set_master_volume(SaveManager.master_volume)
 
 func play_sfx(stream: AudioStream, volume_db: float = 0.0, pitch_scale: float = 1.0) -> void:
 	if not stream:
 		return
-
-	# Find first available player
-	for p in players:
-		if not p.playing:
-			p.stream = stream
-			p.volume_db = volume_db
-			p.pitch_scale = pitch_scale
-			p.play()
-			return
-
-	# Interruption fallback
-	if players.size() > 0:
-		players[0].stream = stream
-		players[0].volume_db = volume_db
-		players[0].pitch_scale = pitch_scale
-		players[0].play()
+	var player := players[0]
+	for candidate in players:
+		if not candidate.playing:
+			player = candidate
+			break
+	player.stream = stream
+	player.volume_db = volume_db
+	player.pitch_scale = pitch_scale * randf_range(0.9, 1.1)
+	player.play()
 
 func play_named(sfx_name: String, volume_db: float = 0.0, pitch_scale: float = 1.0) -> void:
-	play_sfx(named_sfx.get(sfx_name), volume_db, pitch_scale)
+	var sounds: Array = named_sfx.get(sfx_name, [])
+	if sounds.is_empty():
+		return
+	play_sfx(sounds.pick_random(), volume_db, pitch_scale)
+	if sfx_name in ["shot", "shotgun"] and randf() < (0.45 if sfx_name == "shot" else 0.8):
+		var casings: Array = named_sfx["casing"]
+		play_sfx(casings.pick_random(), volume_db - 8.0, 1.0)
+
+func play_wave_bgm() -> void:
+	_play_bgm(WAVE_BGM)
+
+func play_boss_bgm() -> void:
+	_play_bgm(BOSS_BGM)
+
+func _play_bgm(path: String) -> void:
+	if current_bgm == path:
+		return
+	var stream := load(path) as AudioStreamOggVorbis
+	if not stream:
+		return
+	stream.loop = true
+	current_bgm = path
+	bgm_player.stream = stream
+	bgm_player.play()
+
+func _on_boss_status_changed(boss_name: String, health_ratio: float, _phase: int) -> void:
+	if boss_name != "" and health_ratio >= 0.0:
+		play_boss_bgm()
+	elif current_bgm == BOSS_BGM:
+		play_wave_bgm()
 
 func set_master_volume(value: float) -> void:
 	var bus_index := AudioServer.get_bus_index("Master")
 	if bus_index >= 0:
 		AudioServer.set_bus_volume_db(bus_index, linear_to_db(clampf(value, 0.0, 1.0)))
-
-func _make_tone(frequency: float, duration: float, amplitude: float) -> AudioStreamWAV:
-	const MIX_RATE := 22050
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = MIX_RATE
-	stream.stereo = false
-	var sample_count := int(duration * MIX_RATE)
-	var data := PackedByteArray()
-	data.resize(sample_count * 2)
-	for i in range(sample_count):
-		var t := float(i) / MIX_RATE
-		var envelope := 1.0 - (float(i) / sample_count)
-		var sample := sin(TAU * frequency * t) * amplitude * envelope
-		data.encode_s16(i * 2, int(sample * 32767.0))
-	stream.data = data
-	return stream
