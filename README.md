@@ -46,6 +46,7 @@ Godot 에디터에서 프로젝트를 열고 `scenes/ui/main_menu.tscn`을 실�
 ```bash
 godot --headless --path . verify_resources.tscn
 godot --headless --resolution 1280x720 --path . verify_hud_layout.tscn
+godot --headless --resolution 1280x720 --path . verify_main_menu_layout.tscn
 godot --headless --path . verify_map.tscn
 ```
 

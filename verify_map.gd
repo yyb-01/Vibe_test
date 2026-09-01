@@ -19,6 +19,16 @@ const WEAPON_UPGRADE_PATHS := [
     "res://data/perks/weap_railgun.tres", "res://data/perks/weap_lightning.tres",
     "res://data/perks/weap_nova.tres", "res://data/perks/weap_orbital.tres"
 ]
+const CHARACTER_SHEET_PATHS := [
+    "res://assets/graphics/animated/player_scavenger_sheet_v1.png",
+    "res://assets/graphics/animated/player_medic_sheet_v1.png",
+    "res://assets/graphics/animated/player_ranger_sheet_v1.png",
+    "res://assets/graphics/animated/player_bulwark_sheet_v1.png",
+    "res://assets/graphics/animated/player_pyro_sheet_v1.png",
+    "res://assets/graphics/animated/player_engineer_sheet_v1.png",
+    "res://assets/graphics/animated/player_reaper_sheet_v1.png",
+    "res://assets/graphics/animated/player_chronomancer_sheet_v1.png"
+]
 var elapsed := 0.0
 var map_scene: PackedScene
 var map_instance: Node
@@ -63,6 +73,7 @@ func _ready() -> void:
         weapon.free()
     for boss_path in BOSS_PATHS:
         assert(load(boss_path) != null, "Boss scene failed to load: " + boss_path)
+    _verify_character_sheets()
 
     _load_next_map()
 
@@ -121,12 +132,36 @@ func _process(delta: float) -> void:
         var active_enemy_count := 0
         for enemy in get_tree().get_nodes_in_group("enemies"):
             if enemy is CanvasItem and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.visible:
+                if enemy.collision_layer == 0:
+                    continue # Death fade: visible briefly, but intentionally non-colliding.
                 assert(enemy.collision_layer == 4 and enemy.collision_mask == 2, "Enemies must collide with World only")
                 active_enemy_count += 1
         if active_enemy_count == 0:
             push_error("Assertion failed: No zombies spawned")
             get_tree().quit(1)
             return
+
+        if map_index == 0:
+            for direction in ["up", "down", "left", "right"]:
+                player.facing = direction
+                player.call("_set_character_frame", 0)
+                var expected_row := 3 if direction == "up" else (0 if direction == "down" else 1)
+                assert(int(player.sprite.region_rect.position.y / player.sprite.region_rect.size.y) == expected_row)
+                assert(player.call("_gun_mount_for_facing").length() < 30.0, "Gun mount is detached from the player hands")
+            player.skill_cooldown = 0.0
+            Input.action_press("move_right")
+            var space_event := InputEventKey.new()
+            space_event.pressed = true
+            space_event.keycode = KEY_SPACE
+            player._unhandled_input(space_event)
+            var skill_event := InputEventKey.new()
+            skill_event.pressed = true
+            skill_event.keycode = KEY_E
+            player._unhandled_input(skill_event)
+            Input.action_release("move_right")
+            assert(player.dash_time > 0.0 and player.skill_cooldown == 0.0, "Dash + skill input overlap was not blocked")
+            player.dash_time = 0.0
+            assert(player._get_active_enemies().size() < get_tree().get_nodes_in_group("enemies").size(), "Pooled enemies leaked into skill targets")
 
         print("Map assertions passed: ", MAP_PATHS[map_index])
         transitioning = true
@@ -135,6 +170,14 @@ func _process(delta: float) -> void:
             map_instance.visible = false
         call_deferred("_finish_map_transition")
         return
+
+func _verify_character_sheets() -> void:
+    for sheet_path in CHARACTER_SHEET_PATHS:
+        var texture := load(sheet_path) as Texture2D
+        assert(texture != null, "Character sheet failed to load: " + sheet_path)
+        assert(texture.get_width() > 0 and texture.get_height() > 0, "Character sheet has no dimensions: " + sheet_path)
+        var aspect := float(texture.get_width()) / float(texture.get_height())
+        assert(texture.get_width() >= 800 and texture.get_height() >= 800 and aspect > 0.85 and aspect < 1.15, "Invalid 4x4 character sheet: " + sheet_path)
 
 func _finish_map_transition() -> void:
     if is_instance_valid(map_instance):

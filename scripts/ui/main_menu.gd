@@ -100,14 +100,17 @@ func _ready() -> void:
 func _build_visual_selectors() -> void:
 	character_select.hide()
 	var character_grid := GridContainer.new()
-	character_grid.columns = 2
+	character_grid.name = "CharacterGrid"
+	character_grid.columns = 4
+	character_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	character_grid.add_theme_constant_override("h_separation", 8)
 	character_grid.add_theme_constant_override("v_separation", 8)
 	character_select.get_parent().add_child(character_grid)
 	character_select.get_parent().move_child(character_grid, 0)
 	for index in CHARACTER_IDS.size():
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(210, 82)
+		button.custom_minimum_size = Vector2(250, 76)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.text = "%s\n%s" % [CHARACTER_NAMES[index].get_slice(" · ", 0), CHARACTER_STATS[index]]
 		button.tooltip_text = CHARACTER_DESCRIPTIONS[index]
 		button.icon = _portrait(CHARACTER_SHEETS[index] as Texture2D)
@@ -123,13 +126,15 @@ func _build_visual_selectors() -> void:
 	for index in MAP_CARDS.size():
 		var data := MAP_CARDS[index] as Array
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(340, 86)
+		button.name = "MapCard%d" % (index + 1)
+		button.custom_minimum_size = Vector2(258, 80)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.text = "%02d  %s  ·  [%s]\n주요 목표  %s" % [index + 1, data[0], data[1], data[2]]
 		button.icon = load(String(data[3])) as Texture2D
-		button.add_theme_constant_override("icon_max_width", 74)
+		button.add_theme_constant_override("icon_max_width", 62)
 		button.expand_icon = true
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.add_theme_font_size_override("font_size", 14)
+		button.add_theme_font_size_override("font_size", 13)
 		_style_selection_button(button, false, Color(1.0, 0.5, 0.24, 1.0))
 		button.pressed.connect(_load_map.bind(String(data[4])))
 		map_column.add_child(button)

@@ -55,6 +55,9 @@ jobs:
       - name: Verify HUD Layout at 1280x720
         run: godot --headless --resolution 1280x720 --path "${PROJECT_PATH}" verify_hud_layout.tscn
 
+      - name: Verify Main Menu Layout at 1280x720
+        run: godot --headless --resolution 1280x720 --path "${PROJECT_PATH}" verify_main_menu_layout.tscn
+
       - name: Verify Map Loading and Spawning
         run: godot --headless --path "${PROJECT_PATH}" verify_map.tscn
 

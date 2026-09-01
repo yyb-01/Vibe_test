@@ -37,8 +37,10 @@ const CHARACTER_TINT := {
 const COMBAT_PET: PackedScene = preload("res://scenes/player/combat_pet.tscn")
 const MUZZLE_FLASH_SCRIPT: Script = preload("res://scripts/effects/muzzle_flash.gd")
 const UNIQUE_SKILL_EFFECT_SCRIPT: Script = preload("res://scripts/effects/unique_skill_effect.gd")
-const GUN_MOUNT_RIGHT := Vector2(38.0, -20.0)
-const GUN_MOUNT_LEFT := Vector2(-38.0, -20.0)
+const GUN_MOUNT_RIGHT := Vector2(26.0, -5.0)
+const GUN_MOUNT_LEFT := Vector2(-26.0, -5.0)
+const GUN_MOUNT_DOWN := Vector2(6.0, 7.0)
+const GUN_MOUNT_UP := Vector2(-6.0, -8.0)
 @export var max_health: int = 100
 @export var move_speed: float = 200.0
 @export var invulnerability_duration: float = 0.35
@@ -171,6 +173,8 @@ func _animate_topdown_body(delta: float) -> void:
 	var target_position := sprite_base_position
 	var target_scale := sprite_base_scale
 	_update_facing_from_aim()
+	if facing == "up":
+		target_position.y -= 3.0
 	if moving:
 		walk_time += delta * 9.5
 		var frame_index := int(walk_time * 1.7) % 4
@@ -182,9 +186,6 @@ func _animate_topdown_body(delta: float) -> void:
 		_set_character_frame(0)
 		var breath := sin(animation_time * 2.2)
 		target_position += Vector2(0.0, -breath * 0.8)
-	if facing == "up" or facing == "down":
-		target_scale *= 0.86
-
 	# The body never rotates with the cursor. It switches among dedicated poses,
 	# while the muzzle keeps using the exact mouse direction for projectile aim.
 	sprite.position = sprite.position.lerp(target_position, minf(delta * 16.0, 1.0))
@@ -211,11 +212,18 @@ func _update_facing_pose(_delta: float) -> void:
 	var aiming_left := aim_vec.x < 0.0
 	gun_sprite.visible = true
 	gun_sprite.flip_h = false
-	sprite.flip_h = aiming_left
+	sprite.flip_h = facing == "left"
 	gun_pivot.scale.y = -1.0 if aiming_left else 1.0
-	gun_pivot.position = (GUN_MOUNT_LEFT if aiming_left else GUN_MOUNT_RIGHT) - aim_vec * gun_recoil
+	gun_pivot.position = _gun_mount_for_facing() - aim_vec * gun_recoil
 	gun_pivot.rotation = aim_vec.angle() + gun_kick_angle
 	gun_pivot.z_index = 8 if facing == "up" else 12
+
+func _gun_mount_for_facing() -> Vector2:
+	match facing:
+		"up": return GUN_MOUNT_UP
+		"down": return GUN_MOUNT_DOWN
+		"left": return GUN_MOUNT_LEFT
+		_: return GUN_MOUNT_RIGHT
 
 func _configure_character_sprite() -> void:
 	var original_width := float(maxi(1, sprite.texture.get_width()))
@@ -490,7 +498,7 @@ func get_unique_skill_max_cooldown() -> float:
 		_: return 15.0
 
 func use_unique_skill() -> bool:
-	if skill_cooldown > 0.0 or health <= 0:
+	if skill_cooldown > 0.0 or health <= 0 or dash_time > 0.0:
 		return false
 	_spawn_unique_skill_effect()
 	match character_id:
@@ -526,12 +534,14 @@ func use_unique_skill() -> bool:
 	return true
 
 func _spawn_unique_skill_effect() -> void:
+	if not is_instance_valid(get_tree().current_scene):
+		return
 	var effect := Node2D.new()
 	effect.set_script(UNIQUE_SKILL_EFFECT_SCRIPT)
 	get_tree().current_scene.add_child(effect)
 	var target_points := PackedVector2Array()
 	if character_id in ["engineer", "reaper"]:
-		var targets := get_tree().get_nodes_in_group("enemies")
+		var targets := _get_active_enemies()
 		targets.sort_custom(func(a, b): return global_position.distance_squared_to(a.global_position) < global_position.distance_squared_to(b.global_position))
 		for index in mini(7, targets.size()):
 			var target = targets[index]
@@ -562,9 +572,7 @@ func _start_temporary_modifier(kind: String, original: float, boosted: float, du
 	skill_duration = maxf(skill_duration, duration)
 
 func _damage_enemies_in_radius(radius: float, base_damage: int, knockback_force: float) -> void:
-	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(enemy) or not enemy.has_method("take_damage"):
-			continue
+	for enemy in _get_active_enemies():
 		var distance := global_position.distance_to(enemy.global_position)
 		if distance <= radius:
 			var direction := global_position.direction_to(enemy.global_position)
@@ -574,7 +582,7 @@ func _damage_enemies_in_radius(radius: float, base_damage: int, knockback_force:
 				enemy.set("knockback", current_knockback + direction * knockback_force)
 
 func _attack_nearest_enemies(count: int, base_damage: int) -> void:
-	var targets := get_tree().get_nodes_in_group("enemies")
+	var targets := _get_active_enemies()
 	targets.sort_custom(func(a, b): return global_position.distance_squared_to(a.global_position) < global_position.distance_squared_to(b.global_position))
 	for index in mini(count, targets.size()):
 		var enemy = targets[index]
@@ -583,8 +591,8 @@ func _attack_nearest_enemies(count: int, base_damage: int) -> void:
 
 func _execute_wounded_enemies(radius: float) -> void:
 	var executed := 0
-	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(enemy) or global_position.distance_to(enemy.global_position) > radius:
+	for enemy in _get_active_enemies():
+		if global_position.distance_to(enemy.global_position) > radius:
 			continue
 		var enemy_health := int(enemy.get("health"))
 		var enemy_max_health := maxi(1, int(enemy.get("max_health")))
@@ -596,8 +604,8 @@ func _execute_wounded_enemies(radius: float) -> void:
 		heal(executed * 6)
 
 func _time_collapse(radius: float) -> void:
-	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(enemy) or global_position.distance_to(enemy.global_position) > radius:
+	for enemy in _get_active_enemies():
+		if global_position.distance_to(enemy.global_position) > radius:
 			continue
 		enemy.take_damage(int(20.0 * damage_mult), global_position.direction_to(enemy.global_position))
 		var speed_value = enemy.get("move_speed")
@@ -605,6 +613,13 @@ func _time_collapse(radius: float) -> void:
 			var original_speed := float(speed_value)
 			enemy.set("move_speed", original_speed * 0.38)
 			get_tree().create_timer(4.0).timeout.connect(_restore_enemy_speed.bind(enemy, original_speed))
+
+func _get_active_enemies() -> Array[Node]:
+	var active: Array[Node] = []
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy) and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and int(enemy.get("health")) > 0:
+			active.append(enemy)
+	return active
 
 func _restore_enemy_speed(enemy: Node, original_speed: float) -> void:
 	if is_instance_valid(enemy):
