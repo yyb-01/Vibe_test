@@ -7,6 +7,12 @@ const MAP_PATHS := [
     "res://scenes/maps/map_3.tscn",
     "res://scenes/maps/map_4.tscn"
 ]
+const BOSS_PATHS := [
+    "res://scenes/enemies/boss_quarantine_warden.tscn",
+    "res://scenes/enemies/boss_foundry_juggernaut.tscn",
+    "res://scenes/enemies/boss_mire_leviathan.tscn",
+    "res://scenes/enemies/boss_director_null.tscn"
+]
 var elapsed := 0.0
 var map_scene: PackedScene
 var map_instance: Node
@@ -31,6 +37,11 @@ func _initialize() -> void:
         var singleton = load(autoloads[singleton_name]).new()
         singleton.name = singleton_name
         root.add_child(singleton)
+
+    assert(load("res://scripts/effects/boss_skill_effect.gd") != null)
+    assert(load("res://scripts/effects/visual_shadow.gd") != null)
+    for boss_path in BOSS_PATHS:
+        assert(load(boss_path) != null, "Boss scene failed to load: " + boss_path)
 
     _load_next_map()
 

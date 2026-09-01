@@ -10,6 +10,12 @@ const ZOMBIE_TANK: PackedScene = preload("res://scenes/enemies/zombie_tank.tscn"
 const ZOMBIE_SPITTER: PackedScene = preload("res://scenes/enemies/zombie_spitter.tscn")
 const ZOMBIE_BOMBER: PackedScene = preload("res://scenes/enemies/zombie_bomber.tscn")
 const ZOMBIE_BLOATER: PackedScene = preload("res://scenes/enemies/zombie_bloater.tscn")
+const MAP_BOSSES := {
+	"map_1": preload("res://scenes/enemies/boss_quarantine_warden.tscn"),
+	"map_2": preload("res://scenes/enemies/boss_foundry_juggernaut.tscn"),
+	"map_3": preload("res://scenes/enemies/boss_mire_leviathan.tscn"),
+	"map_4": preload("res://scenes/enemies/boss_director_null.tscn")
+}
 const WAVE_SHOP: PackedScene = preload("res://scenes/ui/wave_shop.tscn")
 const MISSION_EVENT: PackedScene = preload("res://scenes/world/mission_event.tscn")
 const SUPPLY_CACHE: PackedScene = preload("res://scenes/world/supply_cache.tscn")
@@ -155,19 +161,22 @@ func _spawn_boss() -> void:
 	boss_spawned = true
 	var player := get_tree().get_first_node_in_group("player") as Node2D
 	if not is_instance_valid(player):
+		boss_spawned = false
 		return
 	# Bosses enter from outside the player's current view even on the expanded maps.
 	var boss_position := _get_player_spawn_position(player, 760.0, 920.0)
-	var boss = ObjectPoolManager.acquire("zombie_tank", boss_position)
-	if boss:
-		boss.set_meta("pool_id", "zombie_tank")
-		boss.set_meta("is_boss", true)
-		var endless_scale := 1.0 + float(bosses_defeated) * 0.35
-		boss.set_scaled_max_health((38.0 if boss_data_hacked else 50.0) * RunStats.get_difficulty_health_mult() * endless_scale)
-		_apply_enemy_damage(boss)
-		boss.scale = Vector2(3.0, 3.0)
-		boss.modulate = Color.RED
-		boss.set_meta("boss_data_hacked", boss_data_hacked)
+	var boss_scene := MAP_BOSSES.get(RunStats.map_id, MAP_BOSSES["map_1"]) as PackedScene
+	var boss = boss_scene.instantiate()
+	var scene_root := get_tree().current_scene
+	if not is_instance_valid(scene_root):
+		boss_spawned = false
+		boss.queue_free()
+		return
+	scene_root.add_child(boss)
+	boss.global_position = boss_position
+	var endless_scale := 1.0 + float(bosses_defeated) * 0.35
+	var health_scale := (38.0 if boss_data_hacked else 50.0) * RunStats.get_difficulty_health_mult() * endless_scale
+	boss.configure(health_scale, RunStats.get_difficulty_damage_mult(), boss_data_hacked, bosses_defeated)
 
 func _spawn_zombie() -> bool:
 	if _get_active_enemy_count() >= MAX_ACTIVE_ENEMIES:

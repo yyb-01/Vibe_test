@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/map_boss.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/graphics/bosses/boss_foundry_juggernaut_v1.png" id="2_tex"]
+[ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_mat"]
+
+[sub_resource type="CircleShape2D" id="BossShape"]
+radius = 112.0
+
+[node name="FoundryJuggernaut" type="CharacterBody2D" groups=["enemies", "bosses"]]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_script")
+boss_id = 1
+boss_name = "용광로 파괴자"
+max_health = 145
+move_speed = 58.0
+attack_damage = 21
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+material = ExtResource("3_mat")
+texture = ExtResource("2_tex")
+texture_filter = 2
+scale = Vector2(0.235, 0.235)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("BossShape")

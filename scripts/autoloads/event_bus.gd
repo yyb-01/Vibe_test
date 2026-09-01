@@ -8,7 +8,7 @@ signal level_up()
 
 signal perk_selection_requested()
 signal perk_selected(perk: Resource)
-signal camera_shake_requested()
+signal camera_shake_requested(intensity: float)
 
 signal gold_changed(total_gold: int)
 signal scrap_changed(total_scrap: int)

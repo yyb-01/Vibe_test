@@ -11,6 +11,29 @@ const CHARACTER_SHEETS := {
 	"reaper": preload("res://assets/graphics/animated/player_reaper_sheet_v1.png"),
 	"chronomancer": preload("res://assets/graphics/animated/player_chronomancer_sheet_v1.png")
 }
+# The generated sheets have slightly different occupied bounds even after their
+# frame widths are normalized. Keep the cast visually consistent while letting
+# the heavy and supernatural silhouettes read a little larger.
+const CHARACTER_VISUAL_SCALE := {
+	"scavenger": 1.0,
+	"medic": 1.0,
+	"ranger": 1.0,
+	"bulwark": 1.15,
+	"pyro": 0.98,
+	"engineer": 1.03,
+	"reaper": 1.03,
+	"chronomancer": 1.03
+}
+const CHARACTER_TINT := {
+	"scavenger": Color(1.0, 0.97, 0.9),
+	"medic": Color(0.9, 1.0, 0.92),
+	"ranger": Color(0.88, 0.96, 1.0),
+	"bulwark": Color(0.84, 0.92, 1.0),
+	"pyro": Color(1.0, 0.88, 0.76),
+	"engineer": Color(1.0, 0.95, 0.76),
+	"reaper": Color(1.0, 0.82, 0.86),
+	"chronomancer": Color(0.92, 0.84, 1.0)
+}
 const COMBAT_PET: PackedScene = preload("res://scenes/player/combat_pet.tscn")
 const MUZZLE_FLASH_SCRIPT: Script = preload("res://scripts/effects/muzzle_flash.gd")
 const UNIQUE_SKILL_EFFECT_SCRIPT: Script = preload("res://scripts/effects/unique_skill_effect.gd")
@@ -41,6 +64,7 @@ var active_synergies: Array[String] = []
 var walk_time: float = 0.0
 var animation_time: float = 0.0
 var gun_recoil: float = 0.0
+var gun_kick_angle: float = 0.0
 var sprite_base_scale: Vector2
 var sprite_base_position: Vector2
 var aim_angle: float = 0.0
@@ -70,6 +94,7 @@ func _ready() -> void:
 	character_id = SaveManager.selected_character
 	_apply_character_preset()
 	_configure_character_sprite()
+	VisualShadow.attach(self, Vector2(60.0, 19.0) if character_id == "bulwark" else Vector2(52.0, 17.0), Vector2(0.0, 52.0))
 	if not RunStats.run_active:
 		var scene_root := get_tree().current_scene
 		if not is_instance_valid(scene_root):
@@ -144,6 +169,7 @@ func _animate_topdown_body(delta: float) -> void:
 	sprite.rotation = 0.0
 	_update_facing_pose(delta)
 	gun_recoil = move_toward(gun_recoil, 0.0, delta * 48.0)
+	gun_kick_angle = move_toward(gun_kick_angle, 0.0, delta * 2.8)
 
 func get_muzzle_global_position() -> Vector2:
 	return muzzle_anchor.global_position
@@ -170,17 +196,18 @@ func _update_facing_pose(delta: float) -> void:
 			gun_sprite.flip_h = true
 			muzzle_offset = Vector2(-88.0, -35.0)
 		"up":
-			gun_sprite.visible = false
-			desired_gun_position = Vector2.ZERO
+			desired_gun_position = Vector2(0.0, -38.0)
+			desired_gun_rotation = -PI * 0.5
 			muzzle_offset = Vector2(0.0, -96.0)
 		"down":
-			gun_sprite.visible = false
-			desired_gun_position = Vector2.ZERO
+			desired_gun_position = Vector2(0.0, 38.0)
+			desired_gun_rotation = PI * 0.5
 			muzzle_offset = Vector2(0.0, 96.0)
 		_:
 			desired_gun_position = GUN_MOUNT_RIGHT
+	gun_pivot.z_index = 8 if facing == "up" else 12
 	gun_pivot.position = gun_pivot.position.lerp(desired_gun_position, minf(delta * 18.0, 1.0))
-	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, desired_gun_rotation, minf(delta * 18.0, 1.0))
+	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, desired_gun_rotation + gun_kick_angle, minf(delta * 18.0, 1.0))
 	var recoil_direction := 1.0 if facing == "left" else -1.0
 	gun_pivot.position += Vector2(gun_recoil * recoil_direction, 0.0)
 	muzzle_anchor.position = muzzle_anchor.position.lerp(muzzle_offset + sprite.position, minf(delta * 22.0, 1.0))
@@ -191,8 +218,10 @@ func _configure_character_sprite() -> void:
 	var cell_width := float(sheet.get_width()) / 4.0
 	sprite.texture = sheet
 	sprite.region_enabled = true
-	sprite_base_scale *= original_width / cell_width
+	var visual_scale := float(CHARACTER_VISUAL_SCALE.get(character_id, 1.0))
+	sprite_base_scale *= (original_width / cell_width) * visual_scale
 	sprite.scale = sprite_base_scale
+	sprite.modulate = CHARACTER_TINT.get(character_id, Color.WHITE)
 	_set_character_frame(0)
 
 func _set_character_frame(frame_index: int) -> void:
@@ -209,33 +238,42 @@ func trigger_weapon_recoil(amount: float = 3.5) -> void:
 
 func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
 	var recoil := 3.5
+	var shake := 0.18
 	var flash_size := 24.0
 	var flash_color := Color(1.0, 0.78, 0.32, 1.0)
 	match weapon_name:
 		"산탄총 (Shotgun)":
 			recoil = 8.5
+			shake = 0.72
 			flash_size = 42.0
 			flash_color = Color(1.0, 0.45, 0.16, 1.0)
 		"레일건 (Railgun)":
 			recoil = 11.0
+			shake = 1.0
 			flash_size = 52.0
 			flash_color = Color(0.28, 0.92, 1.0, 1.0)
 		"기관단총 (SMG)":
 			recoil = 2.0
+			shake = 0.1
 			flash_size = 17.0
 		"점사 소총 (Burst)":
 			recoil = 5.0
+			shake = 0.38
 			flash_size = 29.0
 		"체인 라이트닝 (Lightning)":
 			recoil = 2.5
+			shake = 0.28
 			flash_color = Color(0.4, 0.9, 1.0, 1.0)
 		"충격파 발생기 (Nova)":
 			recoil = 6.0
+			shake = 0.55
 			flash_size = 36.0
 			flash_color = Color(0.35, 1.0, 0.82, 1.0)
 		"보호막 (Orbital)":
 			return
 	trigger_weapon_recoil(recoil)
+	gun_kick_angle = deg_to_rad(recoil * 0.75) * (1.0 if facing == "left" else -1.0)
+	EventBus.camera_shake_requested.emit(shake)
 	var flash := Node2D.new()
 	flash.set_script(MUZZLE_FLASH_SCRIPT)
 	get_tree().current_scene.add_child(flash)
@@ -284,7 +322,7 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
 	invulnerable = true
 	health -= amount
 	RunStats.register_damage(amount)
-	EventBus.camera_shake_requested.emit()
+	EventBus.camera_shake_requested.emit(clampf(float(amount) / 18.0, 0.65, 1.4))
 	EventBus.player_health_changed.emit(health, max_health)
 	_play_hit_feedback(hit_direction)
 	AudioManager.play_named("hurt", -4.0)
@@ -440,7 +478,7 @@ func use_unique_skill() -> bool:
 			_damage_enemies_in_radius(285.0, 34, 300.0)
 			RunStats.add_scrap(8)
 			skill_cooldown = 15.0
-	EventBus.camera_shake_requested.emit()
+	EventBus.camera_shake_requested.emit(1.15)
 	AudioManager.play_named("level_up", -7.0, 1.08)
 	return true
 

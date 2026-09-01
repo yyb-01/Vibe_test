@@ -22,7 +22,7 @@ z_index = 5
 material = ExtResource("2_mat")
 texture = ExtResource("2_e6f7g")
 texture_filter = 2
-scale = Vector2(0.47, 0.47)
+scale = Vector2(0.382, 0.382)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_z9x8w")

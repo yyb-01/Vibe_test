@@ -14,10 +14,10 @@ func _ready() -> void:
 	noise_phase = rng.randf_range(0.0, TAU)
 	EventBus.camera_shake_requested.connect(apply_shake)
 
-func apply_shake() -> void:
+func apply_shake(intensity: float) -> void:
 	if not SaveManager.screen_shake_enabled:
 		return
-	shake_strength = maxf(shake_strength, max_offset)
+	shake_strength = maxf(shake_strength, max_offset * clampf(intensity, 0.0, 1.6))
 
 func _process(delta: float) -> void:
 	shake_strength = move_toward(shake_strength, 0.0, decay_speed * delta)

@@ -9,6 +9,15 @@ const WALK_SHEETS := {
 	4: preload("res://assets/graphics/animated/zombie_bomber_walk_v1.png"),
 	5: preload("res://assets/graphics/animated/zombie_bloater_walk_v1.png")
 }
+const PROFILE_TINT := [
+	Color(0.92, 0.96, 0.9),
+	Color(1.0, 0.86, 0.82),
+	Color(0.8, 0.88, 1.0),
+	Color(0.72, 1.0, 0.72),
+	Color(1.0, 0.72, 0.42),
+	Color(0.78, 0.92, 0.68)
+]
+const PROFILE_SHADOW := [52.0, 46.0, 74.0, 48.0, 50.0, 66.0]
 @export var max_health: int = 30
 @export var move_speed: float = 100.0
 @export var attack_damage: int = 10
@@ -73,11 +82,12 @@ func _ready() -> void:
 	base_body_scale = scale
 	base_scale = sprite.scale
 	base_sprite_position = sprite.position
-	base_sprite_modulate = sprite.modulate
+	base_sprite_modulate = sprite.modulate * PROFILE_TINT[motion_profile]
 	base_sprite_texture = sprite.texture
 	_configure_walk_sheet()
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
+	VisualShadow.attach(self, Vector2(PROFILE_SHADOW[motion_profile], PROFILE_SHADOW[motion_profile] * 0.32), Vector2(0.0, PROFILE_SHADOW[motion_profile] * 0.72))
 	reset()
 
 func reset() -> void:

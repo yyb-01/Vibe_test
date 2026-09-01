@@ -53,6 +53,11 @@ func _on_body_entered(body: Node2D) -> void:
 		body.take_damage(final_damage, direction, hit_kind)
 		if is_critical:
 			AudioManager.play_named("impact", -9.0, randf_range(1.12, 1.26))
+			EventBus.camera_shake_requested.emit(0.34)
+		elif hit_kind == "execute":
+			EventBus.camera_shake_requested.emit(0.7)
+		elif hit_kind == "heavy":
+			EventBus.camera_shake_requested.emit(0.2)
 		var impact = ObjectPoolManager.acquire("blood_impact", body.global_position)
 		if impact and impact.has_method("configure"):
 			var color := Color(1.0, 0.9, 0.28, 1.0) if is_critical else (Color(0.3, 0.9, 1.0, 1.0) if impact_kind == "heavy" else Color(1.0, 0.2, 0.08, 1.0))

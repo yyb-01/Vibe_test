@@ -13,8 +13,10 @@ func _ready() -> void:
 func reset() -> void:
 	direction = Vector2.ZERO
 	damage = 8
+	speed = 260.0
 	life_time = 0.0
 	rotation = 0.0
+	modulate = Color.WHITE
 
 func _physics_process(delta: float) -> void:
 	life_time += delta

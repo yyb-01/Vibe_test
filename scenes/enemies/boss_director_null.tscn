@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/map_boss.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/graphics/bosses/boss_director_null_v1.png" id="2_tex"]
+[ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_mat"]
+
+[sub_resource type="CircleShape2D" id="BossShape"]
+radius = 102.0
+
+[node name="DirectorNull" type="CharacterBody2D" groups=["enemies", "bosses"]]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_script")
+boss_id = 3
+boss_name = "디렉터 널"
+max_health = 155
+move_speed = 88.0
+attack_damage = 22
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+material = ExtResource("3_mat")
+texture = ExtResource("2_tex")
+texture_filter = 2
+scale = Vector2(0.225, 0.225)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("BossShape")
