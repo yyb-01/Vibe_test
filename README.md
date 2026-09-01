@@ -44,7 +44,7 @@ Godot 에디터에서 프로젝트를 열고 `scenes/ui/main_menu.tscn`을 실�
 로컬에 Godot 4.2.x가 설치되어 있으면 다음 명령으로 맵 로드와 스폰을 확인할 수 있습니다.
 
 ```bash
-godot --headless --path . --script verify_map.gd
+godot --headless --path . verify_map.tscn
 ```
 
 ## 상용화 에셋

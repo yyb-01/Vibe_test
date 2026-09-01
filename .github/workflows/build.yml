@@ -49,7 +49,7 @@ jobs:
         run: godot --headless --editor --quit --path "${PROJECT_PATH}"
 
       - name: Verify Map Loading and Spawning
-        run: godot --headless --path "${PROJECT_PATH}" --script verify_map.gd
+        run: godot --headless --path "${PROJECT_PATH}" verify_map.tscn
 
       - name: Export Windows Executable
         run: |
