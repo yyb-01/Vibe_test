@@ -28,8 +28,8 @@ func _update_orbitals() -> void:
 
 	for i in range(count):
 		var area = Area2D.new()
-		area.collision_layer = 4
-		area.collision_mask = 2 # Enemies
+		area.collision_layer = 8
+		area.collision_mask = 4 # Enemies
 		var shape = CollisionShape2D.new()
 		var circle = CircleShape2D.new()
 		circle.radius = 24.0
@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 				for body in bodies:
 					if body.is_in_group("enemies") and body.has_method("take_damage"):
 						var dir = player.global_position.direction_to(body.global_position)
-						player.apply_build_hit(body, final_damage, dir, 0.04, "heavy" if evolved else "normal")
+						player.apply_build_hit(body, final_damage, dir, 0.04, "heavy" if evolved else "normal", data.weapon_name)
 						hit = true
 				if hit:
 					cooldown_timer = data.fire_rate * player.reload_mult

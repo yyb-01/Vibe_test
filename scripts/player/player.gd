@@ -85,6 +85,7 @@ var revive_available: bool = false
 var dash_cooldown: float = 0.0
 var dash_time: float = 0.0
 var dash_direction: Vector2 = Vector2.ZERO
+const MOVEMENT_SAFETY_MARGIN := 16.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var gun_pivot: Node2D = $GunPivot
@@ -154,10 +155,13 @@ func _update_ui() -> void:
 
 func _physics_process(_delta: float) -> void:
 	dash_cooldown = maxf(0.0, dash_cooldown - _delta)
+	var was_dashing := dash_time > 0.0
 	dash_time = maxf(0.0, dash_time - _delta)
+	if was_dashing and dash_time <= 0.0:
+		velocity = Vector2.ZERO
 	_update_unique_skill(_delta)
 	_update_build_effects(_delta)
-	_handle_movement()
+	_handle_movement(_delta)
 	_handle_shooting()
 	_animate_topdown_body(_delta)
 
@@ -280,14 +284,25 @@ func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
 	get_tree().current_scene.add_child(flash)
 	flash.call("setup", get_muzzle_global_position(), get_muzzle_global_position().direction_to(target_pos), flash_color, flash_size)
 
-func _handle_movement() -> void:
+func _handle_movement(delta: float) -> void:
 	if dash_time > 0.0:
-		velocity = dash_direction * move_speed * speed_mult * 3.2
-		move_and_slide()
+		var dash_speed := move_speed * speed_mult * 3.2
+		velocity = (dash_direction * dash_speed).limit_length(dash_speed)
+		_move_safely(dash_speed, delta)
 		return
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	velocity = input_dir * (move_speed * speed_mult)
+	var max_allowed_speed := move_speed * speed_mult * 1.5
+	velocity = (input_dir * (move_speed * speed_mult)).limit_length(max_allowed_speed)
+	_move_safely(max_allowed_speed, delta)
+
+func _move_safely(max_speed: float, delta: float) -> void:
+	var previous_position := global_position
 	move_and_slide()
+	var displacement := global_position - previous_position
+	var max_displacement := max_speed * delta + MOVEMENT_SAFETY_MARGIN
+	if displacement.length_squared() > max_displacement * max_displacement:
+		global_position = previous_position + displacement.limit_length(max_displacement)
+		velocity = Vector2.ZERO
 
 func _handle_shooting() -> void:
 	# The rifle alone follows the full 360-degree mouse direction.
@@ -302,15 +317,16 @@ func _handle_shooting() -> void:
 		weapon.fire(self, target_pos)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SHIFT:
-		_start_dash()
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE:
+			_start_dash()
+		elif event.keycode == KEY_E:
+			use_unique_skill()
 	if event.is_action_pressed("toggle_auto_fire"):
 		auto_fire_enabled = not auto_fire_enabled
 	if event.is_action_pressed("reload"):
 		for weapon in weapons:
 			weapon.reload(self)
-	if event.is_action_pressed("unique_skill"):
-		use_unique_skill()
 
 func add_weapon(weapon_script: Script, data: WeaponData) -> void:
 	if weapons.size() >= max_weapons:
@@ -319,16 +335,17 @@ func add_weapon(weapon_script: Script, data: WeaponData) -> void:
 	w.data = data
 	add_child(w)
 	weapons.append(w)
+	RunStats.register_weapon(data.weapon_name)
 	EventBus.inventory_updated.emit(weapons, passives)
 
-func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO) -> void:
+func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, source: String = "알 수 없는 위협", attack: String = "피해") -> void:
 	if health <= 0 or invulnerable or skill_shield_duration > 0.0:
 		return
 
 	amount = maxi(1, int(ceil(float(amount) * incoming_damage_mult)))
 	invulnerable = true
 	health -= amount
-	RunStats.register_damage(amount)
+	RunStats.register_damage(amount, source, attack, health <= 0)
 	EventBus.camera_shake_requested.emit(clampf(float(amount) / 18.0, 0.65, 1.4))
 	EventBus.player_health_changed.emit(health, max_health)
 	_play_hit_feedback(hit_direction)
@@ -598,7 +615,7 @@ func configure_projectile(projectile: Node) -> void:
 	projectile.set("critical_damage_multiplier", critical_damage_mult)
 	projectile.set("execute_threshold", execute_threshold)
 
-func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critical_chance: float = 0.0, impact_kind: String = "normal") -> void:
+func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critical_chance: float = 0.0, impact_kind: String = "normal", weapon_id: String = "") -> void:
 	if not is_instance_valid(target) or not target.has_method("take_damage"):
 		return
 	var final_damage := amount
@@ -611,7 +628,7 @@ func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critica
 	elif randf() < clampf(base_critical_chance + critical_chance_add, 0.0, 0.65):
 		final_damage = roundi(float(amount) * critical_damage_mult)
 		hit_kind = "critical"
-	target.take_damage(final_damage, direction, hit_kind)
+	target.take_damage(final_damage, direction, hit_kind, weapon_id)
 
 func _start_dash() -> void:
 	if get_tree().paused or dash_cooldown > 0.0 or health <= 0:

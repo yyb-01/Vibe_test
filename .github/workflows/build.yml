@@ -21,6 +21,7 @@ jobs:
   build-windows:
     name: Build Windows Export
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Source Code
@@ -46,7 +47,13 @@ jobs:
           rm -f Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip Godot_v${GODOT_VERSION}-stable_export_templates.tpz
 
       - name: Import Assets (Headless Run)
-        run: godot --headless --editor --quit --path "${PROJECT_PATH}"
+        run: godot --headless --path "${PROJECT_PATH}" --import
+
+      - name: Verify All Scripts, Scenes, and Resources
+        run: godot --headless --path "${PROJECT_PATH}" verify_resources.tscn
+
+      - name: Verify HUD Layout at 1280x720
+        run: godot --headless --resolution 1280x720 --path "${PROJECT_PATH}" verify_hud_layout.tscn
 
       - name: Verify Map Loading and Spawning
         run: godot --headless --path "${PROJECT_PATH}" verify_map.tscn

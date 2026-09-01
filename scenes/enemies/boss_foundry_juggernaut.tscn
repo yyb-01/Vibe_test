@@ -8,8 +8,8 @@
 radius = 112.0
 
 [node name="FoundryJuggernaut" type="CharacterBody2D" groups=["enemies", "bosses"]]
-collision_layer = 2
-collision_mask = 5
+collision_layer = 4
+collision_mask = 2
 script = ExtResource("1_script")
 boss_id = 1
 boss_name = "용광로 파괴자"

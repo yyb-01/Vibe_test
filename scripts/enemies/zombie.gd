@@ -64,25 +64,35 @@ var boss_charge_time: float = 0.0
 var boss_phase: int = 1
 var boss_attack_mode: String = "shockwave"
 var runner_dash_time: float = 0.0
+var runner_dash_windup: float = 0.0
+var runner_dash_direction: Vector2 = Vector2.ZERO
 var runner_dash_cooldown: float = 0.0
 var tank_stomp_cooldown: float = 0.0
+var tank_stomp_windup: float = 0.0
 var bloater_spit_cooldown: float = 1.5
 var strafe_sign: float = 1.0
 var hit_stop_timer: float = 0.0
 var detonation_countdown: float = -1.0
 var detonation_duration: float = 0.8
 var warning_overlay: Node2D
+var silhouette_overlay: Node2D
 
 const WALL_LOOK_AHEAD: float = 54.0
 const WALL_FOLLOW_TIME: float = 0.45
 
 func _ready() -> void:
 	z_index = 6
+	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+	safe_margin = 0.04
 	warning_overlay = Node2D.new()
 	warning_overlay.z_as_relative = false
 	warning_overlay.z_index = 35
 	warning_overlay.draw.connect(_draw_warning)
 	add_child(warning_overlay)
+	silhouette_overlay = Node2D.new()
+	silhouette_overlay.z_index = 4
+	silhouette_overlay.draw.connect(_draw_profile_silhouette)
+	add_child(silhouette_overlay)
 	base_max_health = max_health
 	base_move_speed = move_speed
 	base_attack_damage = attack_damage
@@ -107,8 +117,8 @@ func reset() -> void:
 	can_attack = true
 	knockback = Vector2.ZERO
 	is_dying = false
-	collision_layer = 2
-	collision_mask = 5
+	collision_layer = 4
+	collision_mask = 2
 	modulate = Color.WHITE
 	scale = base_body_scale
 	rotation = 0.0
@@ -133,8 +143,11 @@ func reset() -> void:
 	boss_phase = 1
 	boss_attack_mode = "shockwave"
 	runner_dash_time = 0.0
+	runner_dash_windup = 0.0
+	runner_dash_direction = Vector2.ZERO
 	runner_dash_cooldown = randf_range(0.6, 1.4)
 	tank_stomp_cooldown = randf_range(1.0, 2.2)
+	tank_stomp_windup = 0.0
 	bloater_spit_cooldown = randf_range(1.5, 3.5)
 	strafe_sign = -1.0 if randf() < 0.5 else 1.0
 	hit_stop_timer = 0.0
@@ -209,7 +222,9 @@ func _physics_process(delta: float) -> void:
 			move_dir = _get_wall_aware_direction(dir_to_player, delta)
 		elif ranged_attack and distance_to_player < preferred_attack_distance:
 			move_dir = _get_wall_aware_direction(-dir_to_player, delta)
-		if motion_profile == 3 and move_dir != Vector2.ZERO:
+		if motion_profile == 1 and runner_dash_time > 0.0:
+			move_dir = runner_dash_direction
+		elif motion_profile == 3 and move_dir != Vector2.ZERO:
 			# Spitters sidestep while maintaining their preferred firing distance.
 			move_dir = (move_dir + dir_to_player.orthogonal() * strafe_sign * 0.52).normalized()
 
@@ -248,7 +263,7 @@ func _attack_player() -> void:
 		if explodes_on_contact:
 			_start_detonation(0.75)
 			return
-		player.take_damage(attack_damage, global_position.direction_to(player.global_position))
+		player.take_damage(attack_damage, global_position.direction_to(player.global_position), _profile_name(), _profile_attack_name())
 
 		var timer := get_tree().create_timer(attack_cooldown)
 		timer.timeout.connect(func() -> void: can_attack = true)
@@ -268,6 +283,8 @@ func _attack_ranged() -> void:
 		if projectile:
 			projectile.direction = aim_direction.rotated(angle_offset)
 			projectile.damage = projectile_damage if is_zero_approx(angle_offset) else max(1, projectile_damage - 2)
+			projectile.damage_source = _profile_name()
+			projectile.attack_name = "산성 부채꼴"
 	var timer := get_tree().create_timer(attack_cooldown)
 	timer.timeout.connect(func() -> void: ranged_can_attack = true)
 
@@ -324,7 +341,7 @@ func _execute_boss_attack() -> void:
 
 func _boss_shockwave() -> void:
 	if is_instance_valid(player) and global_position.distance_to(player.global_position) <= 270.0 + boss_phase * 30.0:
-		player.take_damage(13 + boss_phase * 5, global_position.direction_to(player.global_position))
+		player.take_damage(13 + boss_phase * 5, global_position.direction_to(player.global_position), "격리 파괴자", "충격파")
 	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
 	if impact and impact.has_method("configure"):
 		impact.configure(Color(1.0, 0.22, 0.1, 1.0), 270.0 + boss_phase * 30.0)
@@ -361,13 +378,13 @@ func _draw() -> void:
 				draw_circle(marker, 34.0, Color(1.0, 0.16, 0.08, 0.26 * pulse))
 				draw_arc(marker, 34.0, 0.0, TAU, 32, warning_color, 6.0, true)
 
-func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, hit_kind: String = "normal") -> void:
+func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, hit_kind: String = "normal", weapon_id: String = "") -> void:
 	if health <= 0 or is_dying:
 		return
 
 	var applied_damage := mini(amount, health)
 	health -= amount
-	RunStats.register_combat_hit(applied_damage, hit_kind)
+	RunStats.register_combat_hit(applied_damage, hit_kind, weapon_id)
 
 	# Damage Number
 	var dmg_num = ObjectPoolManager.acquire("damage_number", global_position)
@@ -412,15 +429,32 @@ func _start_detonation(duration: float) -> void:
 	warning_overlay.queue_redraw()
 
 func _draw_warning() -> void:
-	if detonation_countdown < 0.0:
-		return
-	var progress := 1.0 - detonation_countdown / detonation_duration
-	var flash := 0.55 + absf(sin(progress * progress * 34.0)) * 0.45
-	var radius := detonation_radius if detonates_on_death else 120.0
-	warning_overlay.draw_circle(Vector2.ZERO, radius, Color(1.0, 0.05, 0.0, 0.12 + progress * 0.16))
-	warning_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.12, 0.02, flash), 10.0, true)
-	warning_overlay.draw_arc(Vector2.ZERO, radius * (1.0 - progress * 0.7), 0.0, TAU, 48, Color(1.0, 0.78, 0.08, flash), 5.0, true)
-	sprite.modulate = base_sprite_modulate.lerp(Color(1.0, 0.08, 0.02, 1.0), flash * 0.72)
+	if detonation_countdown >= 0.0:
+		var progress := 1.0 - detonation_countdown / detonation_duration
+		var flash := 0.55 + absf(sin(progress * progress * 34.0)) * 0.45
+		var radius := detonation_radius if detonates_on_death else 120.0
+		warning_overlay.draw_circle(Vector2.ZERO, radius, Color(1.0, 0.05, 0.0, 0.12 + progress * 0.16))
+		warning_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.12, 0.02, flash), 10.0, true)
+		warning_overlay.draw_arc(Vector2.ZERO, radius * (1.0 - progress * 0.7), 0.0, TAU, 48, Color(1.0, 0.78, 0.08, flash), 5.0, true)
+		sprite.modulate = base_sprite_modulate.lerp(Color(1.0, 0.08, 0.02, 1.0), flash * 0.72)
+	elif runner_dash_windup > 0.0:
+		warning_overlay.draw_line(Vector2.ZERO, runner_dash_direction * 190.0, Color(1.0, 0.32, 0.18, 0.8), 7.0, true)
+	elif tank_stomp_windup > 0.0:
+		var radius := 230.0 * (1.0 - tank_stomp_windup / 0.65)
+		warning_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(0.3, 0.7, 1.0, 0.85), 8.0, true)
+
+func _draw_profile_silhouette() -> void:
+	match motion_profile:
+		0: silhouette_overlay.draw_line(Vector2(-22, -12), Vector2(18, 16), Color(0.7, 0.82, 0.66, 0.45), 8.0, true)
+		1: silhouette_overlay.draw_colored_polygon(PackedVector2Array([Vector2(-38, -18), Vector2(-60, 0), Vector2(-38, 18)]), Color(1.0, 0.25, 0.16, 0.58))
+		2:
+			silhouette_overlay.draw_rect(Rect2(-58, -32, 28, 28), Color(0.25, 0.58, 1.0, 0.55), true)
+			silhouette_overlay.draw_rect(Rect2(30, -32, 28, 28), Color(0.25, 0.58, 1.0, 0.55), true)
+		3: silhouette_overlay.draw_circle(Vector2(0, -20), 18.0, Color(0.2, 1.0, 0.32, 0.5))
+		4: silhouette_overlay.draw_colored_polygon(PackedVector2Array([Vector2(0, -48), Vector2(28, 0), Vector2(0, 48), Vector2(-28, 0)]), Color(1.0, 0.52, 0.08, 0.42))
+		5:
+			silhouette_overlay.draw_circle(Vector2(-20, 0), 34.0, Color(0.55, 0.82, 0.18, 0.32))
+			silhouette_overlay.draw_circle(Vector2(20, 0), 34.0, Color(0.55, 0.82, 0.18, 0.32))
 
 func _animate_visual(delta: float, moving: bool) -> void:
 	visual_time += delta
@@ -476,20 +510,32 @@ func _update_special_pattern(delta: float, distance_to_player: float, dir_to_pla
 	match motion_profile:
 		1: # Runner: punctuated lunge that has to be sidestepped.
 			runner_dash_cooldown = maxf(0.0, runner_dash_cooldown - delta)
+			if runner_dash_windup > 0.0:
+				runner_dash_windup -= delta
+				warning_overlay.queue_redraw()
+				if runner_dash_windup <= 0.0:
+					runner_dash_time = 0.38
+				return 0.18
 			if runner_dash_time > 0.0:
 				runner_dash_time -= delta
 				return 1.72
 			if runner_dash_cooldown <= 0.0 and distance_to_player > 110.0 and distance_to_player < 390.0:
-				runner_dash_time = 0.42
+				runner_dash_windup = 0.32
+				runner_dash_direction = dir_to_player
 				runner_dash_cooldown = 2.7
 				attack_pulse = 0.9
 		2: # Tank: a close shock stomp punishes standing directly in front of it.
 			tank_stomp_cooldown = maxf(0.0, tank_stomp_cooldown - delta)
+			if tank_stomp_windup > 0.0:
+				tank_stomp_windup -= delta
+				warning_overlay.queue_redraw()
+				if tank_stomp_windup <= 0.0:
+					_tank_stomp()
+				return 0.22
 			if tank_stomp_cooldown <= 0.0 and distance_to_player <= 230.0:
-				tank_stomp_cooldown = 3.8
+				tank_stomp_cooldown = 4.4
+				tank_stomp_windup = 0.65
 				attack_pulse = 1.0
-				if is_instance_valid(player) and player.has_method("take_damage"):
-					player.take_damage(max(8, int(float(attack_damage) * 0.55)), dir_to_player)
 		3: # Spitter: alternates which side it circles from between bursts.
 			if int(visual_time * 0.42) % 2 == 0:
 				strafe_sign = 1.0
@@ -509,7 +555,16 @@ func _update_special_pattern(delta: float, distance_to_player: float, dir_to_pla
 					if projectile:
 						projectile.direction = dir_to_player.rotated(angle_offset)
 						projectile.damage = max(3, projectile_damage)
+						projectile.damage_source = "블로터"
+						projectile.attack_name = "산성 확산"
 	return 1.0
+
+func _tank_stomp() -> void:
+	if is_instance_valid(player) and global_position.distance_to(player.global_position) <= 230.0:
+		player.take_damage(maxi(8, roundi(float(attack_damage) * 0.55)), global_position.direction_to(player.global_position), "탱크", "지면 강타")
+	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
+	if impact and impact.has_method("configure"):
+		impact.configure(Color(0.3, 0.7, 1.0, 1.0), 230.0)
 
 func _update_walk_texture(moving: bool) -> Vector2:
 	var rate := 10.0 if motion_profile in [1, 4] else (4.5 if motion_profile in [2, 5] else 6.0)
@@ -577,15 +632,15 @@ func die() -> void:
 	# pool quickly so crowded waves do not accumulate visible corpses.
 	tween.tween_property(sprite, "modulate:a", 0.0, 0.38)
 	tween.tween_callback(func():
-		collision_layer = 2
-		collision_mask = 5
+		collision_layer = 4
+		collision_mask = 2
 		ObjectPoolManager.release(self)
 		)
 
 func _detonate() -> void:
 	var player_node := get_tree().get_first_node_in_group("player") as Player
 	if is_instance_valid(player_node) and global_position.distance_to(player_node.global_position) <= detonation_radius:
-		player_node.take_damage(detonation_damage, global_position.direction_to(player_node.global_position))
+		player_node.take_damage(detonation_damage, global_position.direction_to(player_node.global_position), _profile_name(), "자폭" if explodes_on_contact else "사망 폭발")
 	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
 	if impact and impact.has_method("configure"):
 		impact.configure(Color(1.0, 0.5, 0.12, 1.0), detonation_radius)
@@ -598,6 +653,12 @@ func _get_melee_engagement_range() -> float:
 	var player_radius := _get_collision_radius(player)
 	# Leave a small visible contact gap rather than allowing sprite overlap.
 	return maxf(attack_range, self_radius + player_radius + 10.0)
+
+func _profile_name() -> String:
+	return ["일반 좀비", "러너", "탱크", "스피터", "보머", "블로터"][motion_profile]
+
+func _profile_attack_name() -> String:
+	return ["할퀴기", "돌진 공격", "중타", "산성 공격", "접촉 자폭", "감염 타격"][motion_profile]
 
 func _get_collision_radius(body: Node2D) -> float:
 	var collision := body.get_node_or_null("CollisionShape2D") as CollisionShape2D

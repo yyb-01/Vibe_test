@@ -22,6 +22,7 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 			if actual_pellets == 1: angle_offset = 0
 			bullet.direction = dir.rotated(angle_offset)
 			bullet.damage = int(scaled_damage * player.damage_mult)
+			bullet.source_weapon_id = data.weapon_name
 			bullet.pierce_count = player.pierce_add
 			bullet.critical_chance = 0.11
 			bullet.impact_kind = "heavy"

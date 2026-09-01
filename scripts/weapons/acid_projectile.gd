@@ -5,6 +5,8 @@ extends Area2D
 var direction: Vector2 = Vector2.ZERO
 var damage: int = 8
 var life_time: float = 0.0
+var damage_source: String = "스피터"
+var attack_name: String = "산성 투사체"
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
@@ -17,6 +19,8 @@ func reset() -> void:
 	life_time = 0.0
 	rotation = 0.0
 	modulate = Color.WHITE
+	damage_source = "스피터"
+	attack_name = "산성 투사체"
 
 func _physics_process(delta: float) -> void:
 	life_time += delta
@@ -30,7 +34,7 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):
 		if body.has_method("take_damage"):
-			body.take_damage(damage, direction)
+			body.take_damage(damage, direction, damage_source, attack_name)
 		ObjectPoolManager.release(self)
 	elif not body.is_in_group("enemies"):
 		ObjectPoolManager.release(self)

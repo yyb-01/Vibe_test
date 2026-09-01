@@ -82,6 +82,7 @@ func evolve(player: Player) -> bool:
 	evolved = true
 	evolution_id = _get_evolution_id()
 	evolution_name = _get_evolution_name()
+	RunStats.register_evolution(data.weapon_name)
 	return true
 
 func get_display_name() -> String:

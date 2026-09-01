@@ -28,6 +28,16 @@ var transitioning := false
 func _ready() -> void:
     print("Starting map load test...")
 
+    RunStats.start_run("statistics_test")
+    RunStats.register_weapon("Pistol")
+    RunStats.register_combat_hit(25, "critical", "Pistol")
+    RunStats.register_evolution("Pistol")
+    RunStats.register_damage(18, "스피터", "산성 부채꼴", true)
+    var statistics_summary := RunStats.get_summary()
+    assert(int(statistics_summary.weapon_damage.Pistol) == 25)
+    assert("Pistol" in statistics_summary.used_weapons and "Pistol" in statistics_summary.evolved_weapons)
+    assert(String(statistics_summary.death_cause).contains("스피터 · 산성 부채꼴"))
+
     assert(load("res://scripts/effects/boss_skill_effect.gd") != null)
     assert(load("res://scripts/effects/visual_shadow.gd") != null)
     for sound_paths in AudioManager.SFX_PATHS.values():
@@ -87,6 +97,16 @@ func _process(delta: float) -> void:
             return
 
         var player = players[0]
+        assert(player.collision_layer == 1 and player.collision_mask == 2, "Player collision layers must be Player=1, World mask=2")
+        var walls := map_instance.get_node_or_null("Walls") as StaticBody2D
+        assert(walls and walls.collision_layer == 2, "Map walls must use World layer 2")
+        if map_index == 0:
+            var stress_origin: Vector2 = player.global_position
+            player.velocity = Vector2(100000.0, 0.0)
+            player.call("_move_safely", 300.0, 1.0 / 60.0)
+            assert(player.global_position.distance_to(stress_origin) <= 21.01, "Abnormal physics displacement was not clamped")
+            player.global_position = stress_origin
+            player.velocity = Vector2.ZERO
         var camera = player.get_node_or_null("Camera2D")
         if not camera:
             push_error("Assertion failed: Camera not found on player")
@@ -101,6 +121,7 @@ func _process(delta: float) -> void:
         var active_enemy_count := 0
         for enemy in get_tree().get_nodes_in_group("enemies"):
             if enemy is CanvasItem and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.visible:
+                assert(enemy.collision_layer == 4 and enemy.collision_mask == 2, "Enemies must collide with World only")
                 active_enemy_count += 1
         if active_enemy_count == 0:
             push_error("Assertion failed: No zombies spawned")

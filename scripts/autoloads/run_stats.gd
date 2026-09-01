@@ -27,6 +27,12 @@ var challenge_completed: bool = false
 var rerolls_remaining: int = 0
 var banishes_remaining: int = 0
 var banished_ids: Array[String] = []
+var weapon_damage: Dictionary = {}
+var used_weapons: Array[String] = []
+var evolved_weapons: Array[String] = []
+var last_damage_source: String = "알 수 없는 위협"
+var last_damage_attack: String = "피해"
+var death_cause: String = ""
 const KILL_QUEST_TARGET: int = 25
 const KILL_QUEST_REWARD: int = 100
 
@@ -60,6 +66,12 @@ func start_run(new_map_id: String) -> void:
 	rerolls_remaining = SaveManager.get_upgrade_level("reroll_count")
 	banishes_remaining = SaveManager.get_upgrade_level("banish_count")
 	banished_ids.clear()
+	weapon_damage.clear()
+	used_weapons.clear()
+	evolved_weapons.clear()
+	last_damage_source = "알 수 없는 위협"
+	last_damage_attack = "피해"
+	death_cause = ""
 
 func _process(delta: float) -> void:
 	if run_active and not get_tree().paused:
@@ -76,16 +88,30 @@ func register_kill() -> void:
 		SaveManager.add_gold(KILL_QUEST_REWARD)
 		EventBus.quest_completed.emit("horde_breaker", KILL_QUEST_REWARD)
 
-func register_damage(amount: int) -> void:
+func register_damage(amount: int, source: String = "알 수 없는 위협", attack: String = "피해", lethal: bool = false) -> void:
 	damage_taken += amount
+	last_damage_source = source
+	last_damage_attack = attack
+	if lethal:
+		death_cause = "%s · %s (%d 피해)" % [source, attack, amount]
 	_check_challenge()
 
-func register_combat_hit(amount: int, hit_kind: String) -> void:
+func register_combat_hit(amount: int, hit_kind: String, weapon_id: String = "") -> void:
 	damage_dealt += maxi(0, amount)
+	if not weapon_id.is_empty():
+		weapon_damage[weapon_id] = int(weapon_damage.get(weapon_id, 0)) + maxi(0, amount)
 	if hit_kind == "critical":
 		critical_hits += 1
 	elif hit_kind == "execute":
 		executions += 1
+
+func register_weapon(weapon_id: String) -> void:
+	if not weapon_id.is_empty() and weapon_id not in used_weapons:
+		used_weapons.append(weapon_id)
+
+func register_evolution(weapon_id: String) -> void:
+	if not weapon_id.is_empty() and weapon_id not in evolved_weapons:
+		evolved_weapons.append(weapon_id)
 
 func register_rescue() -> void:
 	survivors_rescued += 1
@@ -163,7 +189,11 @@ func get_summary() -> Dictionary:
 		"difficulty": difficulty,
 		"endless_mode": endless_mode,
 		"challenge": active_challenge,
-		"challenge_completed": challenge_completed
+		"challenge_completed": challenge_completed,
+		"weapon_damage": weapon_damage.duplicate(),
+		"used_weapons": used_weapons.duplicate(),
+		"evolved_weapons": evolved_weapons.duplicate(),
+		"death_cause": death_cause
 	}
 
 func get_difficulty_health_mult() -> float:

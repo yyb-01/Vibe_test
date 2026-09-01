@@ -18,8 +18,10 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	if not is_instance_valid(player):
+		return
 	var center := size * 0.5
-	draw_circle(center, 3.0, Color(0.8, 1.0, 0.95, 0.9), false, 1.5)
+	draw_circle(center, 3.0, Color(0.8, 1.0, 0.95, 0.9))
 	for direction in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
 		draw_line(center + direction * 9.0, center + direction * 15.0, Color(0.8, 1.0, 0.95, 0.8), 1.5, true)
 	var dash_max := 2.4 * (1.0 - SaveManager.get_upgrade_level("dash_cooldown") * 0.08)
@@ -34,6 +36,8 @@ func _draw_meter(center: Vector2, radius: float, progress: float, color: Color, 
 	draw_arc(center, radius, start, start + PI * 1.5 * progress, 36, color, 3.0, true)
 
 func _reload_progress() -> float:
+	if not is_instance_valid(player):
+		return -1.0
 	for weapon in player.weapons:
 		if weapon.reload_timer > 0.0 and weapon.data:
 			var duration: float = weapon.data.reload_time * player.reload_mult

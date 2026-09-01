@@ -36,6 +36,8 @@ const BOSS_COLORS := [
 
 func _ready() -> void:
 	z_index = 9
+	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+	safe_margin = 0.04
 	telegraph_overlay = Node2D.new()
 	telegraph_overlay.z_as_relative = false
 	telegraph_overlay.z_index = 40
@@ -185,7 +187,7 @@ func _attack_display_name() -> String:
 
 func _radial_hit(radius: float, multiplier: float, color: Color) -> void:
 	if global_position.distance_to(player.global_position) <= radius:
-		player.take_damage(roundi(float(attack_damage) * multiplier), global_position.direction_to(player.global_position))
+		player.take_damage(roundi(float(attack_damage) * multiplier), global_position.direction_to(player.global_position), boss_name, _attack_display_name())
 	_spawn_impact(color, radius)
 
 func _fire_radial(count: int, angle_offset: float) -> void:
@@ -205,6 +207,8 @@ func _spawn_projectile(direction: Vector2) -> void:
 		projectile.direction = direction
 		projectile.damage = maxi(1, roundi(float(attack_damage) * 0.62))
 		projectile.speed = 260.0 + float(phase) * 24.0
+		projectile.damage_source = boss_name
+		projectile.attack_name = _attack_display_name()
 		if projectile is CanvasItem:
 			projectile.modulate = BOSS_COLORS[boss_id]
 
@@ -231,7 +235,7 @@ func _check_contact_hit(multiplier: float) -> void:
 	if contact_cooldown > 0.0:
 		return
 	if global_position.distance_to(player.global_position) <= 118.0:
-		player.take_damage(roundi(float(attack_damage) * multiplier), global_position.direction_to(player.global_position))
+		player.take_damage(roundi(float(attack_damage) * multiplier), global_position.direction_to(player.global_position), boss_name, "접촉 충돌")
 		contact_cooldown = 0.8
 
 func _spawn_impact(color: Color, radius: float) -> void:
@@ -244,7 +248,7 @@ func _spawn_skill_effect(kind: String, effect_position: Vector2, radius: float, 
 	var effect := BOSS_SKILL_EFFECT.new() as BossSkillEffect
 	get_tree().current_scene.add_child(effect)
 	effect.global_position = effect_position
-	effect.setup(kind, BOSS_COLORS[boss_id], radius, duration, damage, direction)
+	effect.setup(kind, BOSS_COLORS[boss_id], radius, duration, damage, direction, boss_name, _attack_display_name())
 
 func _update_visuals(delta: float) -> void:
 	var pulse := 1.0 + sin(visual_time * (3.2 + float(phase))) * 0.018
@@ -253,12 +257,12 @@ func _update_visuals(delta: float) -> void:
 	if velocity.x != 0.0:
 		sprite.flip_h = velocity.x < 0.0
 
-func take_damage(amount: int, knockback_direction: Vector2 = Vector2.ZERO, hit_kind: String = "normal") -> void:
+func take_damage(amount: int, knockback_direction: Vector2 = Vector2.ZERO, hit_kind: String = "normal", weapon_id: String = "") -> void:
 	if dying:
 		return
 	var applied := mini(maxi(0, amount), health)
 	health -= applied
-	RunStats.register_combat_hit(applied, hit_kind)
+	RunStats.register_combat_hit(applied, hit_kind, weapon_id)
 	if knockback_direction != Vector2.ZERO and charge_timer <= 0.0:
 		velocity += knockback_direction * 18.0
 	if sprite.material:
@@ -303,8 +307,8 @@ func _draw_telegraph() -> void:
 	if telegraph_timer <= 0.0:
 		return
 	var pulse := 0.72 + absf(sin(visual_time * 18.0)) * 0.28
-	var red := Color(1.0, 0.04, 0.02, 0.88 * pulse)
-	var orange := Color(1.0, 0.62, 0.05, pulse)
+	var red := Color(1.0, 0.04, 0.02, 0.92 * pulse)
+	var orange := Color(1.0, 0.72, 0.08, pulse)
 	match attack_mode:
 		"shield_charge":
 			var target := to_local(player.global_position)
@@ -313,13 +317,36 @@ func _draw_telegraph() -> void:
 			telegraph_overlay.draw_line(Vector2.ZERO, path, red, 18.0, true)
 			telegraph_overlay.draw_line(Vector2.ZERO, path, orange, 4.0, true)
 		"null_blink":
-			telegraph_overlay.draw_circle(to_local(player.global_position), 185.0, Color(red, 0.3))
+			var target := to_local(player.global_position)
+			telegraph_overlay.draw_circle(target, 185.0, Color(0.68, 0.18, 1.0, 0.3))
+			telegraph_overlay.draw_arc(target, 185.0, 0.0, TAU, 96, Color.WHITE, 5.0, true)
 		"acid_fan":
-			var direction := global_position.direction_to(player.global_position)
+			var center := global_position.direction_to(player.global_position).angle()
+			var wedge := PackedVector2Array([Vector2.ZERO])
+			for index in 17:
+				wedge.append(Vector2.RIGHT.rotated(center + lerpf(-0.72, 0.72, float(index) / 16.0)) * 480.0)
+			telegraph_overlay.draw_colored_polygon(wedge, Color(0.38, 1.0, 0.12, 0.2))
 			for offset in [-0.72, 0.0, 0.72]:
-				telegraph_overlay.draw_line(Vector2.ZERO, direction.rotated(offset) * 480.0, orange, 9.0, true)
-		_:
-			var radius := 320.0 if attack_mode in ["forge_wave", "toxic_pool"] else 245.0
-			telegraph_overlay.draw_circle(Vector2.ZERO, radius, Color(red, 0.2))
-			telegraph_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 96, red, 14.0, true)
-			telegraph_overlay.draw_arc(Vector2.ZERO, radius * (0.72 + 0.18 * pulse), 0.0, TAU, 96, orange, 5.0, true)
+				telegraph_overlay.draw_line(Vector2.ZERO, Vector2.RIGHT.rotated(center + offset) * 480.0, Color(0.55, 1.0, 0.18, pulse), 7.0, true)
+		"warden_slam": _draw_danger_circle(245.0, red, orange)
+		"forge_wave": _draw_danger_circle(320.0, red, orange)
+		"overheat": _draw_danger_circle(210.0, Color(1.0, 0.18, 0.02, pulse), orange)
+		"toxic_pool": _draw_danger_circle(285.0, Color(0.3, 1.0, 0.08, pulse), Color.WHITE)
+		"vent_barrage", "void_barrage":
+			var count := 7 + phase * 2 if attack_mode == "vent_barrage" else 10 + phase * 3
+			var angle_offset := 0.0 if attack_mode == "vent_barrage" else visual_time
+			for index in count:
+				var direction := Vector2.RIGHT.rotated(angle_offset + TAU * float(index) / float(count))
+				telegraph_overlay.draw_line(direction * 70.0, direction * 420.0, Color(orange, 0.72), 4.0, true)
+		"reinforcements", "brood_call", "specimen_call":
+			var summon_color := Color(0.35, 0.78, 1.0, 0.9)
+			for index in 4:
+				var marker := Vector2.RIGHT.rotated(TAU * float(index) / 4.0) * 190.0
+				telegraph_overlay.draw_circle(marker, 28.0, Color(summon_color, 0.14))
+				telegraph_overlay.draw_arc(marker, 28.0, 0.0, TAU, 32, summon_color, 5.0, true)
+
+func _draw_danger_circle(radius: float, edge: Color, accent: Color) -> void:
+	telegraph_overlay.draw_circle(Vector2.ZERO, radius, Color(edge, 0.18))
+	telegraph_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 96, Color(0.02, 0.02, 0.02, 0.9), 18.0, true)
+	telegraph_overlay.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 96, edge, 10.0, true)
+	telegraph_overlay.draw_arc(Vector2.ZERO, radius * 0.82, 0.0, TAU, 96, accent, 4.0, true)

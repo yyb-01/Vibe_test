@@ -23,14 +23,14 @@ const CHARACTER_NAMES := [
 	"Reaper · 처형 돌격형", "Chronomancer · 시간 제어형"
 ]
 const CHARACTER_DESCRIPTIONS := [
-	"폐허의 약탈자 · HP +10, 피해 +8% · [Space] 고철 폭탄: 광역 피해와 스크랩 획득",
-	"응급 구조 전문가 · HP +35, 피해 -10% · [Space] 응급 파동: 회복 및 일시 피해 경감",
-	"기동 정찰병 · 속도 +35, 피해 +10% · [Space] 집중 사격: 재장전/공격 속도 강화",
-	"진압 방패병 · HP +60, 받는 피해 감소 · [Space] 방벽 충격: 적을 밀쳐내고 보호막 획득",
-	"소각 전문가 · 피해 +15%, HP -10 · [Space] 화염 폭발: 넓은 범위 강력 피해",
-	"전투 공병 · 재장전 단축 · [Space] 센트리 일제사격: 여러 적 자동 공격",
-	"처형자 · 속도/피해 증가, HP -20 · [Space] 사신의 표식: 부상당한 적 즉시 처형",
-	"시간 연구원 · 이동/재장전 강화 · [Space] 시간 붕괴: 주변 적 피해 및 둔화"
+	"폐허의 약탈자 · HP +10, 피해 +8% · [E] 고철 폭탄: 광역 피해와 스크랩 획득",
+	"응급 구조 전문가 · HP +35, 피해 -10% · [E] 응급 파동: 회복 및 일시 피해 경감",
+	"기동 정찰병 · 속도 +35, 피해 +10% · [E] 집중 사격: 재장전/공격 속도 강화",
+	"진압 방패병 · HP +60, 받는 피해 감소 · [E] 방벽 충격: 적을 밀쳐내고 보호막 획득",
+	"소각 전문가 · 피해 +15%, HP -10 · [E] 화염 폭발: 넓은 범위 강력 피해",
+	"전투 공병 · 재장전 단축 · [E] 센트리 일제사격: 여러 적 자동 공격",
+	"처형자 · 속도/피해 증가, HP -20 · [E] 사신의 표식: 부상당한 적 즉시 처형",
+	"시간 연구원 · 이동/재장전 강화 · [E] 시간 붕괴: 주변 적 피해 및 둔화"
 ]
 const CHARACTER_SHEETS := [
 	preload("res://assets/graphics/animated/player_scavenger_sheet_v1.png"), preload("res://assets/graphics/animated/player_medic_sheet_v1.png"),
@@ -61,6 +61,7 @@ var trait_dialog: AcceptDialog
 var trait_tabs: TabContainer
 var trait_summary: Label
 var trait_progress: ProgressBar
+var ui_scale_select: OptionButton
 
 func _ready() -> void:
 	map_1_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_1.tscn"))
@@ -81,8 +82,10 @@ func _ready() -> void:
 	_update_character_info(selected_character_index)
 	_build_pet_selector()
 	_build_run_settings()
+	_build_ui_scale_setting()
 	_build_visual_selectors()
 	_build_evolution_codex()
+	_build_weapon_statistics()
 	_build_trait_tree()
 	screen_shake_toggle.button_pressed = SaveManager.screen_shake_enabled
 	volume_slider.value = SaveManager.master_volume
@@ -134,7 +137,9 @@ func _build_visual_selectors() -> void:
 func _portrait(sheet: Texture2D) -> AtlasTexture:
 	var portrait := AtlasTexture.new()
 	portrait.atlas = sheet
-	portrait.region = Rect2(0, 0, float(sheet.get_width()) / 4.0, sheet.get_height())
+	var frame_w := float(sheet.get_width()) / 4.0
+	var frame_h := float(sheet.get_height()) / 4.0
+	portrait.region = Rect2(0.0, 0.0, frame_w, frame_h)
 	return portrait
 
 func _style_selection_button(button: Button, selected: bool, accent: Color) -> void:
@@ -183,6 +188,28 @@ func _build_evolution_codex() -> void:
 	evolution_codex.dialog_text = "\n\n".join(lines)
 	add_child(evolution_codex)
 	button.pressed.connect(func() -> void: evolution_codex.popup_centered(Vector2i(860, 620)))
+
+func _build_weapon_statistics() -> void:
+	var button := Button.new()
+	button.text = "📊 무기 전투 통계"
+	button.custom_minimum_size = Vector2(400, 52)
+	button.add_theme_font_size_override("font_size", 20)
+	hp_upgrade_btn.get_parent().add_child(button)
+	var dialog := AcceptDialog.new()
+	dialog.title = "무기별 누적 통계"
+	dialog.ok_button_text = "닫기"
+	dialog.min_size = Vector2i(760, 560)
+	add_child(dialog)
+	button.pressed.connect(func() -> void:
+		var lines: Array[String] = ["무기                         누적 피해       사용률        진화"]
+		for entry in Weapon.get_evolution_catalog():
+			var weapon_id := String(entry.weapon)
+			var stats: Dictionary = SaveManager.weapon_stats.get(weapon_id, {"damage": 0, "runs": 0, "evolutions": 0})
+			var usage := float(stats.runs) / float(maxi(1, SaveManager.total_runs)) * 100.0
+			lines.append("%-24s %10d      %5.1f%% (%d회)    %d회" % [entry.display, int(stats.damage), usage, int(stats.runs), int(stats.evolutions)])
+		dialog.dialog_text = "총 플레이 %d회 · 사용률은 해당 무기를 보유한 런 비율입니다.\n\n%s" % [SaveManager.total_runs, "\n".join(lines)]
+		dialog.popup_centered(Vector2i(760, 560))
+	)
 
 func _build_trait_tree() -> void:
 	hp_upgrade_btn.text = "🧬 영구 성장 특성 트리"
@@ -351,9 +378,31 @@ func _build_run_settings() -> void:
 		SaveManager.save_data()
 	)
 
+func _build_ui_scale_setting() -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	$TabContainer/ShopTab/VBoxContainer.add_child(row)
+	var label := Label.new()
+	label.text = "UI 배율"
+	label.add_theme_font_size_override("font_size", 18)
+	row.add_child(label)
+	ui_scale_select = OptionButton.new()
+	ui_scale_select.custom_minimum_size = Vector2(180, 42)
+	for scale in [0.8, 0.9, 1.0, 1.1, 1.25]:
+		ui_scale_select.add_item("%d%%" % roundi(scale * 100.0))
+		ui_scale_select.set_item_metadata(ui_scale_select.item_count - 1, scale)
+	row.add_child(ui_scale_select)
+	_select_metadata(ui_scale_select, str(SaveManager.ui_scale))
+	ui_scale_select.item_selected.connect(func(index: int) -> void:
+		SaveManager.ui_scale = float(ui_scale_select.get_item_metadata(index))
+		SaveManager.apply_ui_scale()
+		SaveManager.save_data()
+	)
+
 func _select_metadata(option: OptionButton, value: String) -> void:
 	for index in option.item_count:
-		if String(option.get_item_metadata(index)) == value:
+		if str(option.get_item_metadata(index)) == value:
 			option.select(index)
 			return
 

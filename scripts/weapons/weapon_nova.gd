@@ -16,6 +16,7 @@ func fire(player: Player, _target_pos: Vector2) -> bool:
 		if bullet:
 			bullet.direction = Vector2.RIGHT.rotated(TAU * float(i) / float(count))
 			bullet.damage = int(scaled_damage * player.damage_mult)
+			bullet.source_weapon_id = data.weapon_name
 			bullet.pierce_count = player.pierce_add + (1 if evolved else 0)
 			player.configure_projectile(bullet)
 	var impact = ObjectPoolManager.acquire("blood_impact", player.global_position)

@@ -10,6 +10,7 @@ var critical_chance: float = 0.08
 var critical_damage_multiplier: float = 1.75
 var impact_kind: String = "normal"
 var execute_threshold: float = 0.0
+var source_weapon_id: String = ""
 
 var life_time: float = 0.0
 
@@ -26,6 +27,7 @@ func reset() -> void:
 	critical_damage_multiplier = 1.75
 	impact_kind = "normal"
 	execute_threshold = 0.0
+	source_weapon_id = ""
 
 func _physics_process(delta: float) -> void:
 	life_time += delta
@@ -52,7 +54,7 @@ func _on_body_entered(body: Node2D) -> void:
 		if execute_threshold > 0.0 and target_health != null and target_max_health != null and float(target_health) / float(maxi(1, int(target_max_health))) <= execute_threshold:
 			final_damage = int(target_health) + 1
 			hit_kind = "execute"
-		body.take_damage(final_damage, direction, hit_kind)
+		body.take_damage(final_damage, direction, hit_kind, source_weapon_id)
 		AudioManager.play_named("zombie_cut" if hit_kind == "execute" else "zombie_hit", -11.0)
 		if is_critical:
 			EventBus.camera_shake_requested.emit(0.34)

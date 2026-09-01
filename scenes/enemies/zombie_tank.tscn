@@ -8,8 +8,8 @@
 radius = 48.0
 
 [node name="ZombieTank" type="CharacterBody2D" groups=["enemies"]]
-collision_layer = 2
-collision_mask = 5
+collision_layer = 4
+collision_mask = 2
 script = ExtResource("1_a2b3c")
 max_health = 100
 move_speed = 60.0

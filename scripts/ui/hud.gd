@@ -33,6 +33,7 @@ var build_status_label: Label
 var build_toggle_button: Button
 var weapon_slots: HBoxContainer
 var passive_slots: HBoxContainer
+var inventory_slots: VBoxContainer
 var boss_panel: PanelContainer
 var boss_bar: ProgressBar
 var boss_name_label: Label
@@ -57,7 +58,7 @@ func _ready() -> void:
 	EventBus.mission_status_changed.connect(_on_mission_status_changed)
 	EventBus.mission_completed.connect(_on_mission_completed)
 	EventBus.combat_modifier_changed.connect(_on_combat_modifier_changed)
-	boss_label.visible = false
+	boss_label.hide()
 	boss_warning_label.visible = false
 	call_deferred("_sync_inventory")
 
@@ -72,68 +73,75 @@ func _build_information_ui() -> void:
 	var status_ring := STATUS_RING.new()
 	add_child(status_ring)
 	build_toggle_button = Button.new()
-	build_toggle_button.position = Vector2(14, 86)
+	build_toggle_button.position = Vector2(14, 206)
 	build_toggle_button.size = Vector2(154, 34)
 	build_toggle_button.text = "빌드 보기  [TAB]"
 	build_toggle_button.add_theme_font_size_override("font_size", 13)
 	build_toggle_button.tooltip_text = "무기·패시브·진화 조합 정보를 펼치거나 접습니다."
 	build_toggle_button.pressed.connect(_toggle_build_panel)
 	add_child(build_toggle_button)
-	inventory_box.visible = false
-	inventory_backplate.visible = false
-	weapons_label.visible = false
-	passives_label.visible = false
+	ThemeDB.fallback_changed.connect(_layout_build_button)
+	call_deferred("_layout_build_button")
+	inventory_box.hide()
+	inventory_backplate.hide()
+	weapons_label.hide()
+	passives_label.hide()
 
 	var objective_panel := PanelContainer.new()
+	objective_panel.name = "ObjectivePanel"
 	objective_panel.anchor_top = 1.0
 	objective_panel.anchor_bottom = 1.0
 	objective_panel.offset_left = 14.0
-	objective_panel.offset_top = -134.0
-	objective_panel.offset_right = 520.0
+	objective_panel.offset_top = -126.0
+	objective_panel.offset_right = 430.0
 	objective_panel.offset_bottom = -48.0
-	objective_panel.add_theme_stylebox_override("panel", _info_panel_style(Color(1.0, 0.58, 0.24, 0.75)))
+	objective_panel.add_theme_stylebox_override("panel", _compact_panel_style(Color(1.0, 0.58, 0.24, 0.72)))
 	add_child(objective_panel)
 	var objective_margin := MarginContainer.new()
-	objective_margin.add_theme_constant_override("margin_left", 14)
-	objective_margin.add_theme_constant_override("margin_top", 9)
-	objective_margin.add_theme_constant_override("margin_right", 14)
-	objective_margin.add_theme_constant_override("margin_bottom", 9)
+	objective_margin.add_theme_constant_override("margin_left", 10)
+	objective_margin.add_theme_constant_override("margin_top", 6)
+	objective_margin.add_theme_constant_override("margin_right", 10)
+	objective_margin.add_theme_constant_override("margin_bottom", 6)
 	objective_panel.add_child(objective_margin)
 	objective_label.reparent(objective_margin)
 	objective_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	objective_label.add_theme_font_size_override("font_size", 13)
+	objective_label.add_theme_font_size_override("font_size", 11)
 
 	var skill_panel := PanelContainer.new()
+	skill_panel.name = "SkillPanel"
 	skill_panel.anchor_left = 1.0
 	skill_panel.anchor_top = 1.0
 	skill_panel.anchor_right = 1.0
 	skill_panel.anchor_bottom = 1.0
-	skill_panel.offset_left = -358.0
+	skill_panel.offset_left = -318.0
 	skill_panel.offset_top = -126.0
 	skill_panel.offset_right = -18.0
 	skill_panel.offset_bottom = -48.0
-	skill_panel.add_theme_stylebox_override("panel", _info_panel_style(Color(0.3, 0.82, 1.0, 0.8)))
+	skill_panel.add_theme_stylebox_override("panel", _compact_panel_style(Color(0.3, 0.82, 1.0, 0.72)))
 	add_child(skill_panel)
 	var skill_content := VBoxContainer.new()
 	skill_content.add_theme_constant_override("separation", 5)
 	skill_panel.add_child(skill_content)
 	skill_label = Label.new()
 	skill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	skill_label.add_theme_font_size_override("font_size", 16)
+	skill_label.add_theme_font_size_override("font_size", 13)
 	skill_content.add_child(skill_label)
 	skill_bar = ProgressBar.new()
-	skill_bar.custom_minimum_size = Vector2(320, 20)
+	skill_bar.custom_minimum_size = Vector2(280, 16)
 	skill_bar.show_percentage = false
 	skill_content.add_child(skill_bar)
 	build_status_label = Label.new()
 	build_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	build_status_label.add_theme_font_size_override("font_size", 13)
+	build_status_label.add_theme_font_size_override("font_size", 11)
 	build_status_label.add_theme_color_override("font_color", Color(0.7, 0.92, 1.0, 1.0))
+	build_status_label.hide()
 	skill_content.add_child(build_status_label)
 
 func _build_inventory_slots() -> void:
 	var inventory := VBoxContainer.new()
-	inventory.position = Vector2(14, 88)
+	inventory_slots = inventory
+	inventory.name = "InventorySlots"
+	inventory.position = Vector2(14, 86)
 	inventory.add_theme_constant_override("separation", 4)
 	add_child(inventory)
 	for title in ["무기", "패시브"]:
@@ -152,6 +160,9 @@ func _build_inventory_slots() -> void:
 	for index in 6:
 		weapon_slots.add_child(_make_inventory_slot("", 0, false, true))
 		passive_slots.add_child(_make_inventory_slot("", 0, false, false))
+
+func _layout_build_button() -> void:
+	build_toggle_button.position.y = inventory_slots.position.y + inventory_slots.size.y + 8.0
 
 func _make_inventory_slot(title: String, level: int, evolved: bool, weapon: bool) -> PanelContainer:
 	var slot := PanelContainer.new()
@@ -181,8 +192,8 @@ func _make_inventory_slot(title: String, level: int, evolved: bool, weapon: bool
 func _build_boss_bar() -> void:
 	boss_panel = PanelContainer.new()
 	boss_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	boss_panel.position = Vector2(-310, 88)
-	boss_panel.size = Vector2(620, 66)
+	boss_panel.position = Vector2(-260, 52)
+	boss_panel.size = Vector2(520, 66)
 	boss_panel.add_theme_stylebox_override("panel", _info_panel_style(Color(1.0, 0.24, 0.2, 0.95)))
 	add_child(boss_panel)
 	var content := VBoxContainer.new()
@@ -212,10 +223,20 @@ func _info_panel_style(accent: Color) -> StyleBoxFlat:
 	style.set_content_margin_all(8.0)
 	return style
 
+func _compact_panel_style(accent: Color) -> StyleBoxFlat:
+	var style := _info_panel_style(accent)
+	style.bg_color = Color(0.008, 0.025, 0.034, 0.68)
+	style.set_border_width_all(1)
+	style.set_content_margin_all(6.0)
+	return style
+
 func _toggle_build_panel() -> void:
-	var expanded := not inventory_box.visible
-	inventory_box.visible = expanded
-	inventory_backplate.visible = expanded
+	var expanded := not build_status_label.visible
+	build_status_label.visible = expanded
+	inventory_box.hide()
+	inventory_backplate.hide()
+	weapons_label.hide()
+	passives_label.hide()
 	build_toggle_button.text = ("빌드 접기" if expanded else "빌드 보기") + "  [TAB]"
 
 func _input(event: InputEvent) -> void:
@@ -265,7 +286,7 @@ func _update_skill_panel(player: Player) -> void:
 	skill_bar.max_value = max_cooldown
 	skill_bar.value = max_cooldown - cooldown
 	var state := "사용 가능" if cooldown <= 0.0 else "%.1f초" % cooldown
-	skill_label.text = "[SPACE]  %s  ·  %s" % [player.get_unique_skill_name(), state]
+	skill_label.text = "[E]  %s  ·  %s" % [player.get_unique_skill_name(), state]
 	skill_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.72, 1.0) if cooldown <= 0.0 else Color(0.62, 0.82, 1.0, 1.0))
 	var doctrines := player.get_active_build_labels()
 	build_status_label.text = "전투 교리: 없음" if doctrines.is_empty() else "전투 교리: " + " / ".join(doctrines)

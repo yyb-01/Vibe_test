@@ -43,11 +43,14 @@ var selected_challenge: String = "none"
 var completed_challenges: Array[String] = []
 var screen_shake_enabled: bool = true
 var master_volume: float = 0.8
+var ui_scale: float = 1.0
+var weapon_stats: Dictionary = {}
 
 func _ready() -> void:
 	for upgrade_id in UPGRADE_DEFINITIONS:
 		upgrades[upgrade_id] = 0
 	load_data()
+	apply_ui_scale()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -74,6 +77,8 @@ func save_data() -> void:
 	config.set_value("Settings", "selected_challenge", selected_challenge)
 	config.set_value("Progress", "completed_challenges", completed_challenges)
 	config.set_value("Settings", "master_volume", master_volume)
+	config.set_value("Settings", "ui_scale", ui_scale)
+	config.set_value("Statistics", "weapons", weapon_stats)
 	config.save(SAVE_PATH)
 
 func load_data() -> void:
@@ -117,6 +122,11 @@ func load_data() -> void:
 			if challenge is String:
 				completed_challenges.append(challenge)
 		master_volume = config.get_value("Settings", "master_volume", 0.8)
+		ui_scale = clampf(float(config.get_value("Settings", "ui_scale", 1.0)), 0.8, 1.25)
+		weapon_stats = config.get_value("Statistics", "weapons", {})
+
+func apply_ui_scale() -> void:
+	ThemeDB.fallback_base_scale = ui_scale
 
 func record_run(summary: Dictionary) -> void:
 	total_runs += 1
@@ -124,6 +134,13 @@ func record_run(summary: Dictionary) -> void:
 	var run_time := float(summary.get("time", 0.0))
 	if run_time > best_time:
 		best_time = run_time
+	for weapon_id in summary.get("used_weapons", []):
+		var stats: Dictionary = weapon_stats.get(weapon_id, {"damage": 0, "runs": 0, "evolutions": 0})
+		stats.runs = int(stats.runs) + 1
+		stats.damage = int(stats.damage) + int(summary.get("weapon_damage", {}).get(weapon_id, 0))
+		if weapon_id in summary.get("evolved_weapons", []):
+			stats.evolutions = int(stats.evolutions) + 1
+		weapon_stats[weapon_id] = stats
 	save_data()
 
 func add_gold(amount: int) -> void:

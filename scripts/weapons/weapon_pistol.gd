@@ -15,6 +15,7 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 		if evolved:
 			scaled_damage *= 1.35
 		bullet.damage = int(scaled_damage * player.damage_mult)
+		bullet.source_weapon_id = data.weapon_name
 		bullet.pierce_count = player.pierce_add + (1 if evolved else 0)
 		player.configure_projectile(bullet)
 		AudioManager.play_named("shot", -8.0, randf_range(0.94, 1.06))
