@@ -443,7 +443,7 @@ func _update_shop_ui() -> void:
 	hp_upgrade_btn.text = "🧬 영구 성장 특성 트리  ·  %.0f%%" % (SaveManager.get_upgrade_progress() * 100.0)
 
 func _load_map(path: String) -> void:
-	get_tree().paused = false
+	ModalManager.clear()
 	RunStats.start_run(path.get_file().get_basename())
 
 	# Clear Autoload states before launching a new game

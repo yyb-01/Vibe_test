@@ -23,6 +23,7 @@ SpatialGrid="*res://scripts/autoloads/spatial_grid.gd"
 SaveManager="*res://scripts/autoloads/save_manager.gd"
 AudioManager="*res://scripts/autoloads/audio_manager.gd"
 RunStats="*res://scripts/autoloads/run_stats.gd"
+ModalManager="*res://scripts/autoloads/modal_manager.gd"
 
 [rendering]
 

@@ -46,7 +46,7 @@ var modifier_spawn_mult: float = 1.0
 func _ready() -> void:
 	add_to_group("spawn_manager")
 	AudioManager.play_wave_bgm()
-	get_tree().paused = false # Absolute guarantee on map load
+	ModalManager.clear()
 	var pool_parent := get_tree().current_scene
 	if not is_instance_valid(pool_parent):
 		pool_parent = get_parent()
@@ -121,6 +121,7 @@ func _process(delta: float) -> void:
 		EventBus.wave_shop_requested.emit(current_wave)
 		if current_wave > 2:
 			SaveManager.add_gold(5 + current_wave * 2)
+		SaveManager.save_data() # One combat checkpoint per wave, not per reward pickup.
 
 	if time_elapsed >= next_boss_time and not boss_spawned: # 5 Minutes
 		_spawn_boss()

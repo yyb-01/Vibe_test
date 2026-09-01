@@ -51,8 +51,12 @@ func _ready() -> void:
 	EventBus.wave_shop_requested.connect(open_shop)
 
 func open_shop(wave: int) -> void:
+	ModalManager.request(self, _open_shop.bind(wave))
+
+func _open_shop(wave: int) -> void:
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if not player:
+		ModalManager.release(self)
 		return
 	current_wave = wave
 	reroll_cost = BASE_REROLL_COST
@@ -61,7 +65,6 @@ func open_shop(wave: int) -> void:
 	for index in offers.size():
 		offers[index] = _apply_discount(offers[index])
 	visible = true
-	get_tree().paused = true
 	_render()
 
 func _build_interface() -> void:
@@ -492,7 +495,7 @@ func _buy_offer(index: int) -> void:
 
 func _close_shop() -> void:
 	visible = false
-	get_tree().paused = false
+	ModalManager.release(self)
 	EventBus.wave_started.emit(current_wave)
 
 func _apply_contract(player: Player, contract_id: String) -> void:

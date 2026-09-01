@@ -36,7 +36,9 @@ var map_index := -1
 var transitioning := false
 
 func _ready() -> void:
+    process_mode = Node.PROCESS_MODE_ALWAYS
     print("Starting map load test...")
+    await _verify_modal_queue()
 
     RunStats.start_run("statistics_test")
     RunStats.register_weapon("Pistol")
@@ -76,6 +78,25 @@ func _ready() -> void:
     _verify_character_sheets()
 
     _load_next_map()
+
+func _verify_modal_queue() -> void:
+    var first := Node.new()
+    var second := Node.new()
+    add_child(first)
+    add_child(second)
+    var opened: Array[String] = []
+    ModalManager.clear()
+    ModalManager.request(first, func() -> void: opened.append("first"))
+    ModalManager.request(second, func() -> void: opened.append("second"))
+    assert(opened == ["first"] and get_tree().paused, "Modal queue opened overlapping panels")
+    ModalManager.release(first)
+    await get_tree().process_frame
+    assert(opened == ["first", "second"] and get_tree().paused, "Queued modal was not granted")
+    ModalManager.release(second)
+    await get_tree().process_frame
+    assert(not get_tree().paused, "Modal queue left the game paused")
+    first.free()
+    second.free()
 
 func _load_next_map() -> void:
     map_index += 1

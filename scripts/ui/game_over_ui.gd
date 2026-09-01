@@ -16,7 +16,9 @@ func _ready() -> void:
 	retry_btn.pressed.connect(_on_retry_pressed)
 
 func _on_game_over(is_victory: bool) -> void:
-	get_tree().paused = true
+	ModalManager.request(self, _show_game_over.bind(is_victory))
+
+func _show_game_over(is_victory: bool) -> void:
 	visible = true
 	var summary := RunStats.get_summary()
 	if not summary_recorded:
@@ -42,7 +44,7 @@ func _on_game_over(is_victory: bool) -> void:
 	SaveManager.save_data()
 
 func _on_return_pressed() -> void:
-	get_tree().paused = false
+	ModalManager.clear()
 	ObjectPoolManager.clear()
 	SpatialGrid.clear()
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
@@ -53,7 +55,7 @@ func _on_retry_pressed() -> void:
 	if not ResourceLoader.exists(map_path):
 		map_id = "map_1"
 		map_path = "res://scenes/maps/map_1.tscn"
-	get_tree().paused = false
+	ModalManager.clear()
 	ObjectPoolManager.clear()
 	SpatialGrid.clear()
 	RunStats.start_run(map_id)

@@ -435,13 +435,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			_show_return_confirmation()
 
 func _show_return_confirmation() -> void:
+	ModalManager.request(self, _open_return_confirmation)
+
+func _open_return_confirmation() -> void:
 	pause_confirm.visible = true
-	get_tree().paused = true
 	pause_confirm_button.grab_focus()
 
 func _cancel_return_to_menu() -> void:
 	pause_confirm.visible = false
-	get_tree().paused = false
+	ModalManager.release(self)
 
 func _confirm_return_to_menu() -> void:
 	SaveManager.save_data()
@@ -450,5 +452,5 @@ func _confirm_return_to_menu() -> void:
 		RunStats.finish_run()
 	ObjectPoolManager.clear()
 	SpatialGrid.clear()
-	get_tree().paused = false
+	ModalManager.clear()
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")

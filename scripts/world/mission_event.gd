@@ -92,6 +92,9 @@ func _activate() -> void:
 	_show_branch_choices()
 
 func _show_branch_choices() -> void:
+	ModalManager.request(self, _build_branch_choices)
+
+func _build_branch_choices() -> void:
 	var branches: Array[Dictionary] = [
 		{"name": "안전 우선", "description": "적의 압박이 25% 느려집니다.\n골드 80% · 무작위 보상 1회", "pressure": 1.25, "gold": 0.8, "rolls": 1, "color": Color(0.3, 0.9, 0.72, 1.0)},
 		{"name": "현장 수색", "description": "표준 난이도로 임무를 수행합니다.\n골드 100% · 무작위 보상 2회", "pressure": 1.0, "gold": 1.0, "rolls": 2, "color": Color(0.35, 0.78, 1.0, 1.0)},
@@ -144,7 +147,6 @@ func _show_branch_choices() -> void:
 		button.add_theme_color_override("font_color", branch.color)
 		button.pressed.connect(_select_branch.bind(branch))
 		row.add_child(button)
-	get_tree().paused = true
 	_emit_status("작전 분기 선택 대기", 0.0)
 
 func _select_branch(branch: Dictionary) -> void:
@@ -155,7 +157,7 @@ func _select_branch(branch: Dictionary) -> void:
 	if is_instance_valid(choice_layer):
 		choice_layer.queue_free()
 	choice_layer = null
-	get_tree().paused = false
+	ModalManager.release(self)
 	_emit_status("%s  ·  진행 중" % branch_name, progress)
 	AudioManager.play_named("level_up", -8.0)
 

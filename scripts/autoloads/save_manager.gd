@@ -145,13 +145,11 @@ func record_run(summary: Dictionary) -> void:
 
 func add_gold(amount: int) -> void:
 	gold += amount
-	save_data()
 	EventBus.gold_changed.emit(gold)
 
 func spend_gold(amount: int) -> bool:
 	if gold >= amount:
 		gold -= amount
-		save_data()
 		EventBus.gold_changed.emit(gold)
 		return true
 	return false
@@ -182,6 +180,7 @@ func reset_all_upgrades() -> int:
 			refund += base_cost * (level + 1)
 		upgrades[upgrade_id] = 0
 	add_gold(refund)
+	save_data()
 	return refund
 
 func get_upgrade_progress() -> float:
@@ -203,4 +202,5 @@ func complete_challenge(challenge_id: String, reward: int) -> bool:
 		return false
 	completed_challenges.append(challenge_id)
 	add_gold(reward)
+	save_data()
 	return true

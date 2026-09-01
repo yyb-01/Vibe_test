@@ -57,8 +57,9 @@ func _ready() -> void:
 	codex_button.pressed.connect(func() -> void: codex_dialog.popup_centered(Vector2i(820, 580)))
 
 func _on_level_up() -> void:
-	# Pause game
-	get_tree().paused = true
+	ModalManager.request(self, _open_level_up)
+
+func _open_level_up() -> void:
 	visible = true
 
 	# Clear existing children
@@ -70,7 +71,7 @@ func _on_level_up() -> void:
 	var player = get_tree().get_first_node_in_group("player") as Player
 	if not player:
 		visible = false
-		get_tree().paused = false
+		ModalManager.release(self)
 		return
 
 	var pool = []
@@ -269,7 +270,7 @@ func _on_banish_pressed(item: Variant) -> void:
 
 func _on_skip_pressed() -> void:
 	visible = false
-	get_tree().paused = false
+	ModalManager.release(self)
 	SaveManager.add_gold(10)
 
 func _codex_text() -> String:
@@ -281,7 +282,7 @@ func _codex_text() -> String:
 
 func _on_upgrade_selected(item: Variant) -> void:
 	visible = false
-	get_tree().paused = false
+	ModalManager.release(self)
 
 	var player = get_tree().get_first_node_in_group("player") as Player
 	if player:
