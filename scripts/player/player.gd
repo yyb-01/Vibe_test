@@ -89,7 +89,7 @@ var dash_direction: Vector2 = Vector2.ZERO
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var gun_pivot: Node2D = $GunPivot
 @onready var gun_sprite: Sprite2D = $GunPivot/GunSprite
-@onready var muzzle_anchor: Marker2D = $MuzzleAnchor
+@onready var muzzle: Marker2D = $GunPivot/GunSprite/Muzzle
 
 func _ready() -> void:
 	sprite_base_scale = sprite.scale
@@ -188,7 +188,7 @@ func _animate_topdown_body(delta: float) -> void:
 	gun_kick_angle = move_toward(gun_kick_angle, 0.0, delta * 2.8)
 
 func get_muzzle_global_position() -> Vector2:
-	return muzzle_anchor.global_position
+	return muzzle.global_position
 
 func _update_facing_from_aim() -> void:
 	var aim_direction := Vector2.RIGHT.rotated(aim_angle)
@@ -197,36 +197,18 @@ func _update_facing_from_aim() -> void:
 	else:
 		facing = "left" if aim_direction.x < 0.0 else "right"
 
-func _update_facing_pose(delta: float) -> void:
-	var desired_gun_position := GUN_MOUNT_RIGHT
-	var desired_gun_rotation := 0.0
-	var muzzle_offset := Vector2(88.0, -35.0)
+func _update_facing_pose(_delta: float) -> void:
+	var aim_vec := global_position.direction_to(get_global_mouse_position())
+	if aim_vec == Vector2.ZERO:
+		aim_vec = Vector2.RIGHT.rotated(aim_angle)
+	var aiming_left := aim_vec.x < 0.0
 	gun_sprite.visible = true
 	gun_sprite.flip_h = false
-	sprite.flip_h = false
-	match facing:
-		"left":
-			sprite.flip_h = true
-			desired_gun_position = GUN_MOUNT_LEFT
-			desired_gun_rotation = 0.0
-			gun_sprite.flip_h = true
-			muzzle_offset = Vector2(-88.0, -35.0)
-		"up":
-			desired_gun_position = Vector2(0.0, -38.0)
-			desired_gun_rotation = -PI * 0.5
-			muzzle_offset = Vector2(0.0, -96.0)
-		"down":
-			desired_gun_position = Vector2(0.0, 38.0)
-			desired_gun_rotation = PI * 0.5
-			muzzle_offset = Vector2(0.0, 96.0)
-		_:
-			desired_gun_position = GUN_MOUNT_RIGHT
+	sprite.flip_h = aiming_left
+	gun_pivot.scale.y = -1.0 if aiming_left else 1.0
+	gun_pivot.position = (GUN_MOUNT_LEFT if aiming_left else GUN_MOUNT_RIGHT) - aim_vec * gun_recoil
+	gun_pivot.rotation = aim_vec.angle() + gun_kick_angle
 	gun_pivot.z_index = 8 if facing == "up" else 12
-	gun_pivot.position = gun_pivot.position.lerp(desired_gun_position, minf(delta * 18.0, 1.0))
-	gun_pivot.rotation = lerp_angle(gun_pivot.rotation, desired_gun_rotation + gun_kick_angle, minf(delta * 18.0, 1.0))
-	var recoil_direction := 1.0 if facing == "left" else -1.0
-	gun_pivot.position += Vector2(gun_recoil * recoil_direction, 0.0)
-	muzzle_anchor.position = muzzle_anchor.position.lerp(muzzle_offset + sprite.position, minf(delta * 22.0, 1.0))
 
 func _configure_character_sprite() -> void:
 	var original_width := float(maxi(1, sprite.texture.get_width()))

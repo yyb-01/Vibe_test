@@ -34,9 +34,6 @@ position = Vector2(6, -14)
 [node name="Muzzle" type="Marker2D" parent="GunPivot/GunSprite"]
 position = Vector2(113, -3)
 
-[node name="MuzzleAnchor" type="Marker2D" parent="."]
-position = Vector2(88, -35)
-
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_z9x8w")
 
