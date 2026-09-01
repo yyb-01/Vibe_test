@@ -239,7 +239,7 @@ func _on_reroll_pressed() -> void:
 func _on_banish_pressed(item: Variant) -> void:
 	if RunStats.banishes_remaining <= 0:
 		return
-	var item_id := item.id if item is PerkData else (item.weapon_id if item is WeaponUpgradeData else item.data.weapon_name)
+	var item_id := String(item.id if item is PerkData else (item.weapon_id if item is WeaponUpgradeData else item.data.weapon_name))
 	RunStats.banished_ids.append(String(item_id))
 	RunStats.banishes_remaining -= 1
 	_on_level_up()

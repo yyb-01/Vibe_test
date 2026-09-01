@@ -104,7 +104,7 @@ func _physics_process(delta: float) -> void:
 
 func _move_for_profile(delta: float) -> void:
 	var distance := global_position.distance_to(player.global_position)
-	var desired_distance := [145.0, 170.0, 285.0, 250.0][boss_id]
+	var desired_distance: float = [145.0, 170.0, 285.0, 250.0][boss_id]
 	var direction := global_position.direction_to(player.global_position)
 	if distance > desired_distance + 35.0:
 		velocity = velocity.move_toward(direction * move_speed * (1.0 + 0.1 * float(phase - 1)), 420.0 * delta)

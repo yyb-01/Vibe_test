@@ -72,7 +72,7 @@ func _load_next_map() -> void:
         get_tree().quit(1)
         return
     map_instance = map_scene.instantiate()
-    get_tree().root.add_child(map_instance)
+    get_tree().root.add_child.call_deferred(map_instance)
 
 func _process(delta: float) -> void:
     if transitioning:

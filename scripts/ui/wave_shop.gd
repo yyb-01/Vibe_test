@@ -378,7 +378,7 @@ func _offer_text(offer: Dictionary) -> String:
 			return "[무기 강화]\n%s  Lv %d → %d\n\n피해량과 성능을 강화합니다.\n\n%d 스크랩" % [weapon.data.weapon_name, weapon.current_level, weapon.current_level + 1, offer.cost]
 		"evolution":
 			var evolution_weapon := offer.item as Weapon
-			var evolution_cost := "진화 코어 1개" if RunStats.evolution_cores > 0 else "%d 스크랩" % offer.cost
+			var evolution_cost: String = "진화 코어 1개" if RunStats.evolution_cores > 0 else "%d 스크랩" % offer.cost
 			return "[무기 진화]\n%s\n\n%s\n\n비용: %s" % [evolution_weapon.get_display_name(), evolution_weapon.get_evolution_description(), evolution_cost]
 		_:
 			return "[보급]\n%s\n\n%s\n\n%d 스크랩" % [offer.name, offer.description, offer.cost]
