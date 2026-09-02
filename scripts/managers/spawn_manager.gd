@@ -98,18 +98,18 @@ func _register_pools(pool_parent: Node) -> void:
 	ObjectPoolManager.register_pool("player_hit", preload("res://scenes/effects/player_hit.tscn"), pool_parent)
 
 func _warm_pools() -> void:
-	ObjectPoolManager.warm_pool("zombie_base", 200)
-	ObjectPoolManager.warm_pool("zombie_runner", 100)
-	ObjectPoolManager.warm_pool("zombie_tank", 50)
-	ObjectPoolManager.warm_pool("zombie_spitter", 50)
-	ObjectPoolManager.warm_pool("zombie_bomber", 50)
-	ObjectPoolManager.warm_pool("zombie_bloater", 50)
-	ObjectPoolManager.warm_pool("exp_gem", 300)
-	ObjectPoolManager.warm_pool("bullet", 50)
-	ObjectPoolManager.warm_pool("acid_projectile", 50)
-	ObjectPoolManager.warm_pool("damage_number", 100)
-	ObjectPoolManager.warm_pool("blood_impact", 100)
-	ObjectPoolManager.warm_pool("player_hit", 40)
+	var targets := [
+		["zombie_base", 48], ["zombie_runner", 16], ["zombie_tank", 8],
+		["zombie_spitter", 8], ["zombie_bomber", 8], ["zombie_bloater", 8],
+		["exp_gem", 48], ["bullet", 24], ["acid_projectile", 12],
+		["damage_number", 32], ["blood_impact", 24], ["player_hit", 8]
+	]
+	for entry in targets:
+		for target_size in range(8, int(entry[1]) + 8, 8):
+			if not is_inside_tree():
+				return
+			ObjectPoolManager.warm_pool(String(entry[0]), mini(target_size, int(entry[1])))
+			await get_tree().process_frame
 
 func _process(delta: float) -> void:
 	time_elapsed += delta
@@ -335,8 +335,4 @@ func _get_player_spawn_position(player: Node2D, min_distance: float, max_distanc
 	)
 
 func _get_active_enemy_count() -> int:
-	var count := 0
-	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if enemy is CanvasItem and is_instance_valid(enemy) and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.visible:
-			count += 1
-	return count
+	return SpatialGrid.entity_cells.size()

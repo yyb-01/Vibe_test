@@ -325,11 +325,7 @@ func _start_banner_fade(hold_time: float) -> void:
 	)
 
 func _get_active_enemy_count() -> int:
-	var count := 0
-	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if enemy is CanvasItem and is_instance_valid(enemy) and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.visible:
-			count += 1
-	return count
+	return SpatialGrid.entity_cells.size()
 
 func _companion_display_name(role: String) -> String:
 	match role:

@@ -161,6 +161,9 @@ func _process(delta: float) -> void:
             push_error("Assertion failed: No zombies spawned")
             get_tree().quit(1)
             return
+        if map_index == 0:
+            var pooled_enemy_count := get_tree().get_nodes_in_group("enemies").size()
+            assert(pooled_enemy_count <= 120, "Enemy pool warm-up regressed to a scene-freezing size: %d" % pooled_enemy_count)
 
         if map_index == 0:
             var mission := (load("res://scenes/world/mission_event.tscn") as PackedScene).instantiate()
