@@ -55,7 +55,7 @@ func _create_pet_sprite() -> void:
 	add_child(pet_sprite)
 
 func _physics_process(delta: float) -> void:
-	if not is_instance_valid(owner_player):
+	if not is_instance_valid(owner_player) or owner_player.is_queued_for_deletion():
 		queue_free()
 		return
 	attack_timer = maxf(0.0, attack_timer - delta)
@@ -105,22 +105,24 @@ func _animate_pet(delta: float) -> void:
 
 func _use_combat_ability() -> void:
 	var target := _nearest_enemy(520.0)
-	if not is_instance_valid(target):
+	if not is_instance_valid(target) or target.is_queued_for_deletion():
 		attack_timer = 0.25
 		return
 	target_position = target.global_position
 	match pet_id:
 		"rescue_hound":
-			var direction := global_position.direction_to(target.global_position)
+			var target_pos := target_position
+			var direction := global_position.direction_to(target_pos)
 			target.take_damage(int(22.0 * owner_player.damage_mult), direction)
 			# Keep the attack readable without snapping across the arena in one frame.
-			lunge_offset = owner_player.global_position.direction_to(target.global_position) * LUNGE_DISTANCE
+			lunge_offset = owner_player.global_position.direction_to(target_pos) * LUNGE_DISTANCE
 			ability_color = Color(1.0, 0.7, 0.28, 1.0)
 			attack_timer = 1.15
 		"toxic_crow":
+			var center_position := target_position
 			for enemy in get_tree().get_nodes_in_group("enemies"):
-				if _is_active_enemy(enemy) and enemy.global_position.distance_to(target.global_position) <= 145.0:
-					enemy.take_damage(int(12.0 * owner_player.damage_mult), target.global_position.direction_to(enemy.global_position))
+				if _is_active_enemy(enemy) and enemy.global_position.distance_to(center_position) <= 145.0:
+					enemy.take_damage(int(12.0 * owner_player.damage_mult), center_position.direction_to(enemy.global_position))
 			ability_color = Color(0.45, 1.0, 0.25, 1.0)
 			attack_timer = 2.25
 		_:
@@ -142,7 +144,7 @@ func _nearest_enemy(max_range: float) -> Node2D:
 	return nearest
 
 func _is_active_enemy(enemy: Node) -> bool:
-	return is_instance_valid(enemy) and enemy.has_method("take_damage") and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.get("health") != null and int(enemy.get("health")) > 0 and enemy.get("is_dying") != true
+	return is_instance_valid(enemy) and not enemy.is_queued_for_deletion() and enemy.has_method("take_damage") and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy.get("health") != null and int(enemy.get("health")) > 0 and enemy.get("is_dying") != true
 
 func _draw() -> void:
 	if visual_timer > 0.0:

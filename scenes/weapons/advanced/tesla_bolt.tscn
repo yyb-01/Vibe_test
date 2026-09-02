@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/projectiles/TeslaBolt.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/graphics/bullet.svg" id="2_texture"]
+[sub_resource type="CircleShape2D" id="Circle"]
+radius = 6.0
+
+[node name="TeslaBolt" type="Area2D"]
+collision_layer = 8
+collision_mask = 6
+script = ExtResource("1_script")
+speed = 1000.0
+max_distance = 1100.0
+max_lifetime = 1.4
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_texture")
+modulate = Color(0.2, 0.85, 1, 1)
+scale = Vector2(0.5, 0.5)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Circle")

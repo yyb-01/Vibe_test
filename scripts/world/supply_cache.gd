@@ -18,7 +18,7 @@ func _process(delta: float) -> void:
 		queue_free()
 
 func _on_body_entered(body: Node2D) -> void:
-	if opened or not body.is_in_group("player"):
+	if opened or not is_instance_valid(body) or body.is_queued_for_deletion() or not body.is_in_group("player"):
 		return
 	opened = true
 	RunStats.register_supply_cache()

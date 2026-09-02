@@ -42,9 +42,12 @@ var next_miniboss_time: float = 90.0
 var next_supply_time: float = 75.0
 var active_modifier: String = "standard"
 var modifier_spawn_mult: float = 1.0
+var _spawn_shape: CircleShape2D
 
 func _ready() -> void:
 	add_to_group("spawn_manager")
+	_spawn_shape = CircleShape2D.new()
+	_spawn_shape.radius = 30.0
 	AudioManager.play_wave_bgm()
 	ModalManager.clear()
 	var pool_parent := get_tree().current_scene
@@ -52,7 +55,7 @@ func _ready() -> void:
 		pool_parent = get_parent()
 
 	for path in spawn_points:
-		var node := get_node(path) as Node2D
+		var node := get_node_or_null(path) as Node2D
 		if node:
 			spawn_points_nodes.append(node)
 
@@ -63,7 +66,7 @@ func _ready() -> void:
 	_ensure_mission_event(pool_parent)
 	if not EventBus.boss_defeated.is_connected(_on_boss_defeated):
 		EventBus.boss_defeated.connect(_on_boss_defeated)
-	call_deferred("_warm_pools")
+	call_deferred("_warm_pools", pool_parent)
 
 func _ensure_mission_event(scene_root: Node) -> void:
 	var mission := MISSION_EVENT.instantiate()
@@ -71,7 +74,7 @@ func _ensure_mission_event(scene_root: Node) -> void:
 	mission.call_deferred("configure_for_map", RunStats.map_id)
 
 func spawn_event_enemy(pool_id: String, spawn_position: Vector2) -> Node:
-	var enemy = ObjectPoolManager.acquire(pool_id, spawn_position)
+	var enemy = ObjectPoolManager.acquire(pool_id, get_safe_spawn_position(spawn_position))
 	if enemy:
 		enemy.set_meta("pool_id", pool_id)
 		_apply_difficulty(enemy, 1.0 + (time_elapsed / 60.0) * 0.4)
@@ -97,7 +100,7 @@ func _register_pools(pool_parent: Node) -> void:
 	ObjectPoolManager.register_pool("blood_impact", preload("res://scenes/effects/blood_impact.tscn"), pool_parent)
 	ObjectPoolManager.register_pool("player_hit", preload("res://scenes/effects/player_hit.tscn"), pool_parent)
 
-func _warm_pools() -> void:
+func _warm_pools(scene_root: Node) -> void:
 	var targets := [
 		["zombie_base", 48], ["zombie_runner", 16], ["zombie_tank", 8],
 		["zombie_spitter", 8], ["zombie_bomber", 8], ["zombie_bloater", 8],
@@ -106,12 +109,14 @@ func _warm_pools() -> void:
 	]
 	for entry in targets:
 		for target_size in range(8, int(entry[1]) + 8, 8):
-			if not is_inside_tree():
+			if not is_inside_tree() or not is_instance_valid(scene_root) or get_tree().current_scene != scene_root:
 				return
 			ObjectPoolManager.warm_pool(String(entry[0]), mini(target_size, int(entry[1])))
 			await get_tree().process_frame
 
 func _process(delta: float) -> void:
+	if not RunStats.run_active:
+		return
 	time_elapsed += delta
 	current_wave = int(time_elapsed / WAVE_DURATION) + 1
 	if current_wave > last_announced_wave:
@@ -174,8 +179,8 @@ func _spawn_boss() -> void:
 		boss_spawned = false
 		boss.queue_free()
 		return
-	scene_root.add_child(boss)
 	boss.global_position = boss_position
+	scene_root.add_child(boss)
 	var endless_scale := 1.0 + float(bosses_defeated) * 0.35
 	var health_scale := (38.0 if boss_data_hacked else 50.0) * RunStats.get_difficulty_health_mult() * endless_scale
 	boss.configure(health_scale, RunStats.get_difficulty_damage_mult(), boss_data_hacked, bosses_defeated)
@@ -289,8 +294,7 @@ func _spawn_field_supply(announce: bool = true) -> void:
 	cache.heal_amount = 25
 	cache.lifetime = 50.0
 	var drop_position := player.global_position + Vector2.RIGHT.rotated(randf() * TAU) * randf_range(190.0, 310.0)
-	drop_position.x = clampf(drop_position.x, spawn_bounds.position.x + 100.0, spawn_bounds.end.x - 100.0)
-	drop_position.y = clampf(drop_position.y, spawn_bounds.position.y + 100.0, spawn_bounds.end.y - 100.0)
+	drop_position = get_safe_spawn_position(drop_position, 100.0)
 	cache.global_position = drop_position
 	scene_root.add_child(cache)
 	if announce:
@@ -321,18 +325,54 @@ func _get_player_spawn_position(player: Node2D, min_distance: float, max_distanc
 	var safe_top := spawn_bounds.position.y + 120.0
 	var safe_right := spawn_bounds.position.x + spawn_bounds.size.x - 120.0
 	var safe_bottom := spawn_bounds.position.y + spawn_bounds.size.y - 120.0
-	for _attempt in range(8):
+	for _attempt in range(24):
 		var angle := randf() * TAU
 		var distance := randf_range(min_distance, max_distance)
 		var candidate := player.global_position + Vector2.RIGHT.rotated(angle) * distance
 		candidate.x = clampf(candidate.x, safe_left, safe_right)
 		candidate.y = clampf(candidate.y, safe_top, safe_bottom)
-		if candidate.distance_to(player.global_position) >= min_distance * 0.72:
+		if candidate.distance_to(player.global_position) >= min_distance * 0.72 and _is_spawn_position_clear(candidate):
 			return candidate
-	return Vector2(
+	var fallback := Vector2(
 		clampf(player.global_position.x + min_distance, safe_left, safe_right),
 		clampf(player.global_position.y, safe_top, safe_bottom)
 	)
+	return get_safe_spawn_position(fallback, 120.0)
+
+func get_safe_spawn_position(requested: Vector2, margin: float = 120.0) -> Vector2:
+	var safe_left := spawn_bounds.position.x + margin
+	var safe_top := spawn_bounds.position.y + margin
+	var safe_right := spawn_bounds.end.x - margin
+	var safe_bottom := spawn_bounds.end.y - margin
+	var candidate := requested
+	if spawn_bounds.size.x > margin * 2.0 and spawn_bounds.size.y > margin * 2.0:
+		candidate.x = clampf(candidate.x, safe_left, safe_right)
+		candidate.y = clampf(candidate.y, safe_top, safe_bottom)
+	if _is_spawn_position_clear(candidate):
+		return candidate
+	for _attempt in range(12):
+		var offset := Vector2.RIGHT.rotated(randf() * TAU) * randf_range(48.0, 180.0)
+		var probe := candidate + offset
+		if spawn_bounds.size.x > margin * 2.0 and spawn_bounds.size.y > margin * 2.0:
+			probe.x = clampf(probe.x, safe_left, safe_right)
+			probe.y = clampf(probe.y, safe_top, safe_bottom)
+		if _is_spawn_position_clear(probe):
+			return probe
+	return candidate
+
+func _is_spawn_position_clear(position: Vector2) -> bool:
+	if _spawn_shape == null or not is_inside_tree():
+		return true
+	var scene_root := get_tree().current_scene as Node2D
+	if not is_instance_valid(scene_root):
+		return true
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = _spawn_shape
+	query.transform = Transform2D(0.0, position)
+	query.collision_mask = 2
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	return scene_root.get_world_2d().direct_space_state.intersect_shape(query, 1).is_empty()
 
 func _get_active_enemy_count() -> int:
 	return SpatialGrid.entity_cells.size()

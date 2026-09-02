@@ -9,6 +9,7 @@ extends CanvasLayer
 var summary_recorded: bool = false
 
 func _ready() -> void:
+	ModalManager.clear()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	EventBus.game_over.connect(_on_game_over)
@@ -16,6 +17,8 @@ func _ready() -> void:
 	retry_btn.pressed.connect(_on_retry_pressed)
 
 func _on_game_over(is_victory: bool) -> void:
+	if summary_recorded or visible:
+		return
 	ModalManager.request(self, _show_game_over.bind(is_victory))
 
 func _show_game_over(is_victory: bool) -> void:

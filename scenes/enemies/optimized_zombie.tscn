@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/OptimizedZombie.gd" id="1_zombie"]
+[ext_resource type="Texture2D" path="res://assets/graphics/zombie_v2.png" id="2_texture"]
+[ext_resource type="Material" path="res://shaders/hit_flash_material.tres" id="3_material"]
+
+[sub_resource type="CircleShape2D" id="CircleShape_optimized_zombie"]
+radius = 28.0
+
+[node name="OptimizedZombie" type="CharacterBody2D" groups=["enemies"]]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_zombie")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 5
+material = ExtResource("3_material")
+texture = ExtResource("2_texture")
+texture_filter = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape_optimized_zombie")
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="."]
+rect = Rect2(-40, -40, 80, 80)

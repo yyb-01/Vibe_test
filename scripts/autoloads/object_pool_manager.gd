@@ -1,110 +1,227 @@
 extends Node
 
-var _pools: Dictionary = {} # Key: String (pool_id), Value: Dictionary { "free": Array[Node], "scene": PackedScene, "parent": Node }
+## PackedScene-keyed pool. `acquire/release` remains for the existing game code.
+var active_pool: Dictionary = {}
+var inactive_pool: Dictionary = {}
 
-func clear() -> void:
-	_pools.clear()
+var _configs: Dictionary = {}
+var _pool_ids: Dictionary = {}
+var _instance_keys: Dictionary = {}
+
+func configure_pool(scene: PackedScene, pool_size: int, max_size: int, parent: Node = null) -> void:
+	if scene == null:
+		push_error("ObjectPoolManager: scene is required")
+		return
+	var pool_parent := parent if is_instance_valid(parent) else get_tree().current_scene
+	if not is_instance_valid(pool_parent):
+		push_error("ObjectPoolManager: pool parent is required")
+		return
+	var key := _scene_key(scene)
+	if _configs.has(key):
+		var config: Dictionary = _configs[key]
+		config["parent"] = pool_parent
+		config["max_size"] = maxi(int(config["max_size"]), maxi(pool_size, max_size))
+		_configs[key] = config
+	else:
+		_configs[key] = {"scene": scene, "parent": pool_parent, "max_size": maxi(pool_size, max_size)}
+		active_pool[key] = [] as Array[Node2D]
+		inactive_pool[key] = [] as Array[Node2D]
+	warm_pool_scene(scene, pool_size)
 
 func register_pool(pool_id: String, scene: PackedScene, parent: Node, initial_size: int = 0) -> void:
-	if _pools.has(pool_id) and is_instance_valid(_pools[pool_id]["parent"]):
+	if scene == null or not is_instance_valid(parent):
+		push_error("ObjectPoolManager: Invalid pool registration: " + pool_id)
 		return
-
-	_pools[pool_id] = {
-		"free": [] as Array[Node],
-		"scene": scene,
-		"parent": parent
-	}
-	warm_pool(pool_id, initial_size)
+	_pool_ids[pool_id] = scene
+	configure_pool(scene, initial_size, 4096, parent)
 
 func warm_pool(pool_id: String, target_size: int) -> void:
-	if not _pools.has(pool_id):
+	if not _pool_ids.has(pool_id):
 		return
-	var pool: Dictionary = _pools[pool_id]
-	var missing_count: int = maxi(0, target_size - pool["free"].size())
-	for i in range(missing_count):
-		var instance = pool["scene"].instantiate()
-		instance.set_meta("pool_id", pool_id)
-		instance.process_mode = Node.PROCESS_MODE_DISABLED
-		if instance is CanvasItem:
-			instance.visible = false
-		pool["parent"].add_child(instance)
-		# Pool warm-up runs _ready(), so remove any spatial registration made there.
-		if instance.is_in_group("enemies"):
-			SpatialGrid.remove(instance)
-		elif instance.has_method("get_exp_amount"):
-			SpatialGrid.remove_item(instance)
-		pool["free"].append(instance)
+	warm_pool_scene(_pool_ids[pool_id] as PackedScene, target_size)
 
-func acquire(pool_id: String, global_pos: Vector2) -> Node:
-	if not _pools.has(pool_id):
-		push_error("ObjectPoolManager: Pool ID not found: " + pool_id)
+func warm_pool_scene(scene: PackedScene, target_size: int) -> void:
+	var key := _scene_key(scene)
+	if not _configs.has(key):
+		configure_pool(scene, target_size, maxi(target_size, 1), get_tree().current_scene)
+		return
+	var config: Dictionary = _configs[key]
+	var parent: Node = config["parent"] as Node
+	if not is_instance_valid(parent):
+		return
+	var free_list: Array[Node2D] = inactive_pool[key]
+	var total := free_list.size() + (active_pool[key] as Array[Node2D]).size()
+	var count := mini(maxi(0, target_size - free_list.size()), maxi(0, int(config["max_size"]) - total))
+	for _index in range(count):
+		var instance := _create_instance(scene, key, parent)
+		if instance == null:
+			return
+		free_list.append(instance)
+
+func spawn(scene: PackedScene, global_pos: Vector2, rot: float = 0.0, args: Array = []) -> Node2D:
+	if scene == null:
+		return null
+	var key := _scene_key(scene)
+	if not _configs.has(key):
+		configure_pool(scene, 0, 1024, get_tree().current_scene)
+	if not _configs.has(key):
 		return null
 
-	var pool: Dictionary = _pools[pool_id]
-	var instance: Node = null
-
-	# Clean up any dangling references from scene transitions before popping
-	while pool["free"].size() > 0:
-		instance = pool["free"].pop_back()
-		if is_instance_valid(instance):
+	var config: Dictionary = _configs[key]
+	var parent: Node = config["parent"] as Node
+	if not is_instance_valid(parent):
+		return null
+	var free_list: Array[Node2D] = inactive_pool[key]
+	var instance: Node2D = null
+	while not free_list.is_empty():
+		var candidate: Node2D = free_list.pop_back()
+		if is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			instance = candidate
 			break
-		else:
-			instance = null
+	if instance == null:
+		var active_count := (active_pool[key] as Array[Node2D]).size()
+		if active_count + free_list.size() >= int(config["max_size"]):
+			return null
+		instance = _create_instance(scene, key, parent)
+		if instance == null:
+			return null
 
-	if not instance:
-		instance = pool["scene"].instantiate()
-		instance.set_meta("pool_id", pool_id)
-		if is_instance_valid(pool["parent"]):
-			pool["parent"].add_child(instance)
-		else:
-			# Fallback if parent was deleted
-			get_tree().current_scene.add_child(instance)
-
-	if instance is Node2D:
-		instance.global_position = global_pos
-
+	_instance_keys[instance] = key
 	instance.set_meta("_pool_release_pending", false)
+	instance.global_position = global_pos
+	instance.rotation = rot
 	instance.process_mode = Node.PROCESS_MODE_INHERIT
-	if instance is CanvasItem:
-		instance.visible = true
-	if instance.has_node("CollisionShape2D"):
-		instance.get_node("CollisionShape2D").set_deferred("disabled", false)
-	# also for exp gems, check Area2D
-	if instance is Area2D:
-		for child in instance.get_children():
-			if child is CollisionShape2D:
-				child.set_deferred("disabled", false)
-
-	if instance.has_method("reset"):
-		instance.reset()
-
+	instance.set_process(true)
+	instance.set_physics_process(true)
+	instance.show()
+	_restore_collision(instance)
+	var active_list: Array[Node2D] = active_pool[key]
+	active_list.append(instance)
+	if instance.has_method("on_spawn"):
+		instance.callv("on_spawn", args)
+	elif instance.has_method("reset"):
+		instance.call("reset")
 	return instance
 
-func release(instance: Node) -> void:
-	if not is_instance_valid(instance) or instance.get_meta("_pool_release_pending", false):
+func despawn(instance: Node2D) -> void:
+	if not is_instance_valid(instance) or instance.is_queued_for_deletion():
+		return
+	if not _instance_keys.has(instance) or instance.get_meta("_pool_release_pending", false):
+		return
+	var key: String = _instance_keys[instance]
+	if not _configs.has(key):
 		return
 	instance.set_meta("_pool_release_pending", true)
-	if instance is CanvasItem:
-		instance.visible = false
-	instance.set_deferred("process_mode", Node.PROCESS_MODE_DISABLED)
-	call_deferred("_finish_release", instance)
+	if instance.has_method("on_despawn"):
+		instance.call("on_despawn")
+	_remove_from_spatial_index(instance)
+	instance.hide()
+	instance.set_process(false)
+	instance.set_physics_process(false)
+	instance.process_mode = Node.PROCESS_MODE_DISABLED
+	_disable_collision(instance)
+	var active_list: Array[Node2D] = active_pool[key]
+	active_list.erase(instance)
+	var free_list: Array[Node2D] = inactive_pool[key]
+	free_list.append(instance)
 
-func _finish_release(instance: Node) -> void:
-	if not is_instance_valid(instance) or not instance.get_meta("_pool_release_pending", false):
-		return
-	var pool_id = instance.get_meta("pool_id", "")
-	if pool_id == "" or not _pools.has(pool_id):
-		# Fallback if it wasn't spawned from pool properly
-		instance.queue_free()
-		return
+func acquire(pool_id: String, global_pos: Vector2) -> Node:
+	if not _pool_ids.has(pool_id):
+		push_error("ObjectPoolManager: Pool ID not found: " + pool_id)
+		return null
+	return spawn(_pool_ids[pool_id] as PackedScene, global_pos)
 
-	var free_list: Array = _pools[pool_id]["free"]
-	if not free_list.has(instance):
-		instance.process_mode = Node.PROCESS_MODE_DISABLED
-		if instance.has_node("CollisionShape2D"):
-			instance.get_node("CollisionShape2D").set_deferred("disabled", true)
-		if instance is Area2D:
-			for child in instance.get_children():
-				if child is CollisionShape2D:
-					child.set_deferred("disabled", true)
-		free_list.append(instance)
+func release(instance: Node) -> void:
+	if instance is Node2D:
+		despawn(instance as Node2D)
+
+func get_active_count(scene: PackedScene) -> int:
+	var key := _scene_key(scene)
+	return (active_pool.get(key, []) as Array).size()
+
+func get_active(scene: PackedScene) -> Array[Node2D]:
+	var key := _scene_key(scene)
+	return active_pool.get(key, [] as Array[Node2D]) as Array[Node2D]
+
+func clear() -> void:
+	var configs := _configs.duplicate()
+	var nodes_by_key: Dictionary = {}
+	for key in configs:
+		var nodes: Array = []
+		nodes.append_array(active_pool.get(key, []))
+		nodes.append_array(inactive_pool.get(key, []))
+		nodes_by_key[key] = nodes
+	_configs.clear()
+	_pool_ids.clear()
+	_instance_keys.clear()
+	active_pool.clear()
+	inactive_pool.clear()
+	for key in configs:
+		var nodes: Array = nodes_by_key[key]
+		for instance in nodes:
+			if is_instance_valid(instance) and not instance.is_queued_for_deletion():
+				_remove_from_spatial_index(instance)
+				instance.free()
+
+func _scene_key(scene: PackedScene) -> String:
+	if scene.resource_path.is_empty():
+		return "instance:%d" % scene.get_instance_id()
+	return scene.resource_path
+
+func _create_instance(scene: PackedScene, key: String, parent: Node) -> Node2D:
+	var instance := scene.instantiate() as Node2D
+	if instance == null:
+		push_error("ObjectPoolManager: scene root must extend Node2D: " + scene.resource_path)
+		return null
+	instance.set_meta("_pool_scene_key", key)
+	instance.set_meta("_pool_release_pending", true)
+	instance.process_mode = Node.PROCESS_MODE_DISABLED
+	instance.set_process(false)
+	instance.set_physics_process(false)
+	instance.hide()
+	parent.add_child(instance)
+	_instance_keys[instance] = key
+	if instance.has_method("on_despawn"):
+		instance.call("on_despawn")
+	instance.tree_exiting.connect(_on_pooled_instance_exiting.bind(instance), CONNECT_ONE_SHOT)
+	_disable_collision(instance)
+	_remove_from_spatial_index(instance)
+	return instance
+
+func _disable_collision(instance: Node2D) -> void:
+	var collision := instance as CollisionObject2D
+	if collision:
+		if not instance.has_meta("_pool_collision_layer"):
+			instance.set_meta("_pool_collision_layer", collision.collision_layer)
+			instance.set_meta("_pool_collision_mask", collision.collision_mask)
+		collision.collision_layer = 0
+		collision.collision_mask = 0
+	for shape in instance.find_children("*", "CollisionShape2D", true, false):
+		(shape as CollisionShape2D).set_deferred("disabled", true)
+
+func _restore_collision(instance: Node2D) -> void:
+	var collision := instance as CollisionObject2D
+	if collision:
+		collision.collision_layer = int(instance.get_meta("_pool_collision_layer", collision.collision_layer))
+		collision.collision_mask = int(instance.get_meta("_pool_collision_mask", collision.collision_mask))
+	for shape in instance.find_children("*", "CollisionShape2D", true, false):
+		(shape as CollisionShape2D).set_deferred("disabled", false)
+
+func _remove_from_spatial_index(instance: Node) -> void:
+	var grid := get_node_or_null("/root/SpatialGrid")
+	if not is_instance_valid(grid):
+		return
+	if instance.is_in_group("enemies") and grid.has_method("remove"):
+		grid.call("remove", instance)
+	elif instance.has_method("get_exp_amount") and grid.has_method("remove_item"):
+		grid.call("remove_item", instance)
+
+func _on_pooled_instance_exiting(instance: Node2D) -> void:
+	if not _instance_keys.has(instance):
+		return
+	var key: String = _instance_keys[instance]
+	if active_pool.has(key):
+		(active_pool[key] as Array[Node2D]).erase(instance)
+	if inactive_pool.has(key):
+		(inactive_pool[key] as Array[Node2D]).erase(instance)
+	_instance_keys.erase(instance)

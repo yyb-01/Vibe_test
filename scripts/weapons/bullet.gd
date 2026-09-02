@@ -39,7 +39,7 @@ func _physics_process(delta: float) -> void:
 	rotation = direction.angle()
 
 func _on_body_entered(body: Node2D) -> void:
-	if body.is_in_group("player"):
+	if get_meta("_pool_release_pending", false) or not is_instance_valid(body) or body.is_queued_for_deletion() or body.is_in_group("player"):
 		return
 	if hit_targets.has(body):
 		return
@@ -51,6 +51,7 @@ func _on_body_entered(body: Node2D) -> void:
 		var hit_kind := "critical" if is_critical else impact_kind
 		var target_health = body.get("health")
 		var target_max_health = body.get("max_health")
+		var impact_position := body.global_position
 		if execute_threshold > 0.0 and target_health != null and target_max_health != null and float(target_health) / float(maxi(1, int(target_max_health))) <= execute_threshold:
 			final_damage = int(target_health) + 1
 			hit_kind = "execute"
@@ -62,7 +63,7 @@ func _on_body_entered(body: Node2D) -> void:
 			EventBus.camera_shake_requested.emit(0.7)
 		elif hit_kind == "heavy":
 			EventBus.camera_shake_requested.emit(0.2)
-		var impact = ObjectPoolManager.acquire("blood_impact", body.global_position)
+		var impact = ObjectPoolManager.acquire("blood_impact", impact_position)
 		if impact and impact.has_method("configure"):
 			var color := Color(1.0, 0.9, 0.28, 1.0) if is_critical else (Color(0.3, 0.9, 1.0, 1.0) if impact_kind == "heavy" else Color(1.0, 0.2, 0.08, 1.0))
 			impact.configure(color, 58.0 if is_critical or impact_kind == "heavy" else 38.0)

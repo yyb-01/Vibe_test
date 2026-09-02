@@ -62,8 +62,11 @@ var trait_tabs: TabContainer
 var trait_summary: Label
 var trait_progress: ProgressBar
 var ui_scale_select: OptionButton
+var character_grid: GridContainer
+var map_grid: GridContainer
 
 func _ready() -> void:
+	ModalManager.clear()
 	get_tree().paused = false
 	map_1_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_1.tscn"))
 	map_2_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_2.tscn"))
@@ -85,6 +88,8 @@ func _ready() -> void:
 	_build_run_settings()
 	_build_ui_scale_setting()
 	_build_visual_selectors()
+	get_viewport().size_changed.connect(_layout_responsive_ui)
+	_layout_responsive_ui()
 	_build_evolution_codex()
 	_build_weapon_statistics()
 	_build_trait_tree()
@@ -95,14 +100,15 @@ func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
 	_update_shop_ui()
 	_update_progress_ui()
-	map_1_btn.get_parent().get_node("MapCard1").grab_focus()
+	var first_map := map_grid.get_node_or_null("MapCard1") as Button
+	if first_map:
+		first_map.grab_focus()
 	$TabContainer.tab_changed.connect(_animate_tab)
 
 func _build_visual_selectors() -> void:
 	character_select.hide()
-	var character_grid := GridContainer.new()
+	character_grid = GridContainer.new()
 	character_grid.name = "CharacterGrid"
-	character_grid.columns = 4
 	character_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	character_grid.add_theme_constant_override("h_separation", 8)
 	character_grid.add_theme_constant_override("v_separation", 8)
@@ -110,7 +116,7 @@ func _build_visual_selectors() -> void:
 	character_select.get_parent().move_child(character_grid, 0)
 	for index in CHARACTER_IDS.size():
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(250, 76)
+		button.custom_minimum_size = Vector2(0, 76)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.text = "%s\n%s" % [CHARACTER_NAMES[index].get_slice(" · ", 0), CHARACTER_STATS[index]]
 		button.tooltip_text = CHARACTER_DESCRIPTIONS[index]
@@ -123,12 +129,12 @@ func _build_visual_selectors() -> void:
 		button.pressed.connect(_select_character_card.bind(index, character_grid))
 		character_grid.add_child(button)
 	for button in [map_1_btn, map_2_btn, map_3_btn, map_4_btn]: button.hide()
-	var map_column := map_1_btn.get_parent()
+	map_grid = map_1_btn.get_parent() as GridContainer
 	for index in MAP_CARDS.size():
 		var data := MAP_CARDS[index] as Array
 		var button := Button.new()
 		button.name = "MapCard%d" % (index + 1)
-		button.custom_minimum_size = Vector2(258, 80)
+		button.custom_minimum_size = Vector2(0, 80)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.text = "%02d  %s  ·  [%s]\n주요 목표  %s" % [index + 1, data[0], data[1], data[2]]
 		button.icon = load(String(data[3])) as Texture2D
@@ -138,7 +144,14 @@ func _build_visual_selectors() -> void:
 		button.add_theme_font_size_override("font_size", 13)
 		_style_selection_button(button, false, Color(1.0, 0.5, 0.24, 1.0))
 		button.pressed.connect(_load_map.bind(String(data[4])))
-		map_column.add_child(button)
+		map_grid.add_child(button)
+
+func _layout_responsive_ui() -> void:
+	if not is_instance_valid(character_grid) or not is_instance_valid(map_grid):
+		return
+	var narrow := get_viewport().get_visible_rect().size.x < 1200.0
+	character_grid.columns = 2 if narrow else 4
+	map_grid.columns = 2 if narrow else 4
 
 func _portrait(sheet: Texture2D) -> AtlasTexture:
 	var portrait := AtlasTexture.new()
@@ -437,7 +450,6 @@ func _on_screen_shake_toggled(enabled: bool) -> void:
 func _on_volume_changed(value: float) -> void:
 	SaveManager.master_volume = value
 	AudioManager.set_master_volume(value)
-	SaveManager.save_data()
 
 func _update_shop_ui() -> void:
 	gold_label.text = "골드  " + str(SaveManager.gold)
@@ -447,6 +459,7 @@ func _load_map(path: String) -> void:
 	if not ResourceLoader.exists(path):
 		OS.alert("맵 리소스를 찾을 수 없습니다.\n%s" % path, "맵 로드 실패")
 		return
+	SaveManager.save_data()
 	ModalManager.clear()
 	RunStats.start_run(path.get_file().get_basename())
 

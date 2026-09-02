@@ -4,6 +4,7 @@ extends Resource
 @export var id: String = ""
 @export var perk_name: String = ""
 @export_multiline var description: String = ""
+@export var level: int = 1
 
 # Multipliers and Additions
 @export var damage_mult: float = 1.0

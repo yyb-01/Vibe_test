@@ -26,6 +26,7 @@ var trail_timer: float = 0.0
 var telegraph_overlay: Node2D
 
 const BOSS_SKILL_EFFECT: Script = preload("res://scripts/effects/boss_skill_effect.gd")
+const BLUE_FIRE_EXPLOSION: PackedScene = preload("res://scenes/weapons/advanced/explosion.tscn")
 
 const BOSS_COLORS := [
 	Color(1.0, 0.58, 0.18, 1.0),
@@ -38,6 +39,7 @@ func _ready() -> void:
 	z_index = 9
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	safe_margin = 0.04
+	boss_id = clampi(boss_id, 0, BOSS_COLORS.size() - 1)
 	telegraph_overlay = Node2D.new()
 	telegraph_overlay.z_as_relative = false
 	telegraph_overlay.z_index = 40
@@ -64,9 +66,9 @@ func configure(health_multiplier: float, damage_multiplier: float, hacked: bool,
 func _physics_process(delta: float) -> void:
 	if dying:
 		return
-	if not is_instance_valid(player):
+	if not is_instance_valid(player) or player.is_queued_for_deletion():
 		player = get_tree().get_first_node_in_group("player") as Player
-		if not is_instance_valid(player):
+		if not is_instance_valid(player) or player.is_queued_for_deletion():
 			return
 
 	visual_time += delta
@@ -186,7 +188,7 @@ func _attack_display_name() -> String:
 		_: return "보스 공격"
 
 func _radial_hit(radius: float, multiplier: float, color: Color) -> void:
-	if global_position.distance_to(player.global_position) <= radius:
+	if is_instance_valid(player) and not player.is_queued_for_deletion() and global_position.distance_to(player.global_position) <= radius:
 		player.take_damage(roundi(float(attack_damage) * multiplier), global_position.direction_to(player.global_position), boss_name, _attack_display_name())
 	_spawn_impact(color, radius)
 
@@ -215,6 +217,9 @@ func _spawn_projectile(direction: Vector2) -> void:
 func _summon_enemies(pool_id: String, count: int) -> void:
 	for index in count:
 		var spawn_position := global_position + Vector2.RIGHT.rotated(TAU * float(index) / float(count)) * randf_range(150.0, 230.0)
+		var spawn_manager := get_tree().get_first_node_in_group("spawn_manager")
+		if is_instance_valid(spawn_manager) and spawn_manager.has_method("get_safe_spawn_position"):
+			spawn_position = spawn_manager.call("get_safe_spawn_position", spawn_position)
 		var summon = ObjectPoolManager.acquire(pool_id, spawn_position)
 		if summon:
 			summon.set_meta("pool_id", pool_id)
@@ -226,17 +231,30 @@ func _blink_strike() -> void:
 	var offset := -player.velocity.normalized() * 150.0
 	if offset == Vector2.ZERO:
 		offset = Vector2.RIGHT.rotated(randf() * TAU) * 150.0
-	global_position = player.global_position + offset
+	var target_position := player.global_position + offset
+	var spawn_manager := get_tree().get_first_node_in_group("spawn_manager")
+	if is_instance_valid(spawn_manager) and spawn_manager.has_method("get_safe_spawn_position"):
+		target_position = spawn_manager.call("get_safe_spawn_position", target_position)
+	global_position = target_position
 	_spawn_skill_effect("blink", global_position, 190.0, 0.7)
 	_radial_hit(185.0, 1.2, Color(0.68, 0.34, 1.0, 1.0))
 	_fire_radial(6 + phase * 2, visual_time)
 
 func _check_contact_hit(multiplier: float) -> void:
-	if contact_cooldown > 0.0:
+	if contact_cooldown > 0.0 or not is_instance_valid(player) or player.is_queued_for_deletion():
 		return
-	if global_position.distance_to(player.global_position) <= 118.0:
+	var self_radius := _get_collision_radius(self)
+	var player_radius := _get_collision_radius(player)
+	if global_position.distance_to(player.global_position) <= maxf(118.0, self_radius + player_radius + 10.0):
 		player.take_damage(roundi(float(attack_damage) * multiplier), global_position.direction_to(player.global_position), boss_name, "접촉 충돌")
 		contact_cooldown = 0.8
+
+func _get_collision_radius(body: Node2D) -> float:
+	var collision := body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision and collision.shape is CircleShape2D:
+		var circle := collision.shape as CircleShape2D
+		return circle.radius * maxf(absf(collision.global_scale.x), absf(collision.global_scale.y))
+	return 0.0
 
 func _spawn_impact(color: Color, radius: float) -> void:
 	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
@@ -245,8 +263,11 @@ func _spawn_impact(color: Color, radius: float) -> void:
 	AudioManager.play_named("impact", -3.0, randf_range(0.72, 0.9))
 
 func _spawn_skill_effect(kind: String, effect_position: Vector2, radius: float, duration: float, damage: int = 0, direction: Vector2 = Vector2.RIGHT) -> void:
+	var scene_root := get_tree().current_scene
+	if not is_instance_valid(scene_root):
+		return
 	var effect := BOSS_SKILL_EFFECT.new() as BossSkillEffect
-	get_tree().current_scene.add_child(effect)
+	scene_root.add_child(effect)
 	effect.global_position = effect_position
 	effect.setup(kind, BOSS_COLORS[boss_id], radius, duration, damage, direction, boss_name, _attack_display_name())
 
@@ -258,19 +279,19 @@ func _update_visuals(delta: float) -> void:
 		sprite.flip_h = velocity.x < 0.0
 
 func take_damage(amount: int, knockback_direction: Vector2 = Vector2.ZERO, hit_kind: String = "normal", weapon_id: String = "") -> void:
-	if dying:
+	if dying or amount <= 0:
 		return
 	var applied := mini(maxi(0, amount), health)
 	health -= applied
 	RunStats.register_combat_hit(applied, hit_kind, weapon_id)
-	if knockback_direction != Vector2.ZERO and charge_timer <= 0.0:
-		velocity += knockback_direction * 18.0
-	if sprite.material:
-		sprite.material.set_shader_parameter("active", true)
-		get_tree().create_timer(0.1).timeout.connect(func():
-			if is_instance_valid(sprite) and sprite.material:
-				sprite.material.set_shader_parameter("active", false)
-		)
+	var safe_direction := knockback_direction.normalized()
+	if safe_direction != Vector2.ZERO and charge_timer <= 0.0:
+		velocity += safe_direction * 18.0
+	var impact_type := hit_kind
+	if not weapon_id.is_empty():
+		impact_type += " " + weapon_id
+	HitEffectManager.play_hit(applied, impact_type, safe_direction)
+	HitEffectManager.flash_sprite(sprite)
 	if health <= 0:
 		_die()
 
@@ -279,6 +300,9 @@ func _die() -> void:
 		return
 	dying = true
 	health = 0
+	if bool(get_meta("blue_fire", false)):
+		ObjectPoolManager.spawn(BLUE_FIRE_EXPLOSION, global_position, 0.0,
+			[80.0, float(get_meta("blue_fire_damage", 24.0)), null, 120.0, Color(0.15, 0.65, 1.0, 1.0)])
 	collision_layer = 0
 	collision_mask = 0
 	velocity = Vector2.ZERO
@@ -304,7 +328,7 @@ func _die() -> void:
 	tween.tween_callback(queue_free)
 
 func _draw_telegraph() -> void:
-	if telegraph_timer <= 0.0:
+	if telegraph_timer <= 0.0 or not is_instance_valid(player) or player.is_queued_for_deletion():
 		return
 	var pulse := 0.72 + absf(sin(visual_time * 18.0)) * 0.28
 	var red := Color(1.0, 0.04, 0.02, 0.92 * pulse)

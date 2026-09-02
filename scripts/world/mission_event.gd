@@ -22,12 +22,19 @@ var bonus_reward_rolls: int = 1
 var choice_layer: CanvasLayer
 var default_branch: Dictionary = {}
 var choice_generation: int = 0
+var choice_timer: Timer
 
 const ACTIVE_RADIUS := 210.0
 
 func _ready() -> void:
 	add_to_group("mission_event")
 	body_entered.connect(_on_body_entered)
+	choice_timer = Timer.new()
+	choice_timer.one_shot = true
+	choice_timer.ignore_time_scale = true
+	choice_timer.process_mode = Node.PROCESS_MODE_ALWAYS
+	choice_timer.timeout.connect(_on_choice_timeout)
+	add_child(choice_timer)
 	monitoring = true
 	queue_redraw()
 
@@ -63,7 +70,7 @@ func configure_for_map(map_id: String) -> void:
 	_emit_status("접근하면 시작", 0.0)
 
 func _on_body_entered(body: Node2D) -> void:
-	if body.is_in_group("player"):
+	if is_instance_valid(body) and not body.is_queued_for_deletion() and body.is_in_group("player"):
 		_activate()
 
 func _process(delta: float) -> void:
@@ -73,8 +80,8 @@ func _process(delta: float) -> void:
 		if global_position.distance_to(player.global_position) <= ACTIVE_RADIUS:
 			_activate()
 		return
-	if branch_name.is_empty() and not is_instance_valid(choice_layer):
-		_select_default_branch()
+	if branch_name.is_empty():
+		return
 
 	pressure_timer = maxf(0.0, pressure_timer - delta)
 	action_timer = maxf(0.0, action_timer - delta)
@@ -115,6 +122,13 @@ func _show_branch_choices() -> void:
 		_select_default_branch()
 		return
 	scene_root.add_child(choice_layer)
+	if is_instance_valid(player) and player.has_method("set_input_locked"):
+		player.call("set_input_locked", true)
+	var input_blocker := ColorRect.new()
+	input_blocker.color = Color(0.0, 0.0, 0.0, 0.0)
+	input_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	input_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	choice_layer.add_child(input_blocker)
 	var panel := PanelContainer.new()
 	panel.anchor_left = 0.5
 	panel.anchor_right = 0.5
@@ -159,20 +173,23 @@ func _show_branch_choices() -> void:
 	if first_button:
 		first_button.call_deferred("grab_focus")
 	choice_generation += 1
-	get_tree().create_timer(8.0).timeout.connect(_select_default_if_pending.bind(choice_generation))
+	choice_timer.start(8.0)
 	_emit_status("실시간 작전 시작  ·  분기 선택 8초", 0.0)
 
 func _select_branch(branch: Dictionary) -> void:
 	if not branch_name.is_empty():
 		return
 	choice_generation += 1
+	choice_timer.stop()
 	branch_name = String(branch.name)
 	pressure_interval_mult = float(branch.pressure)
 	reward_gold_mult = float(branch.gold)
 	bonus_reward_rolls = int(branch.rolls)
 	if is_instance_valid(choice_layer):
 		choice_layer.queue_free()
-	choice_layer = null
+		choice_layer = null
+	if is_instance_valid(player) and player.has_method("set_input_locked"):
+		player.call("set_input_locked", false)
 	ModalManager.release(self)
 	_emit_status("%s  ·  진행 중" % branch_name, progress)
 	AudioManager.play_named("level_up", -8.0)
@@ -180,6 +197,9 @@ func _select_branch(branch: Dictionary) -> void:
 func _select_default_if_pending(generation: int) -> void:
 	if generation == choice_generation and branch_name.is_empty():
 		_select_default_branch()
+
+func _on_choice_timeout() -> void:
+	_select_default_if_pending(choice_generation)
 
 func _select_default_branch() -> void:
 	if default_branch.is_empty():
@@ -193,6 +213,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_select_default_branch()
 
 func _exit_tree() -> void:
+	if is_instance_valid(choice_timer):
+		choice_timer.stop()
+	if is_instance_valid(player) and player.has_method("set_input_locked"):
+		player.call("set_input_locked", false)
 	if is_instance_valid(choice_layer):
 		choice_layer.queue_free()
 	ModalManager.release(self)
@@ -253,14 +277,14 @@ func _process_hack(delta: float) -> void:
 		progress = maxf(0.0, progress - delta / 4.0)
 	_emit_status("단말기 해킹  %d%%" % int(progress * 100.0), progress)
 	if progress >= 1.0:
-		if manager:
+		if is_instance_valid(manager):
 			manager.boss_data_hacked = true
 		_complete(120, "lab_drone")
 
 func _spawn_pressure() -> void:
-	if not manager:
+	if not is_instance_valid(manager):
 		manager = get_tree().get_first_node_in_group("spawn_manager") as SpawnManager
-	if not manager:
+	if not is_instance_valid(manager):
 		return
 	var pool_id := "zombie_runner"
 	match mission_kind:

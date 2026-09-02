@@ -11,9 +11,12 @@ func clear() -> void:
 	grid.clear()
 	entity_cells.clear()
 	item_grid.clear()
+	item_cells.clear()
 	_clustering_cells.clear()
 
 func insert(entity: Node2D) -> void:
+	if not is_instance_valid(entity) or entity.is_queued_for_deletion():
+		return
 	remove(entity)
 	var cell := _get_cell(entity.global_position)
 	if not grid.has(cell):
@@ -22,33 +25,45 @@ func insert(entity: Node2D) -> void:
 	entity_cells[entity] = cell
 
 func remove(entity: Node2D) -> void:
-	var cell: Vector2i = entity_cells.get(entity, _get_cell(entity.global_position))
+	if not entity_cells.has(entity):
+		return
+	var cell: Vector2i = entity_cells[entity]
 	if grid.has(cell):
 		grid[cell].erase(entity)
+		if grid[cell].is_empty():
+			grid.erase(cell)
 	entity_cells.erase(entity)
 
 func update_entity(entity: Node2D, old_pos: Vector2, new_pos: Vector2) -> void:
+	if not is_instance_valid(entity) or entity.is_queued_for_deletion():
+		return
 	var old_cell: Vector2i = entity_cells.get(entity, _get_cell(old_pos))
 	var new_cell := _get_cell(new_pos)
 
 	if old_cell != new_cell:
 		if grid.has(old_cell):
 			grid[old_cell].erase(entity)
+			if grid[old_cell].is_empty():
+				grid.erase(old_cell)
 		if not grid.has(new_cell):
 			grid[new_cell] = []
 		grid[new_cell].append(entity)
 		entity_cells[entity] = new_cell
+	elif not entity_cells.has(entity):
+		insert(entity)
 
-func get_nearby_entities(pos: Vector2) -> Array:
+func get_nearby_entities(pos: Vector2, radius: float = CELL_SIZE) -> Array:
 	var cell := _get_cell(pos)
 	var nearby = []
+	var cell_radius := maxi(1, ceili(maxf(radius, 0.0) / float(CELL_SIZE)))
 
-	# Check current cell and 8 neighbors
-	for x in range(-1, 2):
-		for y in range(-1, 2):
+	for x in range(-cell_radius, cell_radius + 1):
+		for y in range(-cell_radius, cell_radius + 1):
 			var check_cell = cell + Vector2i(x, y)
 			if grid.has(check_cell):
-				nearby.append_array(grid[check_cell])
+				for entity in grid[check_cell]:
+					if is_instance_valid(entity) and not entity.is_queued_for_deletion():
+						nearby.append(entity)
 
 	return nearby
 
@@ -57,20 +72,30 @@ func _get_cell(pos: Vector2) -> Vector2i:
 
 # Clustering logic for items
 var item_grid: Dictionary = {}
+var item_cells: Dictionary = {}
 var _clustering_cells: Dictionary = {}
 
 func insert_item(item: Node2D) -> void:
+	if not is_instance_valid(item) or item.is_queued_for_deletion():
+		return
 	remove_item(item)
 	var cell := _get_cell(item.global_position)
 	if not item_grid.has(cell):
 		item_grid[cell] = []
 	item_grid[cell].append(item)
+	item_cells[item] = cell
 
 	_check_cluster(cell)
 
 func remove_item(item: Node2D) -> void:
-	for cell in item_grid.keys():
+	if not item_cells.has(item):
+		return
+	var cell: Vector2i = item_cells[item]
+	if item_grid.has(cell):
 		item_grid[cell].erase(item)
+		if item_grid[cell].is_empty():
+			item_grid.erase(cell)
+	item_cells.erase(item)
 
 func _check_cluster(cell: Vector2i) -> void:
 	if not item_grid.has(cell) or _clustering_cells.has(cell): return
@@ -83,14 +108,16 @@ func _check_cluster(cell: Vector2i) -> void:
 
 	if exp_gems.size() > 20:
 		_clustering_cells[cell] = true
-		var total_exp = 0
+		var total_exp := 0
 		var pos = exp_gems[0].global_position
+		var new_gem = ObjectPoolManager.acquire("exp_gem", pos)
+		if not new_gem:
+			_clustering_cells.erase(cell)
+			return
 		for gem in exp_gems:
-			total_exp += gem.get_exp_amount()
-			item_grid[cell].erase(gem)
+			total_exp += maxi(0, int(gem.get_exp_amount()))
+			remove_item(gem)
 			ObjectPoolManager.release(gem)
 
-		var new_gem = ObjectPoolManager.acquire("exp_gem", pos)
-		if new_gem:
-			new_gem.set_exp_amount(total_exp)
+		new_gem.set_exp_amount(total_exp)
 		_clustering_cells.erase(cell)

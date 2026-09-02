@@ -82,6 +82,8 @@ func _process(delta: float) -> void:
 			_check_challenge()
 
 func register_kill() -> void:
+	if not run_active:
+		return
 	kills += 1
 	if not quest_completed and kills >= KILL_QUEST_TARGET:
 		quest_completed = true
@@ -89,6 +91,8 @@ func register_kill() -> void:
 		EventBus.quest_completed.emit("horde_breaker", KILL_QUEST_REWARD)
 
 func register_damage(amount: int, source: String = "알 수 없는 위협", attack: String = "피해", lethal: bool = false) -> void:
+	if not run_active or amount <= 0:
+		return
 	damage_taken += amount
 	last_damage_source = source
 	last_damage_attack = attack
@@ -97,6 +101,8 @@ func register_damage(amount: int, source: String = "알 수 없는 위협", atta
 	_check_challenge()
 
 func register_combat_hit(amount: int, hit_kind: String, weapon_id: String = "") -> void:
+	if not run_active:
+		return
 	damage_dealt += maxi(0, amount)
 	if not weapon_id.is_empty():
 		weapon_damage[weapon_id] = int(weapon_damage.get(weapon_id, 0)) + maxi(0, amount)
@@ -106,26 +112,32 @@ func register_combat_hit(amount: int, hit_kind: String, weapon_id: String = "") 
 		executions += 1
 
 func register_weapon(weapon_id: String) -> void:
-	if not weapon_id.is_empty() and weapon_id not in used_weapons:
+	if run_active and not weapon_id.is_empty() and weapon_id not in used_weapons:
 		used_weapons.append(weapon_id)
 
 func register_evolution(weapon_id: String) -> void:
-	if not weapon_id.is_empty() and weapon_id not in evolved_weapons:
+	if run_active and not weapon_id.is_empty() and weapon_id not in evolved_weapons:
 		evolved_weapons.append(weapon_id)
 
 func register_rescue() -> void:
+	if not run_active:
+		return
 	survivors_rescued += 1
 	_check_challenge()
 
 func set_companion(role: String) -> void:
-	companion_role = role
+	if run_active:
+		companion_role = role
 
 func register_mission() -> void:
+	if not run_active:
+		return
 	missions_completed += 1
 	_check_challenge()
 
 func add_evolution_core(amount: int = 1) -> void:
-	evolution_cores += maxi(0, amount)
+	if run_active:
+		evolution_cores += maxi(0, amount)
 
 func consume_evolution_core() -> bool:
 	if evolution_cores <= 0:
@@ -141,10 +153,14 @@ func add_pet_blueprint(blueprint_id: String) -> bool:
 	return false
 
 func register_supply_cache() -> void:
+	if not run_active:
+		return
 	supply_caches_opened += 1
 	_check_challenge()
 
 func register_elite_kill() -> void:
+	if not run_active:
+		return
 	elite_kills += 1
 	_check_challenge()
 	if elite_kills == 5:
@@ -152,13 +168,13 @@ func register_elite_kill() -> void:
 		EventBus.quest_completed.emit("elite_breaker", 75)
 
 func add_scrap(amount: int) -> void:
-	if amount <= 0:
+	if not run_active or amount <= 0:
 		return
 	scrap += maxi(1, int(round(float(amount) * scrap_multiplier)))
 	EventBus.scrap_changed.emit(scrap)
 
 func spend_scrap(amount: int) -> bool:
-	if amount <= 0 or scrap < amount:
+	if not run_active or amount <= 0 or scrap < amount:
 		return false
 	scrap -= amount
 	EventBus.scrap_changed.emit(scrap)

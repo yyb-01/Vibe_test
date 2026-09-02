@@ -1,6 +1,8 @@
 class_name Zombie
 extends CharacterBody2D
 
+const BLUE_FIRE_EXPLOSION: PackedScene = preload("res://scenes/weapons/advanced/explosion.tscn")
+
 const WALK_SHEETS := {
 	0: preload("res://assets/graphics/animated/zombie_shambler_walk_v1.png"),
 	1: preload("res://assets/graphics/animated/zombie_runner_walk_v1.png"),
@@ -58,6 +60,8 @@ var previous_pos: Vector2
 var wall_follow_direction: Vector2 = Vector2.ZERO
 var wall_follow_timer: float = 0.0
 var ranged_can_attack: bool = true
+var attack_timer: float = 0.0
+var ranged_attack_timer: float = 0.0
 var boss_attack_timer: float = 4.0
 var boss_telegraph_timer: float = 0.0
 var boss_charge_time: float = 0.0
@@ -71,9 +75,11 @@ var tank_stomp_cooldown: float = 0.0
 var tank_stomp_windup: float = 0.0
 var bloater_spit_cooldown: float = 1.5
 var strafe_sign: float = 1.0
-var hit_stop_timer: float = 0.0
 var detonation_countdown: float = -1.0
 var detonation_duration: float = 0.8
+var has_detonated: bool = false
+var slow_multiplier: float = 1.0
+var slow_time: float = 0.0
 var warning_overlay: Node2D
 var silhouette_overlay: Node2D
 
@@ -84,6 +90,7 @@ func _ready() -> void:
 	z_index = 6
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	safe_margin = 0.04
+	motion_profile = clampi(motion_profile, 0, WALK_SHEETS.size() - 1)
 	warning_overlay = Node2D.new()
 	warning_overlay.z_as_relative = false
 	warning_overlay.z_index = 35
@@ -109,6 +116,7 @@ func _ready() -> void:
 	reset()
 
 func reset() -> void:
+	set_meta("_pool_generation", int(get_meta("_pool_generation", 0)) + 1)
 	max_health = base_max_health
 	move_speed = base_move_speed
 	attack_damage = base_attack_damage
@@ -117,6 +125,8 @@ func reset() -> void:
 	can_attack = true
 	knockback = Vector2.ZERO
 	is_dying = false
+	set_meta("blue_fire", false)
+	set_meta("blue_fire_damage", 0)
 	collision_layer = 4
 	collision_mask = 2
 	modulate = Color.WHITE
@@ -137,6 +147,8 @@ func reset() -> void:
 	wall_follow_direction = Vector2.ZERO
 	wall_follow_timer = 0.0
 	ranged_can_attack = true
+	attack_timer = 0.0
+	ranged_attack_timer = 0.0
 	boss_attack_timer = 4.0
 	boss_telegraph_timer = 0.0
 	boss_charge_time = 0.0
@@ -150,8 +162,10 @@ func reset() -> void:
 	tank_stomp_windup = 0.0
 	bloater_spit_cooldown = randf_range(1.5, 3.5)
 	strafe_sign = -1.0 if randf() < 0.5 else 1.0
-	hit_stop_timer = 0.0
 	detonation_countdown = -1.0
+	has_detonated = false
+	slow_multiplier = 1.0
+	slow_time = 0.0
 	warning_overlay.queue_redraw()
 	set_meta("is_boss", false)
 	set_meta("is_elite", false)
@@ -164,7 +178,7 @@ func reset() -> void:
 	SpatialGrid.insert(self)
 
 func set_scaled_max_health(multiplier: float) -> void:
-	max_health = int(float(base_max_health) * multiplier)
+	max_health = maxi(1, int(float(base_max_health) * maxf(multiplier, 0.0)))
 	health = max_health
 
 func set_elite() -> void:
@@ -182,17 +196,23 @@ func _physics_process(delta: float) -> void:
 		warning_overlay.queue_redraw()
 		if detonation_countdown <= 0.0:
 			detonation_countdown = -1.0
-			if explodes_on_contact:
+			if explodes_on_contact or detonates_on_death:
 				_detonate()
 			die()
 		return
 	if health <= 0:
 		return
-	if hit_stop_timer > 0.0:
-		hit_stop_timer = maxf(0.0, hit_stop_timer - delta)
-		return
-
-	if not player:
+	attack_timer = maxf(0.0, attack_timer - delta)
+	if attack_timer <= 0.0:
+		can_attack = true
+	ranged_attack_timer = maxf(0.0, ranged_attack_timer - delta)
+	if ranged_attack_timer <= 0.0:
+		ranged_can_attack = true
+	if slow_time > 0.0:
+		slow_time = maxf(0.0, slow_time - delta)
+		if slow_time <= 0.0:
+			slow_multiplier = 1.0
+	if not is_instance_valid(player) or player.is_queued_for_deletion():
 		player = get_tree().get_first_node_in_group("player")
 		return
 
@@ -232,14 +252,14 @@ func _physics_process(delta: float) -> void:
 		var separation_vector := Vector2.ZERO
 		var neighbors = SpatialGrid.get_nearby_entities(global_position)
 		for neighbor in neighbors:
-			if neighbor != self and is_instance_valid(neighbor):
+			if neighbor != self and is_instance_valid(neighbor) and neighbor is Node2D and not neighbor.is_queued_for_deletion():
 				var dist = global_position.distance_to(neighbor.global_position)
 				if dist < 60.0 and dist > 0.1:
 					separation_vector -= global_position.direction_to(neighbor.global_position) * (60.0 / dist)
 
 		move_dir = (move_dir * move_speed + separation_vector * 5.0).normalized()
 
-		velocity = move_dir * move_speed * profile_speed_multiplier + knockback
+		velocity = move_dir * move_speed * profile_speed_multiplier * slow_multiplier + knockback
 		# move_and_slide resolves the wall contact while the steering probe keeps the
 		# enemy moving along the wall instead of pressing into it forever.
 		move_and_slide()
@@ -257,21 +277,21 @@ func _physics_process(delta: float) -> void:
 		_attack_player()
 
 func _attack_player() -> void:
-	if can_attack and player.has_method("take_damage"):
+	if can_attack and is_instance_valid(player) and not player.is_queued_for_deletion() and player.has_method("take_damage"):
 		can_attack = false
+		attack_timer = maxf(0.05, attack_cooldown)
 		attack_pulse = 0.6
 		if explodes_on_contact:
 			_start_detonation(0.75)
 			return
 		player.take_damage(attack_damage, global_position.direction_to(player.global_position), _profile_name(), _profile_attack_name())
 
-		var timer := get_tree().create_timer(attack_cooldown)
-		timer.timeout.connect(func() -> void: can_attack = true)
 
 func _attack_ranged() -> void:
-	if not ranged_can_attack or not is_instance_valid(player):
+	if not ranged_can_attack or not is_instance_valid(player) or player.is_queued_for_deletion():
 		return
 	ranged_can_attack = false
+	ranged_attack_timer = maxf(0.05, attack_cooldown)
 	attack_pulse = 1.0
 	var aim_direction := global_position.direction_to(player.global_position)
 	var spread := PackedFloat32Array([0.0])
@@ -285,8 +305,6 @@ func _attack_ranged() -> void:
 			projectile.damage = projectile_damage if is_zero_approx(angle_offset) else max(1, projectile_damage - 2)
 			projectile.damage_source = _profile_name()
 			projectile.attack_name = "산성 부채꼴"
-	var timer := get_tree().create_timer(attack_cooldown)
-	timer.timeout.connect(func() -> void: ranged_can_attack = true)
 
 func _update_boss(delta: float) -> float:
 	if not has_meta("is_boss") or not get_meta("is_boss"):
@@ -349,6 +367,9 @@ func _boss_shockwave() -> void:
 func _summon_boss_escorts(pool_id: String, count: int) -> void:
 	for index in range(count):
 		var summon_position := global_position + Vector2.RIGHT.rotated((TAU / float(count)) * float(index) + randf_range(-0.2, 0.2)) * randf_range(96.0, 160.0)
+		var spawn_manager := get_tree().get_first_node_in_group("spawn_manager")
+		if is_instance_valid(spawn_manager) and spawn_manager.has_method("get_safe_spawn_position"):
+			summon_position = spawn_manager.call("get_safe_spawn_position", summon_position)
 		var summon = ObjectPoolManager.acquire(pool_id, summon_position)
 		if summon:
 			summon.set_meta("pool_id", pool_id)
@@ -382,36 +403,31 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, hit_kind: S
 	if health <= 0 or is_dying:
 		return
 
-	var applied_damage := mini(amount, health)
-	health -= amount
+	var applied_damage := mini(maxi(0, amount), health)
+	if applied_damage <= 0:
+		return
+	health -= applied_damage
 	RunStats.register_combat_hit(applied_damage, hit_kind, weapon_id)
 
 	# Damage Number
 	var dmg_num = ObjectPoolManager.acquire("damage_number", global_position)
 	if dmg_num:
 		if dmg_num.has_method("configure"):
-			dmg_num.configure(amount, hit_kind)
+			dmg_num.configure(applied_damage, hit_kind)
 		else:
-			dmg_num.amount = amount
-
-	match hit_kind:
-		"critical": hit_stop_timer = maxf(hit_stop_timer, 0.055)
-		"execute": hit_stop_timer = maxf(hit_stop_timer, 0.075)
-		"heavy": hit_stop_timer = maxf(hit_stop_timer, 0.038)
-		_: hit_stop_timer = maxf(hit_stop_timer, 0.018)
+			dmg_num.amount = applied_damage
 
 	# Knockback
-	knockback = hit_direction * 200.0 * (1.0 - knockback_resistance)
-	hit_recoil = hit_direction * 4.0 * (1.0 - knockback_resistance * 0.55)
+	var safe_direction := hit_direction.normalized()
+	knockback = safe_direction * 200.0 * (1.0 - knockback_resistance)
+	hit_recoil = safe_direction * 4.0 * (1.0 - knockback_resistance * 0.55)
 
-	# White Flash Shader
-	if sprite.material is ShaderMaterial:
-		sprite.material.set_shader_parameter("active", true)
-		var timer := get_tree().create_timer(0.05)
-		timer.timeout.connect(func() -> void:
-			if is_instance_valid(sprite) and sprite.material is ShaderMaterial:
-				sprite.material.set_shader_parameter("active", false)
-		)
+	# Game juice: flash, global hit-stop, and directional camera shake.
+	var impact_type := hit_kind
+	if not weapon_id.is_empty():
+		impact_type += " " + weapon_id
+	HitEffectManager.play_hit(applied_damage, impact_type, safe_direction)
+	HitEffectManager.flash_sprite(sprite)
 
 	if health <= 0:
 		if detonates_on_death:
@@ -427,6 +443,12 @@ func _start_detonation(duration: float) -> void:
 	velocity = Vector2.ZERO
 	can_attack = false
 	warning_overlay.queue_redraw()
+
+func apply_slow(multiplier: float, duration: float) -> void:
+	if health <= 0 or is_dying:
+		return
+	slow_multiplier = clampf(multiplier, 0.05, 1.0)
+	slow_time = maxf(slow_time, maxf(0.0, duration))
 
 func _draw_warning() -> void:
 	if detonation_countdown >= 0.0:
@@ -560,7 +582,7 @@ func _update_special_pattern(delta: float, distance_to_player: float, dir_to_pla
 	return 1.0
 
 func _tank_stomp() -> void:
-	if is_instance_valid(player) and global_position.distance_to(player.global_position) <= 230.0:
+	if is_instance_valid(player) and not player.is_queued_for_deletion() and global_position.distance_to(player.global_position) <= 230.0:
 		player.take_damage(maxi(8, roundi(float(attack_damage) * 0.55)), global_position.direction_to(player.global_position), "탱크", "지면 강타")
 	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
 	if impact and impact.has_method("configure"):
@@ -589,6 +611,9 @@ func die() -> void:
 		return
 	is_dying = true
 	health = 0
+	if bool(get_meta("blue_fire", false)):
+		ObjectPoolManager.spawn(BLUE_FIRE_EXPLOSION, global_position, 0.0,
+			[80.0, float(get_meta("blue_fire_damage", 24.0)), null, 120.0, Color(0.15, 0.65, 1.0, 1.0)])
 	if randf() < 0.28:
 		AudioManager.play_named("zombie_hurt", -12.0)
 	if detonates_on_death:
@@ -632,14 +657,15 @@ func die() -> void:
 	# pool quickly so crowded waves do not accumulate visible corpses.
 	tween.tween_property(sprite, "modulate:a", 0.0, 0.38)
 	tween.tween_callback(func():
-		collision_layer = 4
-		collision_mask = 2
 		ObjectPoolManager.release(self)
 		)
 
 func _detonate() -> void:
+	if has_detonated:
+		return
+	has_detonated = true
 	var player_node := get_tree().get_first_node_in_group("player") as Player
-	if is_instance_valid(player_node) and global_position.distance_to(player_node.global_position) <= detonation_radius:
+	if is_instance_valid(player_node) and not player_node.is_queued_for_deletion() and global_position.distance_to(player_node.global_position) <= detonation_radius:
 		player_node.take_damage(detonation_damage, global_position.direction_to(player_node.global_position), _profile_name(), "자폭" if explodes_on_contact else "사망 폭발")
 	var impact = ObjectPoolManager.acquire("blood_impact", global_position)
 	if impact and impact.has_method("configure"):
@@ -677,7 +703,7 @@ func _get_wall_aware_direction(target_direction: Vector2, delta: float) -> Vecto
 	var query := PhysicsRayQueryParameters2D.create(
 		global_position,
 		global_position + probe_direction * WALL_LOOK_AHEAD,
-		1
+		2
 	)
 	query.exclude = [get_rid()]
 	var hit: Dictionary = get_world_2d().direct_space_state.intersect_ray(query)

@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/projectiles/MagnumOpus.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/graphics/bullet.svg" id="2_texture"]
+[sub_resource type="CircleShape2D" id="Circle"]
+radius = 8.0
+
+[node name="MagnumOpus" type="Area2D"]
+collision_layer = 8
+collision_mask = 6
+script = ExtResource("1_script")
+speed = 1180.0
+max_distance = 1600.0
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_texture")
+modulate = Color(1, 0.3, 0.75, 1)
+scale = Vector2(0.8, 0.8)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Circle")

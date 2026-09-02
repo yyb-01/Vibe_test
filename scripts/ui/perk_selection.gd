@@ -37,6 +37,7 @@ var available_weapons: Array[WeaponUpgradeData] = [
 	preload("res://data/perks/weap_nova.tres")
 ]
 var codex_dialog: AcceptDialog
+var pending_level_ups: int = 0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -57,9 +58,20 @@ func _ready() -> void:
 	codex_button.pressed.connect(func() -> void: codex_dialog.popup_centered(Vector2i(820, 580)))
 
 func _on_level_up() -> void:
+	if not RunStats.run_active:
+		return
+	pending_level_ups += 1
+	if visible:
+		return
 	ModalManager.request(self, _open_level_up)
 
 func _open_level_up() -> void:
+	if pending_level_ups <= 0:
+		return
+	pending_level_ups -= 1
+	_show_level_up()
+
+func _show_level_up() -> void:
 	visible = true
 
 	# Clear existing children
@@ -69,9 +81,17 @@ func _open_level_up() -> void:
 	AudioManager.play_named("level_up", -2.0)
 
 	var player = get_tree().get_first_node_in_group("player") as Player
-	if not player:
+	if not is_instance_valid(player) or player.dead or player.health <= 0:
+		pending_level_ups = 0
 		visible = false
 		ModalManager.release(self)
+		return
+
+	var advanced_choices: Array[Dictionary] = UpgradeManager.get_level_up_choices(player, 3)
+	if not advanced_choices.is_empty():
+		for choice in advanced_choices:
+			_create_upgrade_button(choice)
+		_update_reroll_button()
 		return
 
 	var pool = []
@@ -124,7 +144,7 @@ func _create_upgrade_button(item: Variant) -> void:
 	card.custom_minimum_size = Vector2(300, 360)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var accent := Color(0.25, 0.88, 0.82, 1.0)
-	if item is WeaponUpgradeData or item is Weapon:
+	if item is WeaponUpgradeData or item is Weapon or item is Dictionary and String(item.get("kind", "")) == "evolution":
 		accent = Color(1.0, 0.57, 0.28, 1.0)
 	var normal_style := StyleBoxFlat.new()
 	normal_style.bg_color = Color(0.025, 0.055, 0.07, 0.98)
@@ -147,7 +167,7 @@ func _create_upgrade_button(item: Variant) -> void:
 	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(kind_label)
 	var visual := Label.new()
-	visual.text = "◆" if item is PerkData else "⚔"
+	visual.text = "◆" if item is PerkData or (item is Dictionary and String(item.get("kind", "")).begins_with("passive")) else "⚔"
 	visual.custom_minimum_size = Vector2(0, 64)
 	visual.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	visual.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -210,6 +230,11 @@ func _create_upgrade_button(item: Variant) -> void:
 		kind_label.text = "[Lv %d ➔ %d]  ·  무기 강화" % [item.current_level, item.current_level + 1]
 		name_label.text = "%s  Lv %d → %d" % [item.data.weapon_name, item.current_level, item.current_level + 1]
 		description_label.text = "피해량 증가 및 성능 강화\n다음 단계의 화력을 준비하세요."
+	elif item is Dictionary:
+		var choice_kind := String(item.get("kind", "upgrade"))
+		kind_label.text = "[★ 진화]  ·  무기 교체" if choice_kind == "evolution" else "[%s]" % String(item.get("label", "성장"))
+		name_label.text = String(item.get("display_name", "알 수 없음"))
+		description_label.text = String(item.get("description", ""))
 
 	select_button.text = "이 강화 선택"
 	select_button.pressed.connect(func() -> void: _on_upgrade_selected(item))
@@ -223,7 +248,7 @@ func _create_upgrade_button(item: Variant) -> void:
 func _get_weapon_evolution_links(perk_id: String) -> Array[String]:
 	var links: Array[String] = []
 	var player := get_tree().get_first_node_in_group("player") as Player
-	if not player:
+	if not is_instance_valid(player):
 		return links
 	for weapon in player.weapons:
 		if not weapon.evolved and perk_id in weapon.get_evolution_requirements():
@@ -254,24 +279,40 @@ func _update_reroll_button() -> void:
 	reroll_button.disabled = RunStats.rerolls_remaining <= 0 and SaveManager.gold < REROLL_COST
 
 func _on_reroll_pressed() -> void:
+	if not visible:
+		return
 	if RunStats.rerolls_remaining > 0:
 		RunStats.rerolls_remaining -= 1
-		_on_level_up()
+		_show_level_up()
 	elif SaveManager.spend_gold(REROLL_COST):
-		_on_level_up()
+		_show_level_up()
 
 func _on_banish_pressed(item: Variant) -> void:
-	if RunStats.banishes_remaining <= 0:
+	if not visible or RunStats.banishes_remaining <= 0:
 		return
-	var item_id := String(item.id if item is PerkData else (item.weapon_id if item is WeaponUpgradeData else item.data.weapon_name))
+	var item_id := ""
+	if item is PerkData:
+		item_id = item.id
+	elif item is WeaponUpgradeData:
+		item_id = item.weapon_id
+	elif item is Weapon:
+		item_id = item.data.weapon_name
+	elif item is Dictionary:
+		var choice_data = item.get("data")
+		item_id = String(choice_data.get("id") if choice_data is Object else item.get("kind", "choice"))
 	RunStats.banished_ids.append(String(item_id))
 	RunStats.banishes_remaining -= 1
-	_on_level_up()
+	_show_level_up()
 
 func _on_skip_pressed() -> void:
+	_finish_level_up()
+	SaveManager.add_gold(10)
+
+func _finish_level_up() -> void:
 	visible = false
 	ModalManager.release(self)
-	SaveManager.add_gold(10)
+	if pending_level_ups > 0:
+		ModalManager.request(self, _open_level_up)
 
 func _codex_text() -> String:
 	var lines: Array[String] = []
@@ -281,15 +322,18 @@ func _codex_text() -> String:
 	return "\n\n".join(lines)
 
 func _on_upgrade_selected(item: Variant) -> void:
-	visible = false
-	ModalManager.release(self)
+	if not visible:
+		return
 
 	var player = get_tree().get_first_node_in_group("player") as Player
-	if player:
+	if is_instance_valid(player):
 		if item is PerkData:
 			player.apply_perk(item)
 		elif item is WeaponUpgradeData:
 			player.add_weapon(item.weapon_script, item.weapon_data)
 		elif item is Weapon:
 			item.upgrade()
+		elif item is Dictionary:
+			UpgradeManager.apply_choice(player, item)
 		EventBus.inventory_updated.emit(player.weapons, player.passives)
+	_finish_level_up()

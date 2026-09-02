@@ -10,9 +10,11 @@ var angle: float = 0.0
 func _ready() -> void:
 	_update_orbitals()
 
-func upgrade() -> void:
-	super.upgrade()
+func upgrade() -> bool:
+	if not super.upgrade():
+		return false
 	_update_orbitals()
+	return true
 
 func _update_orbitals() -> void:
 	# Clear old
@@ -48,6 +50,12 @@ func _update_orbitals() -> void:
 		parent_player.call_deferred("add_child", area)
 		orbitals.append(area)
 
+func _exit_tree() -> void:
+	for orbital in orbitals:
+		if is_instance_valid(orbital):
+			orbital.queue_free()
+	orbitals.clear()
+
 func _process(delta: float) -> void:
 	super._process(delta)
 	angle += rotation_speed * delta
@@ -77,7 +85,7 @@ func _process(delta: float) -> void:
 				var bodies = o.get_overlapping_bodies()
 				var hit = false
 				for body in bodies:
-					if body.is_in_group("enemies") and body.has_method("take_damage"):
+					if is_instance_valid(body) and not body.is_queued_for_deletion() and body.is_in_group("enemies") and body.has_method("take_damage"):
 						var dir = player.global_position.direction_to(body.global_position)
 						player.apply_build_hit(body, final_damage, dir, 0.04, "heavy" if evolved else "normal", data.weapon_name)
 						hit = true

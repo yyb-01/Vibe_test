@@ -37,15 +37,15 @@ func _process(delta: float) -> void:
 			ammo_in_magazine = data.magazine_size
 
 func fire(player: Player, target_pos: Vector2) -> bool:
-	if not data or cooldown_timer > 0 or reload_timer > 0:
+	if data == null or not is_instance_valid(player) or cooldown_timer > 0 or reload_timer > 0:
 		return false
 	if data.magazine_size > 0 and ammo_in_magazine <= 0:
 		reload(player)
 		return false
 
 	# Apply player modifiers
-	var actual_fire_rate = data.fire_rate * player.reload_mult
-	cooldown_timer = actual_fire_rate
+	var actual_fire_rate := data.get_cooldown() * maxf(player.reload_mult, 0.01)
+	cooldown_timer = maxf(0.01, actual_fire_rate)
 	if data.magazine_size > 0:
 		ammo_in_magazine -= 1
 	player.play_weapon_feedback(data.weapon_name, target_pos)
@@ -56,14 +56,15 @@ func reload(player: Player) -> void:
 		return
 	if ammo_in_magazine >= data.magazine_size:
 		return
-	reload_timer = data.reload_time * player.reload_mult
+	reload_timer = maxf(0.01, data.reload_time * maxf(player.reload_mult, 0.01))
 	if reload_timer <= 0:
 		ammo_in_magazine = data.magazine_size
 
-func upgrade() -> void:
-	if current_level >= MAX_LEVEL:
-		return
+func upgrade() -> bool:
+	if data != null and current_level >= data.max_level:
+		return false
 	current_level += 1
+	return true
 
 func can_evolve(player: Player) -> bool:
 	if current_level < MAX_LEVEL or evolved or not is_instance_valid(player):
@@ -86,6 +87,8 @@ func evolve(player: Player) -> bool:
 	return true
 
 func get_display_name() -> String:
+	if data == null:
+		return "알 수 없음"
 	if evolved:
 		return evolution_name + " ★"
 	return String(_get_evolution().get("display", data.weapon_name))

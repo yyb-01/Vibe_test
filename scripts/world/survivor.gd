@@ -17,7 +17,7 @@ func _ready() -> void:
 	_update_role_visual()
 
 func _on_body_entered(body: Node2D) -> void:
-	if rescued or not body.is_in_group("player"):
+	if rescued or not is_instance_valid(body) or body.is_queued_for_deletion() or not body.is_in_group("player"):
 		return
 	rescued = true
 	RunStats.register_rescue()
@@ -34,7 +34,7 @@ func _process(delta: float) -> void:
 	if not rescued:
 		return
 	var player := get_tree().get_first_node_in_group("player") as Player
-	if not is_instance_valid(player):
+	if not is_instance_valid(player) or player.is_queued_for_deletion():
 		return
 	global_position = global_position.lerp(player.global_position + follow_offset, minf(delta * 4.8, 1.0))
 	action_timer = maxf(0.0, action_timer - delta)
@@ -49,7 +49,7 @@ func _process(delta: float) -> void:
 				action_timer = 1.6
 		"Gunner":
 			var target := _get_nearest_enemy()
-			if target and target.has_method("take_damage"):
+			if is_instance_valid(target) and not target.is_queued_for_deletion() and target.has_method("take_damage"):
 				target.take_damage(maxi(10, int(15.0 * player.damage_mult)), global_position.direction_to(target.global_position))
 				action_timer = 1.15
 			else:
@@ -62,11 +62,17 @@ func _get_nearest_enemy() -> Node2D:
 	var closest: Node2D = null
 	var closest_distance := 520.0
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if enemy is Node2D and is_instance_valid(enemy):
-			var distance := global_position.distance_to(enemy.global_position)
-			if distance < closest_distance:
-				closest = enemy
-				closest_distance = distance
+		if not enemy is Node2D or not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+			continue
+		if enemy is CanvasItem and (not enemy.visible or enemy.process_mode == Node.PROCESS_MODE_DISABLED):
+			continue
+		var enemy_health = enemy.get("health")
+		if enemy.get("is_dying") == true or enemy_health == null or int(enemy_health) <= 0:
+			continue
+		var distance := global_position.distance_to(enemy.global_position)
+		if distance < closest_distance:
+			closest = enemy
+			closest_distance = distance
 	return closest
 
 func _update_role_visual() -> void:

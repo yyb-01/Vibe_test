@@ -240,7 +240,8 @@ func _toggle_build_panel() -> void:
 	build_toggle_button.text = ("빌드 접기" if expanded else "빌드 보기") + "  [TAB]"
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and not pause_confirm.visible and (event.keycode == KEY_TAB or event.physical_keycode == KEY_TAB):
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if event is InputEventKey and event.pressed and not event.echo and not pause_confirm.visible and not ModalManager.has_active_modal() and (not is_instance_valid(player) or not player.input_locked) and (event.keycode == KEY_TAB or event.physical_keycode == KEY_TAB):
 		get_viewport().set_input_as_handled()
 		_toggle_build_panel()
 
@@ -282,9 +283,9 @@ func _update_objective_panel() -> void:
 
 func _update_skill_panel(player: Player) -> void:
 	var cooldown := player.get_unique_skill_cooldown()
-	var max_cooldown := player.get_unique_skill_max_cooldown()
+	var max_cooldown := maxf(player.get_unique_skill_max_cooldown(), 0.01)
 	skill_bar.max_value = max_cooldown
-	skill_bar.value = max_cooldown - cooldown
+	skill_bar.value = clampf(max_cooldown - cooldown, 0.0, max_cooldown)
 	var state := "사용 가능" if cooldown <= 0.0 else "%.1f초" % cooldown
 	skill_label.text = "[E]  %s  ·  %s" % [player.get_unique_skill_name(), state]
 	skill_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.72, 1.0) if cooldown <= 0.0 else Color(0.62, 0.82, 1.0, 1.0))
@@ -375,18 +376,21 @@ func _on_mission_completed(title: String, reward: int) -> void:
 	mission_status = "%s 완료  ·  +%dG  ·  진화 코어 +1" % [title, reward]
 
 func _on_player_health_changed(current_hp: int, max_hp: int) -> void:
-	hp_bar.max_value = max_hp
-	hp_bar.value = current_hp
-	hp_bar.get_node("HPLabel").text = "HP  %d / %d" % [current_hp, max_hp]
+	var safe_max_hp := maxi(1, max_hp)
+	var safe_hp := clampi(current_hp, 0, safe_max_hp)
+	hp_bar.max_value = safe_max_hp
+	hp_bar.value = safe_hp
+	hp_bar.get_node("HPLabel").text = "HP  %d / %d" % [safe_hp, safe_max_hp]
 
 func _on_exp_changed(current_exp: int, required_exp: int, level: int) -> void:
-	exp_bar.max_value = required_exp
-	exp_bar.value = current_exp
+	var safe_required_exp := maxi(1, required_exp)
+	exp_bar.max_value = safe_required_exp
+	exp_bar.value = clampi(current_exp, 0, safe_required_exp)
 	exp_bar.get_node("LevelLabel").text = "Lv " + str(level)
 
 func _on_inventory_updated(weapons: Array, passives: Array) -> void:
-	for child in weapon_slots.get_children(): child.queue_free()
-	for child in passive_slots.get_children(): child.queue_free()
+	for child in weapon_slots.get_children(): child.free()
+	for child in passive_slots.get_children(): child.free()
 	for index in 6:
 		if index < weapons.size():
 			var weapon: Weapon = weapons[index]
@@ -423,6 +427,11 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	passives_label.add_theme_color_override("font_color", Color(0.65, 1.0, 0.82, 1.0) if player and not player.active_synergies.is_empty() else Color(0.72, 0.78, 0.78, 1.0))
 
 func _unhandled_input(event: InputEvent) -> void:
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if is_instance_valid(player) and player.input_locked:
+		return
+	if ModalManager.has_active_modal() and not pause_confirm.visible:
+		return
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		if pause_confirm.visible:

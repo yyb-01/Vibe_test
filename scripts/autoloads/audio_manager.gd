@@ -42,8 +42,20 @@ func _ready() -> void:
 	EventBus.boss_status_changed.connect(_on_boss_status_changed)
 	set_master_volume(SaveManager.master_volume)
 
+func _exit_tree() -> void:
+	if is_instance_valid(bgm_player):
+		bgm_player.stop()
+		bgm_player.stream = null
+	for player in players:
+		if is_instance_valid(player):
+			player.stop()
+			player.stream = null
+	players.clear()
+	named_sfx.clear()
+	current_bgm = ""
+
 func play_sfx(stream: AudioStream, volume_db: float = 0.0, pitch_scale: float = 1.0) -> void:
-	if not stream:
+	if not stream or players.is_empty():
 		return
 	var player := players[0]
 	for candidate in players:
@@ -61,8 +73,9 @@ func play_named(sfx_name: String, volume_db: float = 0.0, pitch_scale: float = 1
 		return
 	play_sfx(sounds.pick_random(), volume_db, pitch_scale)
 	if sfx_name in ["shot", "shotgun"] and randf() < (0.45 if sfx_name == "shot" else 0.8):
-		var casings: Array = named_sfx["casing"]
-		play_sfx(casings.pick_random(), volume_db - 8.0, 1.0)
+		var casings: Array = named_sfx.get("casing", [])
+		if not casings.is_empty():
+			play_sfx(casings.pick_random(), volume_db - 8.0, 1.0)
 
 func play_wave_bgm() -> void:
 	_play_bgm(WAVE_BGM)

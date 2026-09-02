@@ -19,11 +19,19 @@ config/icon="res://icon.svg"
 
 EventBus="*res://scripts/autoloads/event_bus.gd"
 ObjectPoolManager="*res://scripts/autoloads/object_pool_manager.gd"
+EvolutionManager="*res://scripts/managers/EvolutionManager.gd"
+UpgradeManager="*res://scripts/managers/UpgradeManager.gd"
 SpatialGrid="*res://scripts/autoloads/spatial_grid.gd"
 SaveManager="*res://scripts/autoloads/save_manager.gd"
 AudioManager="*res://scripts/autoloads/audio_manager.gd"
 RunStats="*res://scripts/autoloads/run_stats.gd"
 ModalManager="*res://scripts/autoloads/modal_manager.gd"
+HitEffectManager="*res://scripts/autoloads/hit_effect_manager.gd"
+
+[physics]
+
+common/physics_ticks_per_second=60
+2d/default_gravity=0.0
 
 [rendering]
 

@@ -52,6 +52,7 @@ var passives: Array[PerkData] = []
 var max_passives: int = 6
 
 var health: int
+var dead: bool = false
 var current_exp: int = 0
 var required_exp: int = 50
 var current_level: int = 1
@@ -86,9 +87,12 @@ var skill_cooldown_rate: float = 1.0
 var regen_accumulator: float = 0.0
 var synergy_kill_counter: int = 0
 var revive_available: bool = false
+var input_locked: bool = false
 var dash_cooldown: float = 0.0
 var dash_time: float = 0.0
 var dash_direction: Vector2 = Vector2.ZERO
+var invulnerability_timer: Timer
+var hit_flash_tween: Tween
 const MOVEMENT_SAFETY_MARGIN := 16.0
 
 @onready var sprite: Sprite2D = $Sprite2D
@@ -97,6 +101,11 @@ const MOVEMENT_SAFETY_MARGIN := 16.0
 @onready var muzzle: Marker2D = $GunPivot/GunSprite/Muzzle
 
 func _ready() -> void:
+	invulnerability_timer = Timer.new()
+	invulnerability_timer.one_shot = true
+	invulnerability_timer.timeout.connect(_clear_invulnerability)
+	add_child(invulnerability_timer)
+	set_meta("base_move_speed", move_speed)
 	sprite_base_scale = sprite.scale
 	sprite_base_position = sprite.position
 	if sprite.material:
@@ -154,10 +163,12 @@ func _spawn_equipped_pet() -> void:
 	get_parent().add_child.call_deferred(pet)
 
 func _update_ui() -> void:
-	EventBus.player_health_changed.emit(health, max_health)
-	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
+	EventBus.player_health_changed.emit(clampi(health, 0, maxi(1, max_health)), maxi(1, max_health))
+	EventBus.exp_changed.emit(maxi(0, current_exp), maxi(1, required_exp), maxi(1, current_level))
 
 func _physics_process(_delta: float) -> void:
+	if get_tree().paused or input_locked:
+		return
 	dash_cooldown = maxf(0.0, dash_cooldown - _delta)
 	var was_dashing := dash_time > 0.0
 	dash_time = maxf(0.0, dash_time - _delta)
@@ -323,6 +334,8 @@ func _move_safely(max_speed: float, delta: float) -> void:
 		velocity = Vector2.ZERO
 
 func _handle_shooting() -> void:
+	if dead or get_tree().paused or input_locked:
+		return
 	# The rifle alone follows the full 360-degree mouse direction.
 	var target_pos := get_global_mouse_position()
 	if not target_pos.is_equal_approx(global_position):
@@ -335,6 +348,8 @@ func _handle_shooting() -> void:
 		weapon.fire(self, target_pos)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if dead or get_tree().paused or input_locked:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE:
 			_start_dash()
@@ -346,23 +361,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		for weapon in weapons:
 			weapon.reload(self)
 
-func add_weapon(weapon_script: Script, data: WeaponData) -> void:
-	if weapons.size() >= max_weapons:
-		return
+func add_weapon(weapon_script: Script, data: WeaponData) -> bool:
+	if weapons.size() >= max_weapons or weapon_script == null or data == null:
+		return false
 	var w = weapon_script.new()
+	if not w is Weapon:
+		return false
 	w.data = data
 	add_child(w)
 	weapons.append(w)
 	RunStats.register_weapon(data.weapon_name)
 	EventBus.inventory_updated.emit(weapons, passives)
+	return true
 
 func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, source: String = "알 수 없는 위협", attack: String = "피해") -> void:
-	if health <= 0 or invulnerable or skill_shield_duration > 0.0:
+	if dead or health <= 0 or amount <= 0 or invulnerable or skill_shield_duration > 0.0:
 		return
 
 	amount = maxi(1, int(ceil(float(amount) * incoming_damage_mult)))
-	invulnerable = true
-	health -= amount
+	_set_invulnerable_for(invulnerability_duration)
+	health = maxi(0, health - amount)
 	RunStats.register_damage(amount, source, attack, health <= 0)
 	EventBus.camera_shake_requested.emit(clampf(float(amount) / 18.0, 0.65, 1.4))
 	EventBus.player_health_changed.emit(health, max_health)
@@ -374,29 +392,48 @@ func take_damage(amount: int, hit_direction: Vector2 = Vector2.ZERO, source: Str
 			_revive()
 		else:
 			die()
-	else:
-		get_tree().create_timer(invulnerability_duration).timeout.connect(func() -> void: invulnerable = false)
 
 func _play_hit_feedback(hit_direction: Vector2) -> void:
 	var impact = ObjectPoolManager.acquire("player_hit", global_position)
 	if impact and hit_direction != Vector2.ZERO:
 		impact.rotation = hit_direction.angle()
 
-	if sprite.material is ShaderMaterial:
-		sprite.material.set_shader_parameter("flash_color", Color(1.0, 0.3, 0.2, 1.0))
-		sprite.material.set_shader_parameter("active", true)
-		var timer := get_tree().create_timer(0.09)
-		timer.timeout.connect(func() -> void:
-			if is_instance_valid(sprite) and sprite.material is ShaderMaterial:
-				sprite.material.set_shader_parameter("active", false)
-		)
+	_start_sprite_flash(Color(1.0, 0.3, 0.2, 1.0), 0.09)
+
+func _start_sprite_flash(color: Color, duration: float) -> void:
+	if not is_instance_valid(sprite) or not sprite.material is ShaderMaterial:
+		return
+	sprite.material.set_shader_parameter("flash_color", color)
+	sprite.material.set_shader_parameter("active", true)
+	if hit_flash_tween and hit_flash_tween.is_valid():
+		hit_flash_tween.kill()
+	hit_flash_tween = create_tween()
+	hit_flash_tween.tween_interval(maxf(duration, 0.01))
+	hit_flash_tween.tween_callback(_clear_sprite_flash)
+
+func _clear_sprite_flash() -> void:
+	if is_instance_valid(sprite) and sprite.material is ShaderMaterial:
+		sprite.material.set_shader_parameter("active", false)
+	hit_flash_tween = null
+
+func _set_invulnerable_for(duration: float) -> void:
+	invulnerable = true
+	if is_instance_valid(invulnerability_timer):
+		invulnerability_timer.start(maxf(duration, invulnerability_timer.time_left))
+
+func _clear_invulnerability() -> void:
+	invulnerable = false
 
 func die() -> void:
+	if dead:
+		return
+	dead = true
+	health = 0
 	set_physics_process(false)
 	EventBus.game_over.emit(false)
 
 func heal(amount: int) -> void:
-	if amount <= 0:
+	if amount <= 0 or dead or health <= 0:
 		return
 	var recovered := mini(amount, max_health - health)
 	if recovered <= 0:
@@ -408,35 +445,30 @@ func heal(amount: int) -> void:
 	if num and num.has_method("configure"):
 		num.configure(recovered, "heal")
 
-	if sprite and sprite.material is ShaderMaterial:
-		sprite.material.set_shader_parameter("flash_color", Color(0.2, 1.0, 0.45, 1.0))
-		sprite.material.set_shader_parameter("active", true)
-		var timer := get_tree().create_timer(0.12)
-		timer.timeout.connect(func() -> void:
-			if is_instance_valid(sprite) and sprite.material is ShaderMaterial:
-				sprite.material.set_shader_parameter("active", false)
-		)
+	_start_sprite_flash(Color(0.2, 1.0, 0.45, 1.0), 0.12)
 	AudioManager.play_named("pickup", -2.0, 1.25)
 
 func add_exp(amount: int) -> void:
+	if amount <= 0 or dead or health <= 0:
+		return
 	current_exp += roundi(float(amount) * (1.0 + SaveManager.get_upgrade_level("exp_gain") * 0.05))
-	while current_exp >= required_exp:
+	while current_exp >= maxi(1, required_exp):
 		_level_up()
 	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 
 func _level_up() -> void:
 	current_level += 1
-	current_exp -= required_exp
-	required_exp = int(float(required_exp) * 1.2) # Exponential exp curve
+	current_exp -= maxi(1, required_exp)
+	required_exp = maxi(1, ceili(float(maxi(1, required_exp)) * 1.2)) # Exponential exp curve
 	EventBus.level_up.emit()
 	EventBus.exp_changed.emit(current_exp, required_exp, current_level)
 
-func apply_perk(perk: PerkData) -> void:
-	if passives.size() >= max_passives:
-		return
+func apply_perk(perk: PerkData) -> bool:
+	if not is_instance_valid(perk) or passives.size() >= max_passives:
+		return false
 	for owned_perk in passives:
 		if owned_perk.id == perk.id:
-			return
+			return false
 	print("Applying perk: ", perk.perk_name)
 	passives.append(perk)
 	damage_mult *= perk.damage_mult
@@ -451,6 +483,54 @@ func apply_perk(perk: PerkData) -> void:
 		EventBus.player_health_changed.emit(health, max_health)
 
 	EventBus.inventory_updated.emit(weapons, passives)
+	return true
+
+func apply_passive_data(passive: Resource) -> bool:
+	if passive == null:
+		return false
+	var passive_id := String(passive.get("id"))
+	var passive_max_level := maxi(1, int(passive.get("max_level")))
+	for owned in passives:
+		if owned.id == passive_id:
+			if owned.level >= passive_max_level:
+				return false
+			owned.level += 1
+			_apply_advanced_passive(passive)
+			EventBus.inventory_updated.emit(weapons, passives)
+			return true
+	if passives.size() >= max_passives:
+		return false
+	var converted := PerkData.new()
+	converted.id = passive_id
+	converted.perk_name = String(passive.get("display_name"))
+	converted.description = String(passive.get("description"))
+	var stat_type := String(passive.get("stat_type"))
+	var value_per_level := float(passive.get("value_per_level"))
+	match stat_type:
+		"fire_rate", "cooldown":
+			converted.reload_speed_mult = clampf(1.0 - value_per_level, 0.05, 1.0)
+		"fire_damage":
+			converted.damage_mult = 1.0 + value_per_level
+	if not apply_perk(converted):
+		return false
+	if stat_type not in ["fire_rate", "cooldown", "fire_damage"]:
+		_apply_advanced_passive(passive)
+	return true
+
+func _apply_advanced_passive(passive: Resource) -> void:
+	var stat_type := String(passive.get("stat_type"))
+	var value_per_level := float(passive.get("value_per_level"))
+	match stat_type:
+		"fire_rate", "cooldown":
+			reload_mult *= clampf(1.0 - value_per_level, 0.05, 1.0)
+		"fire_damage":
+			damage_mult *= 1.0 + value_per_level
+		"crit_chance":
+			critical_chance_add = clampf(critical_chance_add + value_per_level, 0.0, 0.65)
+		"area":
+			set_meta("advanced_area_mult", float(get_meta("advanced_area_mult", 1.0)) * (1.0 + value_per_level))
+		"magnet":
+			set_meta("magnet_radius", float(get_meta("magnet_radius", 100.0)) + value_per_level * 100.0)
 
 func _apply_character_preset() -> void:
 	match character_id:
@@ -508,7 +588,7 @@ func get_unique_skill_max_cooldown() -> float:
 		_: return 15.0
 
 func use_unique_skill() -> bool:
-	if skill_cooldown > 0.0 or health <= 0 or dash_time > 0.0:
+	if input_locked or skill_cooldown > 0.0 or health <= 0 or dash_time > 0.0:
 		return false
 	_spawn_unique_skill_effect()
 	match character_id:
@@ -520,11 +600,11 @@ func use_unique_skill() -> bool:
 			_start_temporary_modifier("reload", reload_mult, reload_mult * 0.52, 6.0)
 			skill_cooldown = 16.0
 		"bulwark":
-			_damage_enemies_in_radius(260.0, 26, 520.0)
+			_damage_enemies_in_radius(260.0, 26, 520.0, "heavy")
 			skill_shield_duration = 2.5
 			skill_cooldown = 20.0
 		"pyro":
-			_damage_enemies_in_radius(340.0, 42, 180.0)
+			_damage_enemies_in_radius(340.0, 42, 180.0, "explosion")
 			skill_cooldown = 14.0
 		"engineer":
 			_attack_nearest_enemies(7, 24)
@@ -536,12 +616,19 @@ func use_unique_skill() -> bool:
 			_time_collapse(360.0)
 			skill_cooldown = 19.0
 		_:
-			_damage_enemies_in_radius(285.0, 34, 300.0)
+			_damage_enemies_in_radius(285.0, 34, 300.0, "explosion")
 			RunStats.add_scrap(8)
 			skill_cooldown = 15.0
 	EventBus.camera_shake_requested.emit(1.15)
 	AudioManager.play_named("level_up", -7.0, 1.08)
 	return true
+
+func set_input_locked(locked: bool) -> void:
+	input_locked = locked
+	if locked:
+		velocity = Vector2.ZERO
+		dash_time = 0.0
+		dash_direction = Vector2.ZERO
 
 func _spawn_unique_skill_effect() -> void:
 	if not is_instance_valid(get_tree().current_scene):
@@ -582,12 +669,19 @@ func _start_temporary_modifier(kind: String, original: float, boosted: float, du
 		incoming_damage_mult = boosted
 	skill_duration = maxf(skill_duration, duration)
 
-func _damage_enemies_in_radius(radius: float, base_damage: int, knockback_force: float) -> void:
+func _damage_enemies_in_radius(radius: float, base_damage: int, knockback_force: float, impact_kind: String = "normal") -> void:
 	for enemy in _get_active_enemies():
+		if not is_instance_valid(enemy):
+			continue
 		var distance := global_position.distance_to(enemy.global_position)
 		if distance <= radius:
 			var direction := global_position.direction_to(enemy.global_position)
-			enemy.take_damage(int(float(base_damage) * damage_mult), direction)
+			enemy.take_damage(int(float(base_damage) * damage_mult), direction, impact_kind)
+			if not is_instance_valid(enemy):
+				continue
+			if enemy.has_method("apply_knockback"):
+				enemy.call("apply_knockback", direction * knockback_force)
+				continue
 			var current_knockback = enemy.get("knockback")
 			if current_knockback is Vector2:
 				enemy.set("knockback", current_knockback + direction * knockback_force)
@@ -600,6 +694,8 @@ func _attack_nearest_enemies(count: int, base_damage: int) -> void:
 func _execute_wounded_enemies(radius: float) -> void:
 	var executed := 0
 	for enemy in _get_active_enemies():
+		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+			continue
 		if global_position.distance_to(enemy.global_position) > radius:
 			continue
 		var enemy_health := int(enemy.get("health"))
@@ -615,17 +711,16 @@ func _time_collapse(radius: float) -> void:
 	for enemy in _get_active_enemies():
 		if global_position.distance_to(enemy.global_position) > radius:
 			continue
-		enemy.take_damage(int(20.0 * damage_mult), global_position.direction_to(enemy.global_position))
 		var speed_value = enemy.get("move_speed")
-		if speed_value != null:
-			var original_speed := float(speed_value)
-			enemy.set("move_speed", original_speed * 0.38)
-			get_tree().create_timer(4.0).timeout.connect(_restore_enemy_speed.bind(enemy, original_speed))
+		enemy.take_damage(int(20.0 * damage_mult), global_position.direction_to(enemy.global_position))
+		if is_instance_valid(enemy) and speed_value != null and enemy.has_method("apply_slow"):
+			enemy.call("apply_slow", 0.38, 4.0)
 
 func _get_active_enemies() -> Array[Node]:
 	var active: Array[Node] = []
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if is_instance_valid(enemy) and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and int(enemy.get("health")) > 0:
+		var health = enemy.get("health") if is_instance_valid(enemy) else null
+		if is_instance_valid(enemy) and not enemy.is_queued_for_deletion() and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and health != null and int(health) > 0:
 			active.append(enemy)
 	return active
 
@@ -639,17 +734,19 @@ func _get_nearest_active_enemies(count: int) -> Array[Node]:
 		nearest.append(ranked[index].enemy)
 	return nearest
 
-func _restore_enemy_speed(enemy: Node, original_speed: float) -> void:
-	if is_instance_valid(enemy):
-		enemy.set("move_speed", original_speed)
-
 func configure_projectile(projectile: Node) -> void:
-	projectile.set("critical_chance", clampf(float(projectile.get("critical_chance")) + critical_chance_add, 0.0, 0.65))
-	projectile.set("critical_damage_multiplier", critical_damage_mult)
-	projectile.set("execute_threshold", execute_threshold)
+	if not is_instance_valid(projectile):
+		return
+	var chance = projectile.get("critical_chance")
+	if chance != null:
+		projectile.set("critical_chance", clampf(float(chance) + critical_chance_add, 0.0, 0.65))
+	if projectile.get("critical_damage_multiplier") != null:
+		projectile.set("critical_damage_multiplier", critical_damage_mult)
+	if projectile.get("execute_threshold") != null:
+		projectile.set("execute_threshold", execute_threshold)
 
 func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critical_chance: float = 0.0, impact_kind: String = "normal", weapon_id: String = "") -> void:
-	if not is_instance_valid(target) or not target.has_method("take_damage"):
+	if amount <= 0 or not is_instance_valid(target) or target.is_queued_for_deletion() or not target.has_method("take_damage"):
 		return
 	var final_damage := amount
 	var hit_kind := impact_kind
@@ -672,17 +769,15 @@ func _start_dash() -> void:
 	dash_direction = input_direction.normalized()
 	dash_time = 0.16
 	dash_cooldown = 2.4 * (1.0 - SaveManager.get_upgrade_level("dash_cooldown") * 0.08)
-	invulnerable = true
-	get_tree().create_timer(dash_time).timeout.connect(func() -> void: invulnerable = false)
+	_set_invulnerable_for(dash_time)
 
 func _revive() -> void:
 	revive_available = false
 	health = maxi(1, roundi(max_health * 0.3))
-	invulnerable = true
+	_set_invulnerable_for(1.5)
 	EventBus.player_health_changed.emit(health, max_health)
-	_damage_enemies_in_radius(300.0, 60, 650.0)
+	_damage_enemies_in_radius(300.0, 60, 650.0, "explosion")
 	EventBus.camera_shake_requested.emit(1.4)
-	get_tree().create_timer(1.5).timeout.connect(func() -> void: invulnerable = false)
 
 func _apply_random_start_passive() -> void:
 	var candidates: Array[PerkData] = []

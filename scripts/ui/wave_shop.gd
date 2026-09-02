@@ -49,13 +49,16 @@ func _ready() -> void:
 	visible = false
 	_build_interface()
 	EventBus.wave_shop_requested.connect(open_shop)
+	get_viewport().size_changed.connect(_on_viewport_resized)
 
 func open_shop(wave: int) -> void:
+	if visible:
+		return
 	ModalManager.request(self, _open_shop.bind(wave))
 
 func _open_shop(wave: int) -> void:
 	var player := get_tree().get_first_node_in_group("player") as Player
-	if not player:
+	if not RunStats.run_active or not is_instance_valid(player) or player.dead or player.health <= 0:
 		ModalManager.release(self)
 		return
 	current_wave = wave
@@ -75,16 +78,14 @@ func _build_interface() -> void:
 	add_child(overlay)
 
 	var panel := PanelContainer.new()
-	panel.anchor_left = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_bottom = 0.5
-	# Fixed 1160x640 layout fits a 720p screen and prevents the five offers
-	# from overflowing outside the panel.
-	panel.offset_left = -580.0
-	panel.offset_top = -320.0
-	panel.offset_right = 580.0
-	panel.offset_bottom = 320.0
+	panel.anchor_left = 0.02
+	panel.anchor_top = 0.04
+	panel.anchor_right = 0.98
+	panel.anchor_bottom = 0.96
+	panel.offset_left = 0.0
+	panel.offset_top = 0.0
+	panel.offset_right = 0.0
+	panel.offset_bottom = 0.0
 	panel.add_theme_stylebox_override("panel", _panel_style())
 	overlay.add_child(panel)
 
@@ -157,16 +158,21 @@ func _make_action_button(button_text: String, color: Color) -> Button:
 
 func _roll_offers(player: Player) -> void:
 	var used_ids: Array[String] = []
-	var attempts := 0
-	while offers.size() < OFFER_COUNT and attempts < 20:
-		attempts += 1
-		var offer := _make_offer(player, used_ids)
-		if offer.is_empty() or String(offer.get("id", "")) in used_ids:
-			continue
+	while offers.size() < OFFER_COUNT:
+		var offer := _make_unique_offer(player, used_ids)
+		if offer.is_empty():
+			break
 		offers.append(offer)
 		used_ids.append(String(offer.get("id", "supply_%d" % offers.size())))
-	while offers.size() < OFFER_COUNT:
-		offers.append(_make_supply_offer([]))
+
+func _make_unique_offer(player: Player, used_ids: Array[String]) -> Dictionary:
+	for _attempt in range(20):
+		var offer := _make_offer(player, used_ids)
+		if not offer.is_empty():
+			var offer_id := String(offer.get("id", ""))
+			if not offer_id.is_empty() and offer_id not in used_ids and offer_id not in RunStats.banished_ids:
+				return offer
+	return {}
 
 func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	var evolution_candidates: Array[Weapon] = []
@@ -176,7 +182,7 @@ func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	if current_wave >= 3 and not evolution_candidates.is_empty() and randf() < 0.2:
 		var evolution_weapon: Weapon = evolution_candidates.pick_random()
 		var evolution_id := "evolution_" + evolution_weapon.data.weapon_name
-		if evolution_id not in RunStats.banished_ids:
+		if evolution_id not in used_ids and evolution_id not in RunStats.banished_ids:
 			return {"kind": "evolution", "id": evolution_id, "item": evolution_weapon, "cost": 52, "locked": false}
 
 	var roll := randf()
@@ -204,6 +210,8 @@ func _make_contract_offer(used_ids: Array[String]) -> Dictionary:
 	return _make_supply_offer(used_ids) if candidates.is_empty() else candidates.pick_random()
 
 func _make_passive_offer(player: Player, used_ids: Array[String]) -> Dictionary:
+	if player.passives.size() >= player.max_passives:
+		return {}
 	var owned_ids: Array[String] = []
 	for passive in player.passives:
 		owned_ids.append(passive.id)
@@ -225,7 +233,7 @@ func _make_weapon_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	if player.weapons.size() < player.max_weapons:
 		for weapon_path in WEAPON_PATHS:
 			var weapon_data: WeaponUpgradeData = load(weapon_path) as WeaponUpgradeData
-			if not weapon_data:
+			if not is_instance_valid(weapon_data) or not is_instance_valid(weapon_data.weapon_data) or weapon_data.weapon_script == null:
 				continue
 			var has_weapon := false
 			for owned_weapon in player.weapons:
@@ -251,9 +259,18 @@ func _make_supply_offer(used_ids: Array[String]) -> Dictionary:
 			supply["locked"] = false
 			candidates.append(supply)
 	if candidates.is_empty():
-		var fallback: Dictionary = supplies.pick_random()
-		fallback["locked"] = false
-		return fallback
+		for supply in supplies:
+			if String(supply.id) not in RunStats.banished_ids:
+				var fallback: Dictionary = supply.duplicate()
+				var fallback_index := used_ids.size()
+				var fallback_id := "supply_fallback_%d" % fallback_index
+				while fallback_id in used_ids or fallback_id in RunStats.banished_ids:
+					fallback_index += 1
+					fallback_id = "supply_fallback_%d" % fallback_index
+				fallback["id"] = fallback_id
+				fallback["locked"] = false
+				return fallback
+		return {}
 	return candidates.pick_random()
 
 func _render() -> void:
@@ -262,13 +279,14 @@ func _render() -> void:
 	reroll_button.text = "무료 진열 새로고침  ·  %d회" % RunStats.rerolls_remaining if RunStats.rerolls_remaining > 0 else "진열 새로고침  ·  %d 스크랩" % reroll_cost
 	reroll_button.disabled = RunStats.rerolls_remaining <= 0 and RunStats.scrap < reroll_cost
 	for child in offer_row.get_children():
-		child.queue_free()
+		child.free()
 	for index in offers.size():
 		offer_row.add_child(_create_offer_card(index, offers[index]))
 
 func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(198, 390)
+	var compact := get_viewport().get_visible_rect().size.y < 650.0
+	card.custom_minimum_size = Vector2(0.0, 300.0 if compact else 390.0)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var accent := _offer_color(String(offer.kind))
 	var normal := StyleBoxFlat.new()
@@ -313,7 +331,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	content.add_child(kind_label)
 	var visual := Label.new()
 	visual.text = _offer_icon(String(offer.kind))
-	visual.custom_minimum_size = Vector2(0, 72)
+	visual.custom_minimum_size = Vector2(0, 58.0 if compact else 72.0)
 	visual.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	visual.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	visual.add_theme_font_size_override("font_size", 42)
@@ -323,7 +341,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var name_label := Label.new()
 	name_label.text = _offer_name(offer)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_label.custom_minimum_size = Vector2(0, 46)
+	name_label.custom_minimum_size = Vector2(0, 38.0 if compact else 46.0)
 	name_label.add_theme_font_size_override("font_size", 18)
 	name_label.add_theme_color_override("font_color", Color(0.92, 0.98, 0.96, 1.0))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -333,7 +351,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var description_label := Label.new()
 	description_label.text = _offer_description(offer)
 	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	description_label.custom_minimum_size = Vector2(0, 105)
+	description_label.custom_minimum_size = Vector2(0, 64.0 if compact else 105.0)
 	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	description_label.add_theme_font_size_override("font_size", 14)
 	description_label.add_theme_color_override("font_color", Color(0.72, 0.86, 0.84, 1.0))
@@ -341,7 +359,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	content.add_child(description_label)
 
 	var buy_button := Button.new()
-	buy_button.custom_minimum_size = Vector2(0, 46)
+	buy_button.custom_minimum_size = Vector2(0, 42.0 if compact else 46.0)
 	var free_evolution := String(offer.kind) == "evolution" and RunStats.evolution_cores > 0
 	buy_button.text = "구매 완료" if bool(offer.get("purchased", false)) else ("[%d] 진화 코어 사용" % (index + 1) if free_evolution else "[%d] 구매 · %d 스크랩" % [index + 1, int(offer.cost)])
 	buy_button.add_theme_font_size_override("font_size", 16)
@@ -429,97 +447,155 @@ func _offer_color(kind: String) -> Color:
 		_: return Color(0.42, 0.78, 1.0, 1.0)
 
 func _toggle_lock(index: int) -> void:
+	if not visible or index < 0 or index >= offers.size():
+		return
 	var offer := offers[index]
 	offer["locked"] = not bool(offer.get("locked", false))
 	offers[index] = offer
 	_render()
 
 func _reroll() -> void:
+	if not visible:
+		return
+	var player := get_tree().get_first_node_in_group("player") as Player
+	if not RunStats.run_active or not is_instance_valid(player) or player.dead or player.health <= 0:
+		return
 	if RunStats.rerolls_remaining > 0:
 		RunStats.rerolls_remaining -= 1
 	else:
 		if not RunStats.spend_scrap(reroll_cost):
 			return
 		reroll_cost += 5
-	var player := get_tree().get_first_node_in_group("player") as Player
-	if not player:
-		return
 	var used_ids: Array[String] = []
 	for offer in offers:
-		if bool(offer.get("locked", false)):
+		if bool(offer.get("locked", false)) or bool(offer.get("purchased", false)):
 			used_ids.append(String(offer.get("id", "")))
 	for index in offers.size():
-		if not bool(offers[index].get("locked", false)):
-			offers[index] = _apply_discount(_make_offer(player, used_ids))
-			used_ids.append(String(offers[index].get("id", "")))
+		if not bool(offers[index].get("locked", false)) and not bool(offers[index].get("purchased", false)):
+			var replacement := _make_unique_offer(player, used_ids)
+			if not replacement.is_empty():
+				offers[index] = _apply_discount(replacement)
+				used_ids.append(String(replacement.get("id", "")))
 	_render()
 
 func _banish_offer(index: int) -> void:
-	if RunStats.banishes_remaining <= 0:
+	if not visible or index < 0 or index >= offers.size() or RunStats.banishes_remaining <= 0:
 		return
-	RunStats.banished_ids.append(String(offers[index].id))
-	RunStats.banishes_remaining -= 1
 	var player := get_tree().get_first_node_in_group("player") as Player
-	if player:
-		offers[index] = _apply_discount(_make_offer(player, []))
+	if not RunStats.run_active or not is_instance_valid(player) or player.dead or player.health <= 0:
+		return
+	var old_id := String(offers[index].get("id", ""))
+	if old_id.is_empty():
+		return
+	RunStats.banished_ids.append(old_id)
+	RunStats.banishes_remaining -= 1
+	var used_ids: Array[String] = []
+	for other_index in offers.size():
+		if other_index != index:
+			used_ids.append(String(offers[other_index].get("id", "")))
+	var replacement := _make_unique_offer(player, used_ids)
+	if not replacement.is_empty():
+		offers[index] = _apply_discount(replacement)
+	else:
+		offers.remove_at(index)
 	_render()
 
 func _apply_discount(offer: Dictionary) -> Dictionary:
+	if offer.is_empty():
+		return offer
 	var discount := SaveManager.get_upgrade_level("shop_discount") * 0.06
 	offer["cost"] = maxi(1, ceili(int(offer.get("cost", 0)) * (1.0 - discount)))
 	return offer
 
 func _buy_offer(index: int) -> void:
+	if not visible or index < 0 or index >= offers.size():
+		return
 	var offer := offers[index]
 	var free_evolution := String(offer.kind) == "evolution" and RunStats.evolution_cores > 0
-	if bool(offer.get("purchased", false)) or (not free_evolution and not RunStats.spend_scrap(int(offer.cost))):
+	if bool(offer.get("purchased", false)):
 		return
 	var player := get_tree().get_first_node_in_group("player") as Player
-	if not player:
+	if not RunStats.run_active or not is_instance_valid(player) or player.dead or player.health <= 0:
 		return
-	match String(offer.kind):
-		"passive": player.apply_perk(offer.item as PerkData)
-		"weapon_new":
-			var weapon_data := offer.item as WeaponUpgradeData
-			player.add_weapon(weapon_data.weapon_script, weapon_data.weapon_data)
-		"weapon_upgrade": (offer.item as Weapon).upgrade()
-		"evolution":
-			if free_evolution:
-				RunStats.consume_evolution_core()
-			(offer.item as Weapon).evolve(player)
-		"repair": player.heal(35)
-		"plating":
-			player.max_health += 20
-			player.heal(20)
-		"amplifier": player.damage_mult *= 1.1
-		"boots": player.speed_mult *= 1.08
-		"contract": _apply_contract(player, String(offer.id))
+	var cost := int(offer.get("cost", 0))
+	if not free_evolution and not RunStats.spend_scrap(cost):
+		return
+	if not _apply_offer(player, offer, free_evolution):
+		if not free_evolution:
+			RunStats.add_scrap(cost)
+		return
 	offer["purchased"] = true
 	offers[index] = offer
 	EventBus.inventory_updated.emit(player.weapons, player.passives)
 	_render()
 
+func _apply_offer(player: Player, offer: Dictionary, free_evolution: bool) -> bool:
+	match String(offer.get("kind", "")):
+		"passive":
+			var passive := offer.get("item") as PerkData
+			return player.apply_perk(passive) if is_instance_valid(passive) else false
+		"weapon_new":
+			var weapon_data := offer.get("item") as WeaponUpgradeData
+			return player.add_weapon(weapon_data.weapon_script, weapon_data.weapon_data) if is_instance_valid(weapon_data) else false
+		"weapon_upgrade":
+			var weapon := offer.get("item") as Weapon
+			return is_instance_valid(weapon) and weapon.get_parent() == player and weapon.upgrade()
+		"evolution":
+			var evolution_weapon := offer.get("item") as Weapon
+			if not is_instance_valid(evolution_weapon) or not evolution_weapon.evolve(player):
+				return false
+			if free_evolution:
+				return RunStats.consume_evolution_core()
+			return true
+		"repair":
+			player.heal(35)
+			return true
+		"plating":
+			player.max_health += 20
+			player.heal(20)
+			EventBus.player_health_changed.emit(player.health, player.max_health)
+			return true
+		"amplifier":
+			player.damage_mult *= 1.1
+			return true
+		"boots":
+			player.speed_mult *= 1.08
+			return true
+		"contract":
+			return _apply_contract(player, String(offer.get("id", "")))
+	return false
+
 func _close_shop() -> void:
+	if not visible:
+		return
 	visible = false
 	ModalManager.release(self)
 	EventBus.wave_started.emit(current_wave)
 
-func _apply_contract(player: Player, contract_id: String) -> void:
+func _on_viewport_resized() -> void:
+	if visible:
+		_render()
+
+func _apply_contract(player: Player, contract_id: String) -> bool:
 	match contract_id:
 		"volatile_ammo":
 			player.damage_mult *= 1.22
 			player.incoming_damage_mult *= 1.18
+			return true
 		"scavenger_route":
 			RunStats.scrap_multiplier *= 1.45
 			player.max_health = maxi(35, player.max_health - 15)
 			player.health = mini(player.health, player.max_health)
 			EventBus.player_health_changed.emit(player.health, player.max_health)
+			return true
 		"last_stand":
 			player.max_health = maxi(35, player.max_health - 25)
 			player.health = mini(player.health, player.max_health)
 			player.damage_mult *= 1.35
 			player.speed_mult *= 1.12
 			EventBus.player_health_changed.emit(player.health, player.max_health)
+			return true
+	return false
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not event.is_pressed() or event.is_echo():

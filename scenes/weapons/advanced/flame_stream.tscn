@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/projectiles/FlameStream.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/graphics/bullet.svg" id="2_texture"]
+[sub_resource type="CircleShape2D" id="Circle"]
+radius = 24.0
+
+[node name="FlameStream" type="Area2D"]
+collision_layer = 8
+collision_mask = 6
+script = ExtResource("1_script")
+speed = 340.0
+max_distance = 280.0
+max_lifetime = 0.85
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_texture")
+modulate = Color(1, 0.24, 0.03, 0.85)
+scale = Vector2(0.72, 0.72)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Circle")

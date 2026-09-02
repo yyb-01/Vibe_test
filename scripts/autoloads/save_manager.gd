@@ -2,6 +2,10 @@ extends Node
 
 const SAVE_PATH = "user://save_data.cfg"
 const DEFAULT_PETS: Array[String] = ["rescue_hound", "toxic_crow", "lab_drone"]
+const VALID_CHARACTERS: Array[String] = ["scavenger", "medic", "ranger", "bulwark", "pyro", "engineer", "reaper", "chronomancer"]
+const VALID_DIFFICULTIES: Array[String] = ["easy", "normal", "hard", "nightmare"]
+const VALID_CHALLENGES: Array[String] = ["none", "untouchable", "elite_hunter", "mission_master", "endless_15"]
+const VALID_COMPLETED_CHALLENGES: Array[String] = ["untouchable", "elite_hunter", "mission_master", "endless_15"]
 
 var gold: int = 0
 
@@ -58,7 +62,62 @@ func _notification(what: int) -> void:
 		save_data()
 		get_tree().quit()
 
+func _safe_int(value, default_value: int, min_value: int, max_value: int) -> int:
+	if value is int or value is float:
+		return clampi(int(value), min_value, max_value)
+	return default_value
+
+func _safe_float(value, default_value: float, min_value: float, max_value: float) -> float:
+	if value is int or value is float:
+		return clampf(float(value), min_value, max_value)
+	return default_value
+
+func _read_int(config: ConfigFile, section: String, key: String, default_value: int, min_value: int, max_value: int) -> int:
+	return _safe_int(config.get_value(section, key, default_value), default_value, min_value, max_value)
+
+func _read_float(config: ConfigFile, section: String, key: String, default_value: float, min_value: float, max_value: float) -> float:
+	return _safe_float(config.get_value(section, key, default_value), default_value, min_value, max_value)
+
+func _read_bool(config: ConfigFile, section: String, key: String, default_value: bool) -> bool:
+	var value = config.get_value(section, key, default_value)
+	return value if value is bool else default_value
+
+func _read_allowed_string(config: ConfigFile, section: String, key: String, default_value: String, allowed: Array[String]) -> String:
+	var value = config.get_value(section, key, default_value)
+	return value if value is String and value in allowed else default_value
+
+func _read_string_array(value, allowed: Array[String] = []) -> Array[String]:
+	var result: Array[String] = []
+	if not value is Array:
+		return result
+	for item in value:
+		if item is String and (allowed.is_empty() or item in allowed) and item not in result:
+			result.append(item)
+	return result
+
+func _sanitize_weapon_stats(value) -> Dictionary:
+	var result: Dictionary = {}
+	if not value is Dictionary:
+		return result
+	for weapon_id in value:
+		if not weapon_id is String or not value[weapon_id] is Dictionary:
+			continue
+		var raw_stats: Dictionary = value[weapon_id]
+		result[weapon_id] = {
+			"damage": _safe_int(raw_stats.get("damage", 0), 0, 0, 2147483647),
+			"runs": _safe_int(raw_stats.get("runs", 0), 0, 0, 2147483647),
+			"evolutions": _safe_int(raw_stats.get("evolutions", 0), 0, 0, 2147483647)
+		}
+	return result
+
+func _sync_legacy_upgrades() -> void:
+	upgrade_max_hp = get_upgrade_level("max_hp")
+	upgrade_speed = get_upgrade_level("speed")
+	upgrade_damage = get_upgrade_level("damage")
+
 func save_data() -> void:
+	_sync_legacy_upgrades()
+	gold = maxi(0, gold)
 	var config = ConfigFile.new()
 	config.set_value("Meta", "gold", gold)
 	config.set_value("Upgrades", "max_hp", upgrade_max_hp)
@@ -79,80 +138,91 @@ func save_data() -> void:
 	config.set_value("Settings", "master_volume", master_volume)
 	config.set_value("Settings", "ui_scale", ui_scale)
 	config.set_value("Statistics", "weapons", weapon_stats)
-	config.save(SAVE_PATH)
+	var error: Error = config.save(SAVE_PATH)
+	if error != OK:
+		push_error("SaveManager: Failed to save data: %s" % error)
 
 func load_data() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
 		return # Safe fallback to default values
 
 	var config = ConfigFile.new()
-	if config.load(SAVE_PATH) == OK:
-		gold = config.get_value("Meta", "gold", 0)
-		upgrade_max_hp = config.get_value("Upgrades", "max_hp", 0)
-		upgrade_speed = config.get_value("Upgrades", "speed", 0)
-		upgrade_damage = config.get_value("Upgrades", "damage", 0)
-		var saved_upgrades: Dictionary = config.get_value("Upgrades", "levels", {})
-		if saved_upgrades.is_empty():
-			upgrades["max_hp"] = mini(upgrade_max_hp, 5)
-			upgrades["speed"] = mini(upgrade_speed, 5)
-			upgrades["damage"] = mini(upgrade_damage, 5)
-		else:
-			for upgrade_id in UPGRADE_DEFINITIONS:
-				upgrades[upgrade_id] = clampi(int(saved_upgrades.get(upgrade_id, 0)), 0, int(UPGRADE_DEFINITIONS[upgrade_id].max))
-		total_runs = config.get_value("Progress", "total_runs", 0)
-		best_time = config.get_value("Progress", "best_time", 0.0)
-		highest_wave = config.get_value("Progress", "highest_wave", 0)
-		pet_blueprints.clear()
-		for blueprint in config.get_value("Progress", "pet_blueprints", ["rescue_hound", "toxic_crow", "lab_drone"]):
-			if blueprint is String and blueprint not in pet_blueprints:
-				pet_blueprints.append(blueprint)
-		for default_pet in DEFAULT_PETS:
-			if default_pet not in pet_blueprints:
-				pet_blueprints.append(default_pet)
-		selected_pet = config.get_value("Progress", "selected_pet", "")
-		if selected_pet not in pet_blueprints:
-			selected_pet = ""
-		screen_shake_enabled = config.get_value("Settings", "screen_shake_enabled", true)
-		selected_character = config.get_value("Settings", "selected_character", "scavenger")
-		selected_difficulty = config.get_value("Settings", "selected_difficulty", "normal")
-		endless_mode = config.get_value("Settings", "endless_mode", false)
-		selected_challenge = config.get_value("Settings", "selected_challenge", "none")
-		completed_challenges.clear()
-		for challenge in config.get_value("Progress", "completed_challenges", []):
-			if challenge is String:
-				completed_challenges.append(challenge)
-		master_volume = config.get_value("Settings", "master_volume", 0.8)
-		ui_scale = clampf(float(config.get_value("Settings", "ui_scale", 1.0)), 0.8, 1.25)
-		weapon_stats = config.get_value("Statistics", "weapons", {})
+	var error: Error = config.load(SAVE_PATH)
+	if error != OK:
+		push_error("SaveManager: Failed to load data: %s" % error)
+		return
+
+	gold = _read_int(config, "Meta", "gold", 0, 0, 2147483647)
+	upgrade_max_hp = _read_int(config, "Upgrades", "max_hp", 0, 0, 5)
+	upgrade_speed = _read_int(config, "Upgrades", "speed", 0, 0, 5)
+	upgrade_damage = _read_int(config, "Upgrades", "damage", 0, 0, 5)
+	var saved_upgrades = config.get_value("Upgrades", "levels", {})
+	if saved_upgrades is Dictionary and not saved_upgrades.is_empty():
+		for upgrade_id in UPGRADE_DEFINITIONS:
+			var definition: Dictionary = UPGRADE_DEFINITIONS[upgrade_id]
+			upgrades[upgrade_id] = _safe_int(saved_upgrades.get(upgrade_id, 0), 0, 0, int(definition.get("max", 0)))
+	else:
+		upgrades["max_hp"] = upgrade_max_hp
+		upgrades["speed"] = upgrade_speed
+		upgrades["damage"] = upgrade_damage
+	_sync_legacy_upgrades()
+	total_runs = _read_int(config, "Progress", "total_runs", 0, 0, 2147483647)
+	best_time = _read_float(config, "Progress", "best_time", 0.0, 0.0, 1.0e9)
+	highest_wave = _read_int(config, "Progress", "highest_wave", 0, 0, 2147483647)
+	pet_blueprints = _read_string_array(config.get_value("Progress", "pet_blueprints", DEFAULT_PETS), DEFAULT_PETS)
+	for default_pet in DEFAULT_PETS:
+		if default_pet not in pet_blueprints:
+			pet_blueprints.append(default_pet)
+	var saved_pet = config.get_value("Progress", "selected_pet", "")
+	selected_pet = saved_pet if saved_pet is String and saved_pet in pet_blueprints else ""
+	screen_shake_enabled = _read_bool(config, "Settings", "screen_shake_enabled", true)
+	selected_character = _read_allowed_string(config, "Settings", "selected_character", "scavenger", VALID_CHARACTERS)
+	selected_difficulty = _read_allowed_string(config, "Settings", "selected_difficulty", "normal", VALID_DIFFICULTIES)
+	endless_mode = _read_bool(config, "Settings", "endless_mode", false)
+	selected_challenge = _read_allowed_string(config, "Settings", "selected_challenge", "none", VALID_CHALLENGES)
+	completed_challenges = _read_string_array(config.get_value("Progress", "completed_challenges", []), VALID_COMPLETED_CHALLENGES)
+	master_volume = _read_float(config, "Settings", "master_volume", 0.8, 0.0, 1.0)
+	ui_scale = _read_float(config, "Settings", "ui_scale", 1.0, 0.8, 1.25)
+	weapon_stats = _sanitize_weapon_stats(config.get_value("Statistics", "weapons", {}))
 
 func apply_ui_scale() -> void:
+	ui_scale = clampf(ui_scale, 0.8, 1.25)
 	ThemeDB.fallback_base_scale = ui_scale
 
 func record_run(summary: Dictionary) -> void:
 	total_runs += 1
-	highest_wave = maxi(highest_wave, int(summary.get("wave", 1)))
-	var run_time := float(summary.get("time", 0.0))
+	highest_wave = maxi(highest_wave, _safe_int(summary.get("wave", 1), 1, 1, 2147483647))
+	var run_time := _safe_float(summary.get("time", 0.0), 0.0, 0.0, 1.0e9)
 	if run_time > best_time:
 		best_time = run_time
-	for weapon_id in summary.get("used_weapons", []):
-		var stats: Dictionary = weapon_stats.get(weapon_id, {"damage": 0, "runs": 0, "evolutions": 0})
-		stats.runs = int(stats.runs) + 1
-		stats.damage = int(stats.damage) + int(summary.get("weapon_damage", {}).get(weapon_id, 0))
-		if weapon_id in summary.get("evolved_weapons", []):
-			stats.evolutions = int(stats.evolutions) + 1
-		weapon_stats[weapon_id] = stats
+	var used_weapons = summary.get("used_weapons", [])
+	var weapon_damage = summary.get("weapon_damage", {})
+	var evolved_weapons = summary.get("evolved_weapons", [])
+	if used_weapons is Array and weapon_damage is Dictionary and evolved_weapons is Array:
+		for weapon_id in used_weapons:
+			if not weapon_id is String or weapon_id.is_empty():
+				continue
+			var stats_value = weapon_stats.get(weapon_id, {})
+			var stats: Dictionary = stats_value if stats_value is Dictionary else {}
+			stats["runs"] = _safe_int(stats.get("runs", 0), 0, 0, 2147483647) + 1
+			stats["damage"] = _safe_int(stats.get("damage", 0), 0, 0, 2147483647) + _safe_int(weapon_damage.get(weapon_id, 0), 0, 0, 2147483647)
+			if weapon_id in evolved_weapons:
+				stats["evolutions"] = _safe_int(stats.get("evolutions", 0), 0, 0, 2147483647) + 1
+			weapon_stats[weapon_id] = stats
 	save_data()
 
 func add_gold(amount: int) -> void:
+	if amount <= 0:
+		return
 	gold += amount
 	EventBus.gold_changed.emit(gold)
 
 func spend_gold(amount: int) -> bool:
-	if gold >= amount:
-		gold -= amount
-		EventBus.gold_changed.emit(gold)
-		return true
-	return false
+	if amount <= 0 or gold < amount:
+		return false
+	gold -= amount
+	EventBus.gold_changed.emit(gold)
+	return true
 
 func get_upgrade_level(upgrade_id: String) -> int:
 	return int(upgrades.get(upgrade_id, 0))
@@ -192,13 +262,13 @@ func get_upgrade_progress() -> float:
 	return float(bought) / float(maxi(1, maximum))
 
 func unlock_pet_blueprint(blueprint_id: String) -> void:
-	if blueprint_id in pet_blueprints:
+	if blueprint_id not in DEFAULT_PETS or blueprint_id in pet_blueprints:
 		return
 	pet_blueprints.append(blueprint_id)
 	save_data()
 
 func complete_challenge(challenge_id: String, reward: int) -> bool:
-	if challenge_id.is_empty() or challenge_id == "none" or challenge_id in completed_challenges:
+	if challenge_id not in VALID_COMPLETED_CHALLENGES or reward <= 0 or challenge_id in completed_challenges:
 		return false
 	completed_challenges.append(challenge_id)
 	add_gold(reward)

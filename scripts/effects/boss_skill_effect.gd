@@ -16,7 +16,7 @@ func setup(effect_kind: String, effect_color: Color, effect_radius: float, effec
 	kind = effect_kind
 	color = effect_color
 	radius = effect_radius
-	duration = effect_duration
+	duration = maxf(effect_duration, 0.01)
 	damage = effect_damage
 	direction = effect_direction.normalized()
 	damage_source = source
@@ -30,7 +30,7 @@ func _process(delta: float) -> void:
 	if damage > 0 and tick <= 0.0:
 		tick = 0.55
 		var player := get_tree().get_first_node_in_group("player") as Player
-		if is_instance_valid(player) and global_position.distance_to(player.global_position) <= radius:
+		if is_instance_valid(player) and not player.is_queued_for_deletion() and global_position.distance_to(player.global_position) <= radius:
 			player.take_damage(damage, global_position.direction_to(player.global_position), damage_source, attack_name)
 	queue_redraw()
 	if age >= duration:

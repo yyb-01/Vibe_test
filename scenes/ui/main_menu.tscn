@@ -151,13 +151,14 @@ horizontal_scroll_mode = 0
 
 [node name="PlayColumns" type="VBoxContainer" parent="TabContainer/PlayTab"]
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 theme_override_constants/separation = 10
 alignment = 1
 
 [node name="LoadoutColumn" type="VBoxContainer" parent="TabContainer/PlayTab/PlayColumns"]
-custom_minimum_size = Vector2(1080, 0)
+custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
 [node name="CharacterSelect" type="OptionButton" parent="TabContainer/PlayTab/PlayColumns/LoadoutColumn"]
@@ -180,11 +181,13 @@ autowrap_mode = 2
 text = "생존자를 선택하면 시작 능력과 플레이 스타일을 확인할 수 있습니다."
 horizontal_alignment = 1
 
-[node name="MapColumn" type="HBoxContainer" parent="TabContainer/PlayTab/PlayColumns"]
-custom_minimum_size = Vector2(1080, 82)
+[node name="MapColumn" type="GridContainer" parent="TabContainer/PlayTab/PlayColumns"]
+custom_minimum_size = Vector2(0, 82)
 layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
 
 [node name="Map1Button" type="Button" parent="TabContainer/PlayTab/PlayColumns/MapColumn"]
 custom_minimum_size = Vector2(300, 60)

@@ -32,6 +32,8 @@ func _physics_process(delta: float) -> void:
 	position += direction * speed * delta
 
 func _on_body_entered(body: Node2D) -> void:
+	if get_meta("_pool_release_pending", false) or not is_instance_valid(body) or body.is_queued_for_deletion():
+		return
 	if body.is_in_group("player"):
 		if body.has_method("take_damage"):
 			body.take_damage(damage, direction, damage_source, attack_name)

@@ -16,8 +16,10 @@ func _ready() -> void:
 	reset()
 
 func reset() -> void:
-	if active_tween:
+	if active_tween and active_tween.is_valid():
 		active_tween.kill()
+	active_tween = null
+	amount = 0
 	is_critical = false
 	hit_kind = "normal"
 	label.text = str(amount)
@@ -54,7 +56,7 @@ func _apply_style() -> void:
 			label.scale = Vector2.ONE
 
 func _start_animation() -> void:
-	if active_tween:
+	if active_tween and active_tween.is_valid():
 		active_tween.kill()
 	active_tween = create_tween()
 	active_tween.set_parallel(true)
@@ -62,3 +64,10 @@ func _start_animation() -> void:
 	active_tween.tween_property(self, "position", position + random_offset, 0.52).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	active_tween.tween_property(self, "modulate:a", 0.0, 0.38).set_delay(0.22)
 	active_tween.chain().tween_callback(func(): ObjectPoolManager.release(self))
+
+func on_despawn() -> void:
+	if active_tween and active_tween.is_valid():
+		active_tween.kill()
+	active_tween = null
+	amount = 0
+	modulate = Color.WHITE
