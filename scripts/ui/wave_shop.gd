@@ -157,10 +157,16 @@ func _make_action_button(button_text: String, color: Color) -> Button:
 
 func _roll_offers(player: Player) -> void:
 	var used_ids: Array[String] = []
-	while offers.size() < OFFER_COUNT:
+	var attempts := 0
+	while offers.size() < OFFER_COUNT and attempts < 20:
+		attempts += 1
 		var offer := _make_offer(player, used_ids)
+		if offer.is_empty() or String(offer.get("id", "")) in used_ids:
+			continue
 		offers.append(offer)
 		used_ids.append(String(offer.get("id", "supply_%d" % offers.size())))
+	while offers.size() < OFFER_COUNT:
+		offers.append(_make_supply_offer([]))
 
 func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	var evolution_candidates: Array[Weapon] = []

@@ -45,8 +45,7 @@ func _update_orbitals() -> void:
 		shield_sprite.z_index = 9
 		area.add_child(shield_sprite)
 
-		# Add to the global scene tree rather than the player, to prevent tree traversal/hierarchy crashes
-		get_tree().current_scene.call_deferred("add_child", area)
+		parent_player.call_deferred("add_child", area)
 		orbitals.append(area)
 
 func _process(delta: float) -> void:

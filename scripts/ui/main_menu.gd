@@ -64,6 +64,7 @@ var trait_progress: ProgressBar
 var ui_scale_select: OptionButton
 
 func _ready() -> void:
+	get_tree().paused = false
 	map_1_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_1.tscn"))
 	map_2_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_2.tscn"))
 	map_3_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_3.tscn"))
@@ -94,7 +95,7 @@ func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
 	_update_shop_ui()
 	_update_progress_ui()
-	map_1_btn.grab_focus()
+	map_1_btn.get_parent().get_node("MapCard1").grab_focus()
 	$TabContainer.tab_changed.connect(_animate_tab)
 
 func _build_visual_selectors() -> void:
@@ -443,6 +444,9 @@ func _update_shop_ui() -> void:
 	hp_upgrade_btn.text = "🧬 영구 성장 특성 트리  ·  %.0f%%" % (SaveManager.get_upgrade_progress() * 100.0)
 
 func _load_map(path: String) -> void:
+	if not ResourceLoader.exists(path):
+		OS.alert("맵 리소스를 찾을 수 없습니다.\n%s" % path, "맵 로드 실패")
+		return
 	ModalManager.clear()
 	RunStats.start_run(path.get_file().get_basename())
 
@@ -450,4 +454,7 @@ func _load_map(path: String) -> void:
 	ObjectPoolManager.clear()
 	SpatialGrid.clear()
 
-	get_tree().change_scene_to_file(path)
+	var error := get_tree().change_scene_to_file(path)
+	if error != OK:
+		RunStats.finish_run()
+		OS.alert("맵을 불러오지 못했습니다.\n오류 코드: %d" % error, "맵 로드 실패")

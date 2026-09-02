@@ -7,6 +7,9 @@ var flash_color := Color(1.0, 0.75, 0.25, 1.0)
 var flash_size := 24.0
 
 func setup(spawn_position: Vector2, direction: Vector2, color: Color, size: float) -> void:
+	age = 0.0
+	visible = true
+	process_mode = Node.PROCESS_MODE_INHERIT
 	global_position = spawn_position
 	rotation = direction.angle()
 	flash_color = color
@@ -17,7 +20,8 @@ func _process(delta: float) -> void:
 	age += delta
 	queue_redraw()
 	if age >= lifetime:
-		queue_free()
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
 
 func _draw() -> void:
 	var fade := 1.0 - clampf(age / lifetime, 0.0, 1.0)

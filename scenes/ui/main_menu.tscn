@@ -46,6 +46,7 @@ content_margin_left = 18.0
 content_margin_right = 18.0
 
 [node name="MainMenu" type="CanvasLayer"]
+process_mode = 3
 script = ExtResource("1_a2b3c")
 
 [node name="ColorRect" type="ColorRect" parent="."]
@@ -143,12 +144,14 @@ grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 theme_override_colors/font_selected_color = Color(0.66, 1, 0.84, 1)
 
-[node name="PlayTab" type="CenterContainer" parent="TabContainer"]
+[node name="PlayTab" type="ScrollContainer" parent="TabContainer"]
 layout_mode = 2
 name = "Play"
+horizontal_scroll_mode = 0
 
 [node name="PlayColumns" type="VBoxContainer" parent="TabContainer/PlayTab"]
 layout_mode = 2
+size_flags_horizontal = 4
 theme_override_constants/separation = 10
 alignment = 1
 

@@ -7,6 +7,9 @@ var duration := 0.9
 var target_points := PackedVector2Array()
 
 func setup(kind: String, origin: Vector2, targets: PackedVector2Array = PackedVector2Array()) -> void:
+	age = 0.0
+	visible = true
+	process_mode = Node.PROCESS_MODE_INHERIT
 	effect_kind = kind
 	global_position = origin
 	target_points = targets
@@ -18,7 +21,8 @@ func _process(delta: float) -> void:
 	age += delta
 	queue_redraw()
 	if age >= duration:
-		queue_free()
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
 
 func _draw() -> void:
 	var progress := clampf(age / duration, 0.0, 1.0)

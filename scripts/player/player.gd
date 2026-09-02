@@ -45,6 +45,8 @@ const GUN_MOUNT_UP := Vector2(-6.0, -8.0)
 @export var move_speed: float = 200.0
 @export var invulnerability_duration: float = 0.35
 var weapons: Array[Weapon] = []
+var muzzle_flashes: Array[Node2D] = []
+var unique_skill_effect: Node2D
 var max_weapons: int = 6
 var passives: Array[PerkData] = []
 var max_passives: int = 6
@@ -287,9 +289,17 @@ func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
 	trigger_weapon_recoil(recoil)
 	gun_kick_angle = deg_to_rad(recoil * 0.75) * (1.0 if facing == "left" else -1.0)
 	EventBus.camera_shake_requested.emit(shake)
-	var flash := Node2D.new()
-	flash.set_script(MUZZLE_FLASH_SCRIPT)
-	get_tree().current_scene.add_child(flash)
+	var flash: Node2D
+	for pooled_flash in muzzle_flashes:
+		if not pooled_flash.visible:
+			flash = pooled_flash
+			break
+	if not flash:
+		flash = Node2D.new()
+		flash.set_script(MUZZLE_FLASH_SCRIPT)
+		flash.top_level = true
+		add_child(flash)
+		muzzle_flashes.append(flash)
 	flash.call("setup", get_muzzle_global_position(), get_muzzle_global_position().direction_to(target_pos), flash_color, flash_size)
 
 func _handle_movement(delta: float) -> void:
@@ -536,18 +546,19 @@ func use_unique_skill() -> bool:
 func _spawn_unique_skill_effect() -> void:
 	if not is_instance_valid(get_tree().current_scene):
 		return
-	var effect := Node2D.new()
-	effect.set_script(UNIQUE_SKILL_EFFECT_SCRIPT)
-	get_tree().current_scene.add_child(effect)
+	if not unique_skill_effect:
+		unique_skill_effect = Node2D.new()
+		unique_skill_effect.set_script(UNIQUE_SKILL_EFFECT_SCRIPT)
+		unique_skill_effect.top_level = true
+		add_child(unique_skill_effect)
 	var target_points := PackedVector2Array()
 	if character_id in ["engineer", "reaper"]:
-		var targets := _get_active_enemies()
-		targets.sort_custom(func(a, b): return global_position.distance_squared_to(a.global_position) < global_position.distance_squared_to(b.global_position))
+		var targets := _get_nearest_active_enemies(7)
 		for index in mini(7, targets.size()):
 			var target = targets[index]
 			if is_instance_valid(target) and (character_id != "reaper" or global_position.distance_to(target.global_position) <= 420.0):
 				target_points.append(target.global_position)
-	effect.call("setup", character_id, global_position, target_points)
+	unique_skill_effect.call("setup", character_id, global_position, target_points)
 
 func _update_unique_skill(delta: float) -> void:
 	skill_cooldown = maxf(0.0, skill_cooldown - delta * skill_cooldown_rate)
@@ -582,10 +593,7 @@ func _damage_enemies_in_radius(radius: float, base_damage: int, knockback_force:
 				enemy.set("knockback", current_knockback + direction * knockback_force)
 
 func _attack_nearest_enemies(count: int, base_damage: int) -> void:
-	var targets := _get_active_enemies()
-	targets.sort_custom(func(a, b): return global_position.distance_squared_to(a.global_position) < global_position.distance_squared_to(b.global_position))
-	for index in mini(count, targets.size()):
-		var enemy = targets[index]
+	for enemy in _get_nearest_active_enemies(count):
 		if is_instance_valid(enemy) and enemy.has_method("take_damage"):
 			enemy.take_damage(int(float(base_damage) * damage_mult), global_position.direction_to(enemy.global_position))
 
@@ -620,6 +628,16 @@ func _get_active_enemies() -> Array[Node]:
 		if is_instance_valid(enemy) and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and int(enemy.get("health")) > 0:
 			active.append(enemy)
 	return active
+
+func _get_nearest_active_enemies(count: int) -> Array[Node]:
+	var ranked: Array[Dictionary] = []
+	for enemy in _get_active_enemies():
+		ranked.append({"enemy": enemy, "distance": global_position.distance_squared_to(enemy.global_position)})
+	ranked.sort_custom(func(a, b): return float(a.distance) < float(b.distance))
+	var nearest: Array[Node] = []
+	for index in mini(count, ranked.size()):
+		nearest.append(ranked[index].enemy)
+	return nearest
 
 func _restore_enemy_speed(enemy: Node, original_speed: float) -> void:
 	if is_instance_valid(enemy):
