@@ -6,8 +6,6 @@ var speed: float = 0.0
 var target: Node2D = null
 var magnet_range: float = 150.0
 
-var float_tween: Tween
-
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	reset()
@@ -18,12 +16,6 @@ func reset() -> void:
 	magnet_range = 150.0 * (1.0 + SaveManager.get_upgrade_level("magnet_radius") * 0.2)
 	$Sprite2D.position.y = 0
 	set_exp_amount(10)
-
-	if float_tween:
-		float_tween.kill()
-	float_tween = create_tween().set_loops()
-	float_tween.tween_property($Sprite2D, "position:y", -5.0, 1.0).as_relative().set_trans(Tween.TRANS_SINE)
-	float_tween.tween_property($Sprite2D, "position:y", 5.0, 1.0).as_relative().set_trans(Tween.TRANS_SINE)
 
 	SpatialGrid.insert_item(self)
 

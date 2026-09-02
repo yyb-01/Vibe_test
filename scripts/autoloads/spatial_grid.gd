@@ -11,6 +11,7 @@ func clear() -> void:
 	grid.clear()
 	entity_cells.clear()
 	item_grid.clear()
+	_clustering_cells.clear()
 
 func insert(entity: Node2D) -> void:
 	remove(entity)
@@ -56,6 +57,7 @@ func _get_cell(pos: Vector2) -> Vector2i:
 
 # Clustering logic for items
 var item_grid: Dictionary = {}
+var _clustering_cells: Dictionary = {}
 
 func insert_item(item: Node2D) -> void:
 	remove_item(item)
@@ -71,7 +73,7 @@ func remove_item(item: Node2D) -> void:
 		item_grid[cell].erase(item)
 
 func _check_cluster(cell: Vector2i) -> void:
-	if not item_grid.has(cell): return
+	if not item_grid.has(cell) or _clustering_cells.has(cell): return
 	var cell_items = item_grid[cell]
 
 	var exp_gems = []
@@ -80,6 +82,7 @@ func _check_cluster(cell: Vector2i) -> void:
 			exp_gems.append(item)
 
 	if exp_gems.size() > 20:
+		_clustering_cells[cell] = true
 		var total_exp = 0
 		var pos = exp_gems[0].global_position
 		for gem in exp_gems:
@@ -90,3 +93,4 @@ func _check_cluster(cell: Vector2i) -> void:
 		var new_gem = ObjectPoolManager.acquire("exp_gem", pos)
 		if new_gem:
 			new_gem.set_exp_amount(total_exp)
+		_clustering_cells.erase(cell)

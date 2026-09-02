@@ -68,12 +68,12 @@ func acquire(pool_id: String, global_pos: Vector2) -> Node:
 	if instance is CanvasItem:
 		instance.visible = true
 	if instance.has_node("CollisionShape2D"):
-		instance.get_node("CollisionShape2D").disabled = false
+		instance.get_node("CollisionShape2D").set_deferred("disabled", false)
 	# also for exp gems, check Area2D
 	if instance is Area2D:
 		for child in instance.get_children():
 			if child is CollisionShape2D:
-				child.disabled = false
+				child.set_deferred("disabled", false)
 
 	if instance.has_method("reset"):
 		instance.reset()
@@ -90,7 +90,7 @@ func release(instance: Node) -> void:
 	call_deferred("_finish_release", instance)
 
 func _finish_release(instance: Node) -> void:
-	if not is_instance_valid(instance):
+	if not is_instance_valid(instance) or not instance.get_meta("_pool_release_pending", false):
 		return
 	var pool_id = instance.get_meta("pool_id", "")
 	if pool_id == "" or not _pools.has(pool_id):
@@ -102,9 +102,9 @@ func _finish_release(instance: Node) -> void:
 	if not free_list.has(instance):
 		instance.process_mode = Node.PROCESS_MODE_DISABLED
 		if instance.has_node("CollisionShape2D"):
-			instance.get_node("CollisionShape2D").disabled = true
+			instance.get_node("CollisionShape2D").set_deferred("disabled", true)
 		if instance is Area2D:
 			for child in instance.get_children():
 				if child is CollisionShape2D:
-					child.disabled = true
+					child.set_deferred("disabled", true)
 		free_list.append(instance)

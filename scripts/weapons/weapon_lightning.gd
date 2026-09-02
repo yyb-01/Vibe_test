@@ -14,7 +14,7 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 	var enemies = SpatialGrid.get_nearby_entities(player.global_position)
 	var valid_enemies = []
 	for e in enemies:
-		if is_instance_valid(e) and e.is_in_group("enemies"):
+		if is_instance_valid(e) and e.is_in_group("enemies") and e.get("is_dying") != true and (e.get("health") == null or int(e.get("health")) > 0):
 			valid_enemies.append(e)
 
 	if valid_enemies.size() == 0:
@@ -44,17 +44,17 @@ func fire(player: Player, target_pos: Vector2) -> bool:
 		origin_pos = current_target.global_position
 
 		# Find next bounce target
+		valid_enemies.erase(current_target)
 		var next_target = null
 		var min_dist = bounce_range
 		for e in valid_enemies:
-			if e != current_target and is_instance_valid(e):
+			if is_instance_valid(e) and e.get("is_dying") != true and (e.get("health") == null or int(e.get("health")) > 0):
 				var d = origin_pos.distance_to(e.global_position)
 				if d < min_dist:
 					min_dist = d
 					next_target = e
 
 		if next_target:
-			valid_enemies.erase(current_target) # Don't hit same target twice
 			current_target = next_target
 		else:
 			break
