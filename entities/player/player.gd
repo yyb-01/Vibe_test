@@ -74,8 +74,12 @@ func _update_control_state() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if is_input_blocked:
 		return
+	var gm := get_node_or_null("/root/GameManager")
+	var comp = gm.composition_root if (gm != null and "composition_root" in gm) else null
 	if event.is_action_pressed("dash") and not (event is InputEventKey and event.echo):
 		try_dash()
+		if comp != null and comp.input_sampler != null:
+			comp.input_sampler.send_action(&"dash", true, aim_direction, 0)
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("shoot"):
@@ -83,16 +87,25 @@ func _unhandled_input(event: InputEvent) -> void:
 			_is_firing = true
 			if _shoot_timer <= 0.0:
 				shoot()
+				if comp != null and comp.input_sampler != null:
+					comp.input_sampler.send_action(&"shoot", true, aim_direction, 0)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_released("shoot"):
 		_is_firing = false
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("melee") and _combat_state_allowed():
 		melee()
+		if comp != null and comp.input_sampler != null:
+			comp.input_sampler.send_action(&"melee", true, aim_direction, 0)
 		get_viewport().set_input_as_handled()
 
 func _physics_process(delta: float) -> void:
 	_handle_aim()
+	var gm := get_node_or_null("/root/GameManager")
+	var comp = gm.composition_root if (gm != null and "composition_root" in gm) else null
+	if comp != null and comp.input_sampler != null:
+		comp.input_sampler.sample_continuous_inputs(0, aim_direction)
+
 	_shoot_timer = maxf(0.0, _shoot_timer - delta)
 	_melee_timer = maxf(0.0, _melee_timer - delta)
 	_dash_cooldown_timer = maxf(0.0, _dash_cooldown_timer - delta)

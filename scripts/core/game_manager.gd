@@ -36,6 +36,16 @@ var day_stats: Dictionary = {
 	"items_harvested": {}
 }
 
+var composition_root: Node = null
+
+func bind_composition_root(root: Node) -> void:
+	composition_root = root
+	if composition_root != null and "simulation_host" in composition_root:
+		var host = composition_root.simulation_host
+		host.world.session_state.day = day
+		host.world.session_state.phase = current_state
+		host.world.session_state.shared_storage = InventoryManager.storage.duplicate()
+
 const STARTING_STORAGE: Dictionary = {
 	&"wood": 40,
 	&"scrap_metal": 24,

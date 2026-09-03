@@ -5,6 +5,7 @@ extends Node2D
 # Root coordinator orchestrating game states, world transitions, and UI overlays
 
 const CameraTraumaClass = preload("res://scripts/systems/camera_trauma.gd")
+const GameCompositionRootClass = preload("res://scripts/bootstrap/game_composition_root.gd")
 
 @onready var world_container: Node2D = $IsometricWorld
 @onready var actors_container: Node2D = $IsometricWorld/Actors
@@ -62,7 +63,18 @@ func _ready() -> void:
 		if save_manager != null and save_manager.has_save_file():
 			gm.load_saved_game()
 		gm.create_day_start_snapshot()
-		
+
+	var comp_root := GameCompositionRootClass.new()
+	comp_root.name = "GameCompositionRoot"
+	add_child(comp_root)
+	if gm != null and gm.has_method("bind_composition_root"):
+		gm.bind_composition_root(comp_root)
+	var vfx = find_child("VFXPool", true, false)
+	var cam = find_child("CameraTrauma", true, false)
+	comp_root.link_presentation_nodes(vfx, cam, actors_container)
+	if player != null and comp_root.entity_view_registry != null:
+		comp_root.entity_view_registry.register_view(100, player)
+
 	_update_ui_for_state(gm.current_state if gm != null else 0)
 	_update_runtime_hud()
 

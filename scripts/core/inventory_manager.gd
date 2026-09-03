@@ -125,3 +125,12 @@ func load_save_data(data: Dictionary) -> bool:
 	EventBus.inventory_changed.emit(&"storage")
 	EventBus.inventory_changed.emit(&"bag")
 	return true
+
+func sync_from_simulation(sim_storage: Dictionary, sim_bag_slots: Array = []) -> void:
+	storage.clear()
+	for k in sim_storage:
+		storage[StringName(k)] = int(sim_storage[k])
+	if expedition_bag != null and not sim_bag_slots.is_empty():
+		expedition_bag.from_dict(sim_bag_slots)
+	EventBus.inventory_changed.emit(&"storage")
+	EventBus.inventory_changed.emit(&"bag")

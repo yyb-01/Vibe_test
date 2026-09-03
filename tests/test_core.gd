@@ -4,6 +4,14 @@ extends SceneTree
 # Headless test runner for core isometric math, state machine transitions, player setup, and data schema.
 
 const GameStateMachine = preload("res://scripts/core/game_state_machine.gd")
+const ProtocolConstantsClass = preload("res://scripts/application/protocol/protocol_constants.gd")
+const MessageEnvelopeClass = preload("res://scripts/application/protocol/message_envelope.gd")
+const MessageCodecClass = preload("res://scripts/application/protocol/message_codec.gd")
+const SerializedLoopbackTransportClass = preload("res://scripts/infrastructure/transport/serialized_loopback_transport.gd")
+const CommandGatewayClass = preload("res://scripts/application/client/command_gateway.gd")
+const SimulationCommandsClass = preload("res://scripts/simulation/commands/simulation_commands.gd")
+const SimulationHostClass = preload("res://scripts/simulation/simulation_host.gd")
+const SaveMigrationServiceClass = preload("res://scripts/infrastructure/persistence/save_migration_service.gd")
 
 var total_tests: int = 0
 var passed_tests: int = 0
@@ -24,6 +32,8 @@ func _init() -> void:
 	test_expedition_failure_loss_and_return()
 	test_night_defense_victory_scaling()
 	test_core_destruction_rollback_and_legacy_scrap()
+	test_architecture_v3_protocol_and_simulation()
+	test_architecture_v3_save_migration()
 	
 	print("========================================")
 	print(" TEST RESULTS: %d Passed, %d Failed (Total: %d)" % [passed_tests, failed_tests, total_tests])
@@ -307,3 +317,48 @@ func test_core_destruction_rollback_and_legacy_scrap() -> void:
 	assert_equal(current_day, 3, "Day rolled back to snapshot Day 3")
 	assert_equal(current_storage.get("wood", 0), 100, "Storage restored to morning snapshot (100 wood)")
 	assert_equal(total_legacy_scrap, 15, "Legacy scrap retained across snapshot rollback")
+
+func test_architecture_v3_protocol_and_simulation() -> void:
+	print("\n--- Test: Architecture v3 Protocol & Loopback Simulation ---")
+	var pair := SerializedLoopbackTransportClass.create_pair(1, 0)
+	var client_trans := pair[0]
+	var host_trans := pair[1]
+	var codec := MessageCodecClass.new()
+
+	var gateway := CommandGatewayClass.new(client_trans, codec, 1)
+	var sim_host := SimulationHostClass.new(12345)
+
+	# Submit move command via gateway
+	var cmd = SimulationCommandsClass.create_move_intent(1, 100, Vector2.RIGHT, 0, 1)
+	gateway.submit(cmd)
+
+	# Host receives and enqueues
+	var pkt = host_trans.try_receive_packet()
+	assert_true(not pkt.is_empty(), "Loopback transport successfully delivered command byte packet")
+	var env = codec.decode_envelope(pkt["payload"])
+	assert_equal(env.message_type, ProtocolConstantsClass.MessageType.COMMAND, "Decoded message is COMMAND")
+
+	var cmd_env = CommandEnvelopeClass.from_dict(env.payload)
+	sim_host.enqueue_command(cmd_env)
+	var step_res = sim_host.step_one_tick()
+
+	assert_equal(step_res["receipts"].size(), 1, "SimulationHost processed command and returned receipt")
+	assert_true(step_res["receipts"][0]["accepted"], "Move command was accepted")
+	assert_true(step_res["checksum"] != 0, "Simulation produced valid rule state checksum")
+
+func test_architecture_v3_save_migration() -> void:
+	print("\n--- Test: Architecture v3 Save Schema Migration ---")
+	var v2_sample: Dictionary = {
+		"version": 2,
+		"day": 5,
+		"state": "HUB",
+		"meta": { "legacy_scrap": 50, "survivor_xp": 200, "survivor_level": 3 },
+		"storage": { "wood": 120, "ammo": 80 },
+		"structures": []
+	}
+
+	var env = SaveMigrationServiceClass.migrate_to_v3(v2_sample)
+	assert_true(env != null, "v2 save migrated to v3 envelope")
+	assert_equal(env.to_dict().get("schema_version", 0), 3, "Migrated envelope schema_version is 3")
+	assert_equal(env.payload["session"]["day"], 5, "Migrated day is 5")
+	assert_true(env.verify_integrity(), "Migrated envelope passes SHA-256 integrity verification")
