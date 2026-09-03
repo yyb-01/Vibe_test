@@ -24,7 +24,7 @@ func _scan_directory(directory: String) -> void:
 		if ResourceLoader.exists(path):
 			_verify_resource(path)
 	for child_name in DirAccess.get_directories_at(directory):
-		if not child_name.begins_with(".") and child_name != "build":
+		if not child_name.begins_with(".") and child_name != "build" and not child_name.ends_with(".exe"):
 			_scan_directory(directory.path_join(child_name))
 
 func _verify_resource(path: String) -> void:

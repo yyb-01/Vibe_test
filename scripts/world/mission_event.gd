@@ -31,7 +31,6 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	choice_timer = Timer.new()
 	choice_timer.one_shot = true
-	choice_timer.ignore_time_scale = true
 	choice_timer.process_mode = Node.PROCESS_MODE_ALWAYS
 	choice_timer.timeout.connect(_on_choice_timeout)
 	add_child(choice_timer)

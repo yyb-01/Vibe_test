@@ -55,7 +55,7 @@ Godot 에디터에서 프로젝트를 열고 `scenes/ui/main_menu.tscn`을 실�
 풀과 재사용 경로는 다음 headless self-check로 확인할 수 있습니다.
 
 ```text
-Godot_v4.2.2-stable_win64_console.exe --headless --path . verify_optimized_pool.tscn
+Godot_v4.2.2-stable_win64_console.exe --headless --path . tests/verify_optimized_pool.tscn
 ```
 
 ## 무기 진화·12종 발사체 시스템
@@ -83,7 +83,7 @@ Godot_v4.2.2-stable_win64_console.exe --headless --path . verify_optimized_pool.
 새 시스템만 검증하려면 다음 self-check를 실행합니다.
 
 ```text
-Godot_v4.2.2-stable_win64_console.exe --headless --path . verify_advanced_system.tscn
+Godot_v4.2.2-stable_win64_console.exe --headless --path . tests/verify_advanced_system.tscn
 ```
 
 ## 검증
@@ -91,10 +91,10 @@ Godot_v4.2.2-stable_win64_console.exe --headless --path . verify_advanced_system
 로컬에 Godot 4.2.x가 설치되어 있으면 다음 명령으로 전체 리소스 파싱과 맵 스폰을 확인할 수 있습니다.
 
 ```bash
-godot --headless --path . verify_resources.tscn
-godot --headless --resolution 1280x720 --path . verify_hud_layout.tscn
-godot --headless --resolution 1280x720 --path . verify_main_menu_layout.tscn
-godot --headless --path . verify_map.tscn
+godot --headless --path . tests/verify_resources.tscn
+godot --headless --resolution 1280x720 --path . tests/verify_hud_layout.tscn
+godot --headless --resolution 1280x720 --path . tests/verify_main_menu_layout.tscn
+godot --headless --path . tests/verify_map.tscn
 ```
 
 ## 상용화 에셋

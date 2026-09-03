@@ -268,34 +268,44 @@ func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
 	var flash_size := 24.0
 	var flash_color := Color(1.0, 0.78, 0.32, 1.0)
 	match weapon_name:
-		"Shotgun":
+		"Shotgun", "산탄총", "dragons_breath", "드래곤 브레스":
 			recoil = 8.5
 			shake = 0.72
 			flash_size = 42.0
 			flash_color = Color(1.0, 0.45, 0.16, 1.0)
-		"Railgun":
+		"Railgun", "heavy_revolver", "헤비 리볼버", "magnum_opus", "매그넘 오퍼스":
 			recoil = 11.0
 			shake = 1.0
 			flash_size = 52.0
 			flash_color = Color(0.28, 0.92, 1.0, 1.0)
-		"SMG":
+		"SMG", "기관단총":
 			recoil = 2.0
 			shake = 0.1
 			flash_size = 17.0
-		"Burst Rifle":
+		"Burst Rifle", "점사 소총":
 			recoil = 5.0
 			shake = 0.38
 			flash_size = 29.0
-		"Lightning":
+		"Lightning", "tesla_cannon", "테슬라 건", "thors_smite", "토르의 벼락":
 			recoil = 2.5
 			shake = 0.28
 			flash_color = Color(0.4, 0.9, 1.0, 1.0)
-		"Shock Nova":
+		"Shock Nova", "충격파 발생기":
 			recoil = 6.0
 			shake = 0.55
 			flash_size = 36.0
 			flash_color = Color(0.35, 1.0, 0.82, 1.0)
-		"Orbital":
+		"flamethrower", "화염방사기", "infernal_sonata", "지옥불 소나타":
+			recoil = 1.5
+			shake = 0.12
+			flash_size = 28.0
+			flash_color = Color(1.0, 0.5, 0.1, 1.0)
+		"rpg", "로켓 런처", "cluster_nebula", "클러스터 네뷸라":
+			recoil = 12.0
+			shake = 1.1
+			flash_size = 56.0
+			flash_color = Color(1.0, 0.6, 0.2, 1.0)
+		"Orbital", "보호막":
 			return
 	trigger_weapon_recoil(recoil)
 	gun_kick_angle = deg_to_rad(recoil * 0.75) * (1.0 if facing == "left" else -1.0)

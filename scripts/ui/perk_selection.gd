@@ -1,6 +1,8 @@
 class_name PerkSelection
 extends CanvasLayer
 
+const CATALOG: Script = preload("res://scripts/resources/advanced_weapon_catalog.gd")
+
 @onready var container: HBoxContainer = $CenterContainer/VBoxContainer/HBoxContainer
 @onready var label: Label = $CenterContainer/VBoxContainer/TitleLabel
 @onready var reroll_button: Button = $CenterContainer/VBoxContainer/ActionRow/RerollButton
@@ -250,9 +252,18 @@ func _get_weapon_evolution_links(perk_id: String) -> Array[String]:
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if not is_instance_valid(player):
 		return links
-	for weapon in player.weapons:
-		if not weapon.evolved and perk_id in weapon.get_evolution_requirements():
-			links.append("%s  Lv %d/5  ·  %s" % [weapon.get_display_name(), weapon.current_level, weapon.get_evolution_requirement_text()])
+	for recipe in CATALOG.get_recipes():
+		if String(recipe.get("required_passive_id")) == perk_id:
+			var base_id := String(recipe.get("base_weapon_id"))
+			var res_data = recipe.get("result_weapon_data")
+			for weapon in player.weapons:
+				if EvolutionManager.get_weapon_id(weapon) == base_id and not weapon.evolved:
+					var res_name: String = res_data.get_display_name() if res_data else ""
+					links.append("%s  Lv %d/5  →  ★ %s" % [weapon.get_display_name(), weapon.current_level, res_name])
+	if links.is_empty():
+		for weapon in player.weapons:
+			if not weapon.evolved and perk_id in weapon.get_evolution_requirements():
+				links.append("%s  Lv %d/5  ·  %s" % [weapon.get_display_name(), weapon.current_level, weapon.get_evolution_requirement_text()])
 	return links
 
 func _get_build_recipe_hint(perk_id: String) -> String:
@@ -316,10 +327,36 @@ func _finish_level_up() -> void:
 
 func _codex_text() -> String:
 	var lines: Array[String] = []
-	for entry in Weapon.get_evolution_catalog():
-		var requirements: Array = entry["requirements"]
-		lines.append("%s Lv5  +  %s + %s\n→ ★ %s\n%s" % [entry["display"], Weapon.get_perk_label(requirements[0]), Weapon.get_perk_label(requirements[1]), entry["name"], entry["description"]])
+	for recipe in CATALOG.get_recipes():
+		var base_id := String(recipe.get("base_weapon_id"))
+		var req_passive_id := String(recipe.get("required_passive_id"))
+		var res_data = recipe.get("result_weapon_data")
+		var base_name := _get_base_weapon_display_name(base_id)
+		var passive_name := _get_advanced_passive_label(req_passive_id)
+		var result_name := String(res_data.get_display_name()) if res_data else ""
+		var desc := String(res_data.description) if res_data else ""
+		lines.append("%s Lv5  +  %s\n→ ★ %s\n%s" % [base_name, passive_name, result_name, desc])
 	return "\n\n".join(lines)
+
+func _get_base_weapon_display_name(base_id: String) -> String:
+	match base_id:
+		"pistol": return "권총 (Pistol)"
+		"shotgun": return "산탄총 (Shotgun)"
+		"heavy_revolver": return "헤비 리볼버 (Heavy Revolver)"
+		"flamethrower": return "화염방사기 (Flamethrower)"
+		"rpg": return "로켓 런처 (RPG)"
+		"tesla_cannon": return "테슬라 건 (Tesla Cannon)"
+		_: return base_id
+
+func _get_advanced_passive_label(passive_id: String) -> String:
+	match passive_id:
+		"quick_hands": return "빠른 손 (연사력 증가)"
+		"oil_reservoir": return "연료 탱크 (범위 증가)"
+		"crit_core": return "크리티컬 코어 (치명타율 증가)"
+		"blue_catalyst": return "청염 촉매 (화염 피해 증가)"
+		"fragmentation": return "분열 장약 (폭발 피해 증가)"
+		"storm_core": return "폭풍 코어 (쿨다운 감소)"
+		_: return Weapon.get_perk_label(passive_id)
 
 func _on_upgrade_selected(item: Variant) -> void:
 	if not visible:

@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://verify_optimized_pool.gd" id="1_check"]
+[ext_resource type="Script" path="res://tests/verify_optimized_pool.gd" id="1_check"]
 
 [node name="VerifyOptimizedPool" type="Node"]
 script = ExtResource("1_check")

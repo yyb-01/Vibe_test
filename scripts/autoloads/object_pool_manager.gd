@@ -118,17 +118,42 @@ func despawn(instance: Node2D) -> void:
 	instance.hide()
 	instance.set_process(false)
 	instance.set_physics_process(false)
-	instance.process_mode = Node.PROCESS_MODE_DISABLED
+	instance.set_deferred("process_mode", Node.PROCESS_MODE_DISABLED)
 	_disable_collision(instance)
 	var active_list: Array[Node2D] = active_pool[key]
 	active_list.erase(instance)
 	var free_list: Array[Node2D] = inactive_pool[key]
 	free_list.append(instance)
 
+const DEFAULT_POOL_SCENES := {
+	"bullet": "res://scenes/weapons/bullet.tscn",
+	"damage_number": "res://scenes/ui/effects/damage_number.tscn",
+	"blood_impact": "res://scenes/effects/blood_impact.tscn",
+	"player_hit": "res://scenes/effects/player_hit.tscn",
+	"exp_gem": "res://scenes/items/exp_gem.tscn",
+	"acid_projectile": "res://scenes/weapons/acid_projectile.tscn"
+}
+
+func _try_register_default_pool(pool_id: String) -> bool:
+	if not DEFAULT_POOL_SCENES.has(pool_id):
+		return false
+	var scene_path: String = DEFAULT_POOL_SCENES[pool_id]
+	if not ResourceLoader.exists(scene_path):
+		return false
+	var scene: PackedScene = load(scene_path)
+	if not scene:
+		return false
+	var parent: Node = get_tree().current_scene
+	if not is_instance_valid(parent):
+		parent = self
+	register_pool(pool_id, scene, parent)
+	return true
+
 func acquire(pool_id: String, global_pos: Vector2) -> Node:
 	if not _pool_ids.has(pool_id):
-		push_error("ObjectPoolManager: Pool ID not found: " + pool_id)
-		return null
+		if not _try_register_default_pool(pool_id):
+			push_error("ObjectPoolManager: Pool ID not found: " + pool_id)
+			return null
 	return spawn(_pool_ids[pool_id] as PackedScene, global_pos)
 
 func release(instance: Node) -> void:
@@ -194,16 +219,18 @@ func _disable_collision(instance: Node2D) -> void:
 		if not instance.has_meta("_pool_collision_layer"):
 			instance.set_meta("_pool_collision_layer", collision.collision_layer)
 			instance.set_meta("_pool_collision_mask", collision.collision_mask)
-		collision.collision_layer = 0
-		collision.collision_mask = 0
+		collision.set_deferred("collision_layer", 0)
+		collision.set_deferred("collision_mask", 0)
 	for shape in instance.find_children("*", "CollisionShape2D", true, false):
 		(shape as CollisionShape2D).set_deferred("disabled", true)
 
 func _restore_collision(instance: Node2D) -> void:
 	var collision := instance as CollisionObject2D
 	if collision:
-		collision.collision_layer = int(instance.get_meta("_pool_collision_layer", collision.collision_layer))
-		collision.collision_mask = int(instance.get_meta("_pool_collision_mask", collision.collision_mask))
+		var layer = int(instance.get_meta("_pool_collision_layer", collision.collision_layer))
+		var mask = int(instance.get_meta("_pool_collision_mask", collision.collision_mask))
+		collision.set_deferred("collision_layer", layer)
+		collision.set_deferred("collision_mask", mask)
 	for shape in instance.find_children("*", "CollisionShape2D", true, false):
 		(shape as CollisionShape2D).set_deferred("disabled", false)
 

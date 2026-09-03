@@ -1,1 +1,17 @@
+# Godot 4
 .godot/
+*.translation
+
+# Godot engine binaries / local tools
+Godot_v4.2.2-stable_win64.exe/
+*.exe
+
+# Exported binaries & templates
+build/
+bin/
+
+# Temporary / OS files
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
