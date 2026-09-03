@@ -10,10 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.2.2
+    env:
+      HOME: /root
     steps:
       - uses: actions/checkout@v4
+      - name: Check project scripts
+        run: godot --headless --editor --quit --path .
       - name: Export Windows build
-        run: godot --headless --verbose --export-release "Windows Desktop" build/Vivv.exe
+        run: godot --headless --verbose --path . --export-release "Windows Desktop" build/Vivv.exe
       - uses: actions/upload-artifact@v4
         with:
           name: Vivv-windows
