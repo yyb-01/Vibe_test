@@ -17,7 +17,7 @@ jobs:
       - name: Check project scripts
         run: godot --headless --editor --quit --path .
       - name: Export Windows build
-        run: godot --headless --verbose --path . --export-release "Windows Desktop" build/Vivv.exe
+        run: mkdir -p build && godot --headless --verbose --path . --export-release "Windows Desktop" build/Vivv.exe
       - uses: actions/upload-artifact@v4
         with:
           name: Vivv-windows
