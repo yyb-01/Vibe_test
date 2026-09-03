@@ -1,0 +1,40 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/art/placeholders/ground_grass_placeholder.png" id="1_usll4"]
+[ext_resource type="Texture2D" path="res://assets/art/placeholders/ground_dirt_placeholder.png" id="2_keye7"]
+[ext_resource type="Texture2D" path="res://assets/art/placeholders/ground_asphalt_placeholder.png" id="3_euiat"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_uyljt"]
+texture = ExtResource("1_usll4")
+texture_region_size = Vector2i(128, 64)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_txtfv"]
+texture = ExtResource("2_keye7")
+texture_region_size = Vector2i(128, 64)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_15t7u"]
+texture = ExtResource("3_euiat")
+texture_region_size = Vector2i(128, 64)
+0:0/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_otppr"]
+tile_shape = 1
+tile_layout = 5
+tile_size = Vector2i(128, 64)
+sources/0 = SubResource("TileSetAtlasSource_uyljt")
+sources/1 = SubResource("TileSetAtlasSource_txtfv")
+sources/2 = SubResource("TileSetAtlasSource_15t7u")
+
+[node name="IsometricWorld" type="Node2D"]
+y_sort_enabled = true
+
+[node name="GroundLayer" type="TileMap" parent="."]
+z_index = -20
+tile_set = SubResource("TileSet_otppr")
+format = 2
+layer_0/tile_data = PackedInt32Array(-262149, 2, 0, -196613, 2, 0, -131077, 2, 0, -65541, 2, 0, -5, 2, 0, 65531, 2, 0, 131067, 2, 0, 196603, 2, 0, 262139, 2, 0, 327675, 2, 0, 393211, 2, 0, -262148, 2, 0, -196612, 0, 0, -131076, 0, 0, -65540, 0, 0, -4, 0, 0, 65532, 0, 0, 131068, 0, 0, 196604, 0, 0, 262140, 0, 0, 327676, 0, 0, 393212, 2, 0, -262147, 2, 0, -196611, 0, 0, -131075, 0, 0, -65539, 0, 0, -3, 0, 0, 65533, 0, 0, 131069, 0, 0, 196605, 0, 0, 262141, 0, 0, 327677, 0, 0, 393213, 2, 0, -262146, 2, 0, -196610, 0, 0, -131074, 0, 0, -65538, 0, 0, -2, 0, 0, 65534, 1, 0, 131070, 0, 0, 196606, 0, 0, 262142, 0, 0, 327678, 0, 0, 393214, 2, 0, -262145, 2, 0, -196609, 0, 0, -131073, 0, 0, -65537, 0, 0, -1, 1, 0, 65535, 1, 0, 131071, 1, 0, 196607, 0, 0, 262143, 0, 0, 327679, 0, 0, 393215, 2, 0, -327680, 2, 0, -262144, 0, 0, -196608, 0, 0, -131072, 1, 0, -65536, 1, 0, 0, 1, 0, 65536, 1, 0, 131072, 1, 0, 196608, 0, 0, 262144, 0, 0, 327680, 2, 0, -327679, 2, 0, -262143, 0, 0, -196607, 0, 0, -131071, 0, 0, -65535, 1, 0, 1, 1, 0, 65537, 1, 0, 131073, 0, 0, 196609, 0, 0, 262145, 0, 0, 327681, 2, 0, -327678, 2, 0, -262142, 0, 0, -196606, 0, 0, -131070, 0, 0, -65534, 0, 0, 2, 1, 0, 65538, 0, 0, 131074, 0, 0, 196610, 0, 0, 262146, 0, 0, 327682, 2, 0, -327677, 2, 0, -262141, 0, 0, -196605, 0, 0, -131069, 0, 0, -65533, 0, 0, 3, 0, 0, 65539, 0, 0, 131075, 0, 0, 196611, 0, 0, 262147, 0, 0, 327683, 2, 0, -327676, 2, 0, -262140, 0, 0, -196604, 0, 0, -131068, 0, 0, -65532, 0, 0, 4, 0, 0, 65540, 0, 0, 131076, 0, 0, 196612, 0, 0, 262148, 0, 0, 327684, 2, 0, -327675, 2, 0, -262139, 2, 0, -196603, 2, 0, -131067, 2, 0, -65531, 2, 0, 5, 2, 0, 65541, 2, 0, 131077, 2, 0, 196613, 2, 0, 262149, 2, 0, 327685, 2, 0)
+
+[node name="Actors" type="Node2D" parent="."]
+y_sort_enabled = true

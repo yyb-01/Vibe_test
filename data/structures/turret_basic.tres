@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="StructureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/structure_data.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://entities/structures/turret.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"turret_basic"
+display_name = "Basic Sentry Turret"
+kind = 2
+scene = ExtResource("2_scene")
+footprint = Vector2i(1, 1)
+required_materials = {
+&"electronics": 4,
+&"scrap_metal": 10
+}
+max_health = 120
+attack_range = 250.0
+attack_damage = 15.0
+attacks_per_second = 2.0
+blocks_navigation = true

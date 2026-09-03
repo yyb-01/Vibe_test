@@ -1,0 +1,64 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scenes/main.gd" id="1_main_script"]
+[ext_resource type="PackedScene" path="res://scenes/base/isometric_tile_layers.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://entities/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://scenes/base/building_manager.tscn" id="4_building"]
+[ext_resource type="PackedScene" path="res://scenes/defense/wave_controller.tscn" id="5_wave"]
+[ext_resource type="PackedScene" path="res://ui/expedition_map/map_select.tscn" id="6_map_select"]
+[ext_resource type="PackedScene" path="res://ui/building/build_panel.tscn" id="7_build_panel"]
+[ext_resource type="PackedScene" path="res://ui/defense/wave_hud.tscn" id="8_wave_hud"]
+[ext_resource type="PackedScene" path="res://scenes/summary/day_summary.tscn" id="9_day_summary"]
+[ext_resource type="PackedScene" path="res://entities/structures/structure_base.tscn" id="10_core"]
+
+[node name="Main" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_main_script")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(1, 1, 1, 1)
+
+[node name="IsometricWorld" parent="." instance=ExtResource("2_world")]
+
+[node name="Player" parent="IsometricWorld/Actors" index="0" instance=ExtResource("3_player")]
+position = Vector2(0, 0)
+
+[node name="Camera2D" type="Camera2D" parent="IsometricWorld/Actors/Player"]
+zoom = Vector2(1.2, 1.2)
+position_smoothing_enabled = true
+
+[node name="BaseCore" parent="IsometricWorld/Actors" instance=ExtResource("10_core")]
+position = Vector2(0, 0)
+
+[node name="BuildingManager" parent="." instance=ExtResource("4_building")]
+
+[node name="WaveController" parent="." instance=ExtResource("5_wave")]
+
+[node name="UILayer" type="CanvasLayer" parent="."]
+
+[node name="HUD" type="Control" parent="UILayer"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 300.0
+offset_bottom = 60.0
+
+[node name="PhaseLabel" type="Label" parent="UILayer/HUD"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 260.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 18
+text = "DAY 1 | HUB"
+
+[node name="MapSelect" parent="UILayer" instance=ExtResource("6_map_select")]
+visible = false
+
+[node name="BuildPanel" parent="UILayer" instance=ExtResource("7_build_panel")]
+visible = false
+
+[node name="WaveHUD" parent="UILayer" instance=ExtResource("8_wave_hud")]
+visible = false
+
+[node name="DaySummary" parent="UILayer" instance=ExtResource("9_day_summary")]
+visible = false

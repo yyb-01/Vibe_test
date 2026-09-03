@@ -1,0 +1,20 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.2.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export Windows build
+        run: godot --headless --verbose --export-release "Windows Desktop" build/Vivv.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vivv-windows
+          path: build/

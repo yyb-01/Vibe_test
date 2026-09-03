@@ -1,0 +1,50 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="TileSet" path="res://data/maps/isometric_tileset.tres" id="1_tileset"]
+[ext_resource type="PackedScene" path="res://scenes/expedition/extraction_zone.tscn" id="2_extract"]
+[ext_resource type="PackedScene" path="res://scenes/expedition/resource_node.tscn" id="3_res_node"]
+
+[node name="CityMap" type="Node2D"]
+y_sort_enabled = true
+
+[node name="GroundLayer" type="TileMap" parent="."]
+z_index = -20
+tile_set = ExtResource("1_tileset")
+format = 2
+layer_0/tile_data = PackedInt32Array(0, 131072, 0, 65536, 131072, 0, -65536, 131072, 0, 1, 131072, 0, -1, 131072, 0, 65537, 131072, 0, -65535, 131072, 0, -65537, 131072, 0, 65535, 131072, 0, 131072, 131072, 0, -131072, 131072, 0, 2, 131072, 0, -2, 131072, 0)
+
+[node name="Actors" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="ExtractionZone" parent="Actors" instance=ExtResource("2_extract")]
+position = Vector2(0, 0)
+
+[node name="ResourceScrap1" parent="Actors" instance=ExtResource("3_res_node")]
+position = Vector2(192, 96)
+item_id = &"scrap_metal"
+max_amount = 15
+remaining_amount = 15
+
+[node name="ResourceScrap2" parent="Actors" instance=ExtResource("3_res_node")]
+position = Vector2(-192, 96)
+item_id = &"scrap_metal"
+max_amount = 15
+remaining_amount = 15
+
+[node name="ResourceElectronics" parent="Actors" instance=ExtResource("3_res_node")]
+position = Vector2(192, -96)
+item_id = &"electronics"
+max_amount = 10
+remaining_amount = 10
+
+[node name="ResourceAmmo" parent="Actors" instance=ExtResource("3_res_node")]
+position = Vector2(-192, -96)
+item_id = &"ammo"
+max_amount = 30
+remaining_amount = 30
+
+[node name="ResourceMedicine" parent="Actors" instance=ExtResource("3_res_node")]
+position = Vector2(0, 160)
+item_id = &"medicine"
+max_amount = 6
+remaining_amount = 6
