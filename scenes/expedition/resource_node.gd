@@ -19,8 +19,19 @@ signal depleted()
 var _is_player_nearby: bool = false
 var _original_scale: Vector2 = Vector2.ONE
 
+const ITEM_TEXTURES: Dictionary = {
+	&"wood": "res://assets/art/props/tree_01.png",
+	&"stone": "res://assets/art/props/rock_01.png",
+	&"food": "res://assets/art/props/berry_bush_01.png",
+	&"scrap_metal": "res://assets/art/props/scrap_pile_01.png",
+	&"electronics": "res://assets/art/props/broken_vending_machine_01.png",
+	&"ammo": "res://assets/art/props/loot_crate_01.png",
+	&"medicine": "res://assets/art/props/loot_crate_01.png"
+}
+
 func _ready() -> void:
 	_original_scale = scale
+	_apply_visual_texture()
 	if interaction_area != null:
 		interaction_area.body_entered.connect(_on_body_entered)
 		interaction_area.body_exited.connect(_on_body_exited)
@@ -29,6 +40,15 @@ func setup(p_item_id: StringName, p_amount: int) -> void:
 	item_id = p_item_id
 	max_amount = p_amount
 	remaining_amount = p_amount
+	_apply_visual_texture()
+
+func _apply_visual_texture() -> void:
+	if visual == null:
+		return
+	var path: String = ITEM_TEXTURES.get(item_id, "")
+	if path != "" and ResourceLoader.exists(path):
+		visual.texture = load(path)
+
 
 func interact(harvester: Node = null) -> int:
 	if remaining_amount <= 0:

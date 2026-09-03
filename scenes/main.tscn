@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_main_script"]
 [ext_resource type="PackedScene" path="res://scenes/base/isometric_tile_layers.tscn" id="2_world"]
@@ -10,6 +10,8 @@
 [ext_resource type="PackedScene" path="res://ui/defense/wave_hud.tscn" id="8_wave_hud"]
 [ext_resource type="PackedScene" path="res://scenes/summary/day_summary.tscn" id="9_day_summary"]
 [ext_resource type="PackedScene" path="res://entities/structures/structure_base.tscn" id="10_core"]
+[ext_resource type="PackedScene" path="res://ui/hud/expedition_hud.tscn" id="11_exp_hud"]
+
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
@@ -63,6 +65,10 @@ visible = false
 [node name="DaySummary" parent="UILayer" instance=ExtResource("9_day_summary")]
 visible = false
 
+[node name="ExpeditionHUD" parent="UILayer" instance=ExtResource("11_exp_hud")]
+visible = false
+
 [editable path="IsometricWorld"]
+
 [editable path="IsometricWorld/Actors/Player"]
 

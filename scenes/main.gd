@@ -13,10 +13,12 @@ extends Node2D
 @onready var build_panel_ui: Control = $UILayer/BuildPanel
 @onready var wave_hud_ui: Control = $UILayer/WaveHUD
 @onready var day_summary_ui: Control = $UILayer/DaySummary
+@onready var expedition_hud_ui: ExpeditionHUD = $UILayer/ExpeditionHUD
 @onready var phase_label: Label = $UILayer/HUD/PhaseLabel
 @onready var building_manager: IsometricGridBuildingSystem = $BuildingManager
 @onready var wave_controller: WaveController = $WaveController
 @onready var night_modulate: CanvasModulate = $CanvasModulate
+
 
 var _current_expedition_scene: Node2D = null
 
@@ -65,6 +67,8 @@ func _update_ui_for_state(state: int) -> void:
 		wave_hud_ui.visible = false
 	if day_summary_ui != null:
 		day_summary_ui.visible = false
+	if expedition_hud_ui != null:
+		expedition_hud_ui.visible = false
 		
 	var state_name = GameStateMachine.STATE_NAMES.get(state, "HUB")
 	if phase_label != null:
@@ -86,6 +90,10 @@ func _update_ui_for_state(state: int) -> void:
 		GameStateMachine.State.EXPEDITION:
 			_set_base_world_visible(false)
 			_load_expedition_map()
+			if expedition_hud_ui != null:
+				expedition_hud_ui.visible = true
+				expedition_hud_ui.update_bag_display()
+
 			
 		GameStateMachine.State.EVENING_PREP:
 			_set_base_world_visible(true)
@@ -145,8 +153,9 @@ func _load_expedition_map() -> void:
 		world_container.add_child(_current_expedition_scene)
 		
 	var spawn_pos: Vector2 = Vector2(0, 160)
+	var extract_zone: ExtractionZone = null
 	if _current_expedition_scene != null:
-		var extract_zone = _current_expedition_scene.find_child("ExtractionZone", true, false) as Area2D
+		extract_zone = _current_expedition_scene.find_child("ExtractionZone", true, false) as ExtractionZone
 		if extract_zone != null:
 			# Offset 120px away from zone center (radius 64px) to prevent instant accidental extraction
 			spawn_pos = extract_zone.position + Vector2(0, 120)
@@ -154,5 +163,9 @@ func _load_expedition_map() -> void:
 	if player != null:
 		player.position = spawn_pos
 		player.visible = true
+
+	if expedition_hud_ui != null:
+		expedition_hud_ui.setup_player(player, extract_zone)
+
 
 
