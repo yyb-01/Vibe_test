@@ -22,20 +22,69 @@ var current_direction_index: int = 0 # 0=E, 1=SE, 2=S, 3=SW, 4=W, 5=NW, 6=N, 7=N
 
 var _shoot_timer: float = 0.0
 
+var is_input_blocked: bool = false
+var _is_firing: bool = false
+
 func _ready() -> void:
 	_update_visual_animation()
 	if health_component != null:
 		health_component.damage_taken.connect(_on_damage_taken)
 		health_component.died.connect(_on_died)
+	var eb = get_node_or_null("/root/EventBus")
+	if eb != null:
+		eb.game_state_changed.connect(_on_game_state_changed)
+	_update_control_state()
+
+func _on_game_state_changed(_prev: int, _curr: int) -> void:
+	_update_control_state()
+
+func _update_control_state() -> void:
+	var gm = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	var state: int = gm.current_state
+	if state == GameStateMachine.State.HUB or state == GameStateMachine.State.DAY_SUMMARY:
+		is_input_blocked = true
+		_is_firing = false
+		velocity = Vector2.ZERO
+	else:
+		is_input_blocked = false
+
+func _unhandled_input(event: InputEvent) -> void:
+	if is_input_blocked:
+		return
+		
+	if event.is_action_pressed("shoot"):
+		var gm = get_node_or_null("/root/GameManager")
+		if gm != null:
+			var state: int = gm.current_state
+			if state != GameStateMachine.State.EXPEDITION and state != GameStateMachine.State.NIGHT_DEFENSE:
+				return
+		_is_firing = true
+		if _shoot_timer <= 0.0:
+			shoot()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_released("shoot"):
+		_is_firing = false
+		get_viewport().set_input_as_handled()
 
 func _physics_process(delta: float) -> void:
+	if is_input_blocked:
+		velocity = Vector2.ZERO
+		return
+		
 	_handle_movement()
 	_handle_aim()
 	
 	if _shoot_timer > 0.0:
 		_shoot_timer -= delta
-	else:
-		_handle_shooting()
+		
+	if _is_firing and _shoot_timer <= 0.0:
+		var gm = get_node_or_null("/root/GameManager")
+		if gm != null:
+			var state: int = gm.current_state
+			if state == GameStateMachine.State.EXPEDITION or state == GameStateMachine.State.NIGHT_DEFENSE:
+				shoot()
 
 func _handle_movement() -> void:
 	var input: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -52,9 +101,7 @@ func _handle_aim() -> void:
 			current_direction_index = new_index
 			_update_visual_animation()
 
-func _handle_shooting() -> void:
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		shoot()
+
 
 func shoot() -> void:
 	if _shoot_timer > 0.0:

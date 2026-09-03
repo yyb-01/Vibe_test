@@ -62,3 +62,7 @@ visible = false
 
 [node name="DaySummary" parent="UILayer" instance=ExtResource("9_day_summary")]
 visible = false
+
+[editable path="IsometricWorld"]
+[editable path="IsometricWorld/Actors/Player"]
+

@@ -26,8 +26,8 @@ func _process(delta: float) -> void:
 	if extraction_done or not player_inside:
 		return
 		
-	# Check if player is holding interaction key (E or Space/Accept)
-	var holding: bool = Input.is_key_pressed(KEY_E) or Input.is_action_pressed("ui_accept")
+	# Check if player is holding interaction key (interact action, E or Space/Accept)
+	var holding: bool = Input.is_action_pressed("interact") or Input.is_key_pressed(KEY_E) or Input.is_action_pressed("ui_accept")
 	if holding:
 		if not is_extracting:
 			is_extracting = true

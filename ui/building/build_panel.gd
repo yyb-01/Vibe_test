@@ -10,6 +10,7 @@ extends Control
 @onready var metal_barricade_btn: Button = $Panel/VBoxContainer/MetalBarricadeBtn
 @onready var turret_btn: Button = $Panel/VBoxContainer/TurretBtn
 @onready var cancel_btn: Button = $Panel/VBoxContainer/CancelBtn
+@onready var start_night_btn: Button = $Panel/VBoxContainer/StartNightBtn
 
 var _barricade_wood_data: StructureData
 var _barricade_metal_data: StructureData
@@ -28,6 +29,14 @@ func _ready() -> void:
 		turret_btn.pressed.connect(func(): _select(_turret_basic_data))
 	if cancel_btn != null:
 		cancel_btn.pressed.connect(_cancel)
+	if start_night_btn != null:
+		start_night_btn.pressed.connect(_on_start_night)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event.is_action_pressed("start_night"):
+		_on_start_night()
 
 func _select(data: StructureData) -> void:
 	if building_system != null and data != null:
@@ -36,3 +45,10 @@ func _select(data: StructureData) -> void:
 func _cancel() -> void:
 	if building_system != null:
 		building_system.clear_selection()
+
+func _on_start_night() -> void:
+	_cancel()
+	var gm = get_node_or_null("/root/GameManager")
+	if gm != null:
+		gm.start_night()
+

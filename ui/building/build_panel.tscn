@@ -62,3 +62,12 @@ text = "Turret (10 Scrap, 4 Elec)"
 custom_minimum_size = Vector2(0, 35)
 layout_mode = 2
 text = "Cancel Selection"
+
+[node name="HSeparator" type="HSeparator" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="StartNightBtn" type="Button" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 2
+text = "START NIGHT DEFENSE"
+

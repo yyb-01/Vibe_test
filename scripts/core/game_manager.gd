@@ -48,11 +48,10 @@ func _on_state_changed(prev: int, curr: int) -> void:
 func request_expedition(map_id: StringName) -> bool:
 	if not state_machine.can_transition_to(GameStateMachine.State.EXPEDITION):
 		return false
-	if state_machine.transition_to(GameStateMachine.State.EXPEDITION):
-		selected_map_id = map_id
-		day_stats["items_harvested"].clear()
-		return true
-	return false
+	selected_map_id = map_id
+	day_stats["items_harvested"].clear()
+	return state_machine.transition_to(GameStateMachine.State.EXPEDITION)
+
 
 func complete_expedition(success: bool) -> void:
 	if success:

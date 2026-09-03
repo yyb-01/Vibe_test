@@ -21,13 +21,20 @@ extends Node2D
 var _current_expedition_scene: Node2D = null
 
 func _ready() -> void:
+	if world_container == null:
+		world_container = find_child("IsometricWorld", true, false) as Node2D
+	if actors_container == null:
+		actors_container = find_child("Actors", true, false) as Node2D
+	if player == null:
+		player = find_child("Player", true, false) as Player
+
 	var gm = get_node_or_null("/root/GameManager")
 	var eb = get_node_or_null("/root/EventBus")
 	
 	if gm != null:
 		gm.active_building_system = building_manager
 		
-	if building_manager != null:
+	if building_manager != null and world_container != null:
 		building_manager.ground_layer = world_container.find_child("GroundLayer", true, false) as TileMap
 		building_manager.structures_container = actors_container
 		
@@ -66,6 +73,7 @@ func _update_ui_for_state(state: int) -> void:
 		
 	match state:
 		GameStateMachine.State.HUB:
+			_set_base_world_visible(true)
 			if map_select_ui != null:
 				map_select_ui.visible = true
 			if _current_expedition_scene != null:
@@ -76,9 +84,11 @@ func _update_ui_for_state(state: int) -> void:
 				player.visible = true
 				
 		GameStateMachine.State.EXPEDITION:
+			_set_base_world_visible(false)
 			_load_expedition_map()
 			
 		GameStateMachine.State.EVENING_PREP:
+			_set_base_world_visible(true)
 			if build_panel_ui != null:
 				build_panel_ui.visible = true
 			if _current_expedition_scene != null:
@@ -89,18 +99,40 @@ func _update_ui_for_state(state: int) -> void:
 				player.visible = true
 				
 		GameStateMachine.State.NIGHT_DEFENSE:
+			_set_base_world_visible(true)
 			if wave_hud_ui != null:
 				wave_hud_ui.visible = true
 			if wave_controller != null:
 				wave_controller.start_wave()
 				
 		GameStateMachine.State.DAY_SUMMARY:
+			_set_base_world_visible(true)
 			if day_summary_ui != null:
 				day_summary_ui.visible = true
 				day_summary_ui.update_display()
 
+func _set_base_world_visible(p_visible: bool) -> void:
+	if world_container != null:
+		var base_ground = world_container.find_child("GroundLayer", false, false) as Node2D
+		if base_ground != null:
+			base_ground.visible = p_visible
+			base_ground.process_mode = Node.PROCESS_MODE_INHERIT if p_visible else Node.PROCESS_MODE_DISABLED
+	if actors_container != null:
+		var core = actors_container.find_child("BaseCore", false, false) as Node2D
+		if core != null:
+			core.visible = p_visible
+			core.process_mode = Node.PROCESS_MODE_INHERIT if p_visible else Node.PROCESS_MODE_DISABLED
+			for child in core.get_children():
+				if child is CollisionShape2D or child is CollisionPolygon2D:
+					child.set_deferred("disabled", not p_visible)
+	if building_manager != null:
+		building_manager.visible = p_visible
+		building_manager.process_mode = Node.PROCESS_MODE_INHERIT if p_visible else Node.PROCESS_MODE_DISABLED
+
 func _load_expedition_map() -> void:
 	if _current_expedition_scene != null:
+		_current_expedition_scene.process_mode = Node.PROCESS_MODE_DISABLED
+		_current_expedition_scene.visible = false
 		_current_expedition_scene.queue_free()
 		_current_expedition_scene = null
 		
@@ -112,5 +144,15 @@ func _load_expedition_map() -> void:
 		_current_expedition_scene = scene.instantiate() as Node2D
 		world_container.add_child(_current_expedition_scene)
 		
+	var spawn_pos: Vector2 = Vector2(0, 160)
+	if _current_expedition_scene != null:
+		var extract_zone = _current_expedition_scene.find_child("ExtractionZone", true, false) as Area2D
+		if extract_zone != null:
+			# Offset 120px away from zone center (radius 64px) to prevent instant accidental extraction
+			spawn_pos = extract_zone.position + Vector2(0, 120)
+			
 	if player != null:
-		player.position = Vector2(0, 50)
+		player.position = spawn_pos
+		player.visible = true
+
+
