@@ -19,6 +19,7 @@ func _init() -> void:
 	test_aim_direction_math()
 	test_item_data_schema()
 	test_player_and_scene_instantiation()
+	test_vertical_slice_wiring()
 	test_survival_cycle_state_machine()
 	test_expedition_failure_loss_and_return()
 	test_night_defense_victory_scaling()
@@ -199,6 +200,28 @@ func test_player_and_scene_instantiation() -> void:
 	
 	inst.free()
 
+func test_vertical_slice_wiring() -> void:
+	print("\n--- Test: Vertical Slice Combat, VFX and Pool Wiring ---")
+	var scene = load("res://scenes/main.tscn")
+	var inst = scene.instantiate()
+	var player := inst.find_child("Player", true, false) as Player
+	var projectile_pool: Node = inst.find_child("ProjectilePool", true, false)
+	var vfx_pool: Node = inst.find_child("VFXPool", true, false)
+	var nav_region: Node = inst.find_child("NavigationRegion2D", true, false)
+	assert_true(player != null and is_equal_approx(player.dash_duration, 0.2), "Player dash duration is 0.2 seconds")
+	assert_true(player != null and is_equal_approx(player.dash_iframe_duration, 0.15), "Player dash has 0.15 seconds of I-frames")
+	assert_true(projectile_pool != null, "ProjectilePool is present in the main slice")
+	assert_true(vfx_pool != null, "VFXPool is present in the main slice")
+	assert_true(nav_region != null, "NavigationRegion2D is present in the main slice")
+	assert_true(InputMap.has_action("dash"), "Space dash action is registered")
+	assert_true(ResourceLoader.exists("res://assets/shaders/hit_flash.gdshader"), "Hit flash shader is available")
+	assert_true(ResourceLoader.exists("res://assets/shaders/ghost.gdshader"), "Dash ghost shader is available")
+	var zombie_scene = load("res://entities/zombies/zombie.tscn")
+	var zombie = zombie_scene.instantiate()
+	assert_true(zombie.find_child("SeparationArea", true, false) != null, "Zombie separation area is wired")
+	zombie.free()
+	inst.free()
+
 func test_survival_cycle_state_machine() -> void:
 	print("\n--- Test: Full Survival Cycle State Machine (HUB -> EXPEDITION -> EVENING_PREP -> NIGHT_DEFENSE -> DAY_SUMMARY -> HUB) ---")
 	var sm = GameStateMachine.new()
@@ -284,4 +307,3 @@ func test_core_destruction_rollback_and_legacy_scrap() -> void:
 	assert_equal(current_day, 3, "Day rolled back to snapshot Day 3")
 	assert_equal(current_storage.get("wood", 0), 100, "Storage restored to morning snapshot (100 wood)")
 	assert_equal(total_legacy_scrap, 15, "Legacy scrap retained across snapshot rollback")
-

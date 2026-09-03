@@ -63,6 +63,13 @@ custom_minimum_size = Vector2(0, 35)
 layout_mode = 2
 text = "Cancel Selection"
 
+[node name="FeedbackLabel" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.3, 1)
+theme_override_font_sizes/font_size = 12
+text = ""
+horizontal_alignment = 1
+
 [node name="HSeparator" type="HSeparator" parent="Panel/VBoxContainer"]
 layout_mode = 2
 
@@ -70,4 +77,3 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 45)
 layout_mode = 2
 text = "START NIGHT DEFENSE"
-

@@ -9,7 +9,7 @@ const BACKUP_PATH: String = "user://save.json.bak"
 const TMP_PATH: String = "user://save.json.tmp"
 
 func _ready() -> void:
-	pass
+	return
 
 func save_game(data: Dictionary) -> bool:
 	# Add schema v2 envelope

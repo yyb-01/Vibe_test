@@ -11,6 +11,7 @@ extends Control
 @onready var turret_btn: Button = $Panel/VBoxContainer/TurretBtn
 @onready var cancel_btn: Button = $Panel/VBoxContainer/CancelBtn
 @onready var start_night_btn: Button = $Panel/VBoxContainer/StartNightBtn
+@onready var feedback_label: Label = $Panel/VBoxContainer/FeedbackLabel
 
 var _barricade_wood_data: StructureData
 var _barricade_metal_data: StructureData
@@ -31,6 +32,17 @@ func _ready() -> void:
 		cancel_btn.pressed.connect(_cancel)
 	if start_night_btn != null:
 		start_night_btn.pressed.connect(_on_start_night)
+	_update_feedback()
+
+func _process(_delta: float) -> void:
+	_update_feedback()
+
+func _update_feedback() -> void:
+	if feedback_label == null or building_system == null:
+		return
+	var reason := String(building_system.last_validation_reason)
+	feedback_label.text = "" if reason in ["none", "ok"] else reason.replace("_", " ").to_upper()
+	feedback_label.modulate = Color(1.0, 0.35, 0.3, 1.0) if reason != "ok" else Color(0.55, 1.0, 0.55, 1.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
@@ -51,4 +63,3 @@ func _on_start_night() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null:
 		gm.start_night()
-

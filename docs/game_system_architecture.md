@@ -784,6 +784,14 @@ signal died(source: Node)
 
 체력은 `[0, max_health]`로 제한하고 `died`는 한 번만 발생한다. 플레이어, 좀비, 코어, 구조물은 동일한 `HealthComponent`를 재사용한다.
 
+### 세로 조각의 손맛·성능 확장
+
+- `scripts/systems/projectile_pool.gd`는 `Projectile`을 미리 확보하고 회수해 사격마다 씬을 생성/삭제하지 않는다. 기존 `Projectile.setup()` 호출은 유지하므로 테스트와 직접 생성 경로와 호환된다.
+- `scripts/systems/vfx_pool.gd`는 잔상 스프라이트와 피해 라벨을 재사용하고, 머즐 플래시·탄피·피격 파편은 하나의 `CanvasItem` 드로우 리스트로 처리한다. `scripts/systems/juice_helper.gd`가 엔티티와 풀 사이의 유일한 연출 호출점이다.
+- `scripts/systems/camera_trauma.gd`는 카메라 노드에만 붙으며 Autoload를 추가하지 않는다. 히트스탑은 중첩 토큰과 `ignore_time_scale` 타이머를 사용한 짧은 전역 펄스라 상태 소유권을 바꾸지 않는다.
+- 좀비는 `NavigationAgent2D`의 경로 목표를 프레임마다 다시 계산하지 않고 0.16초 지터 주기의 틱으로 갱신한다. `SeparationArea`가 물리 broad-phase 후보만 수집해 군집 분리력을 적용한다.
+- 대시 중 플레이어의 충돌 마스크에서 Enemy 비트만 잠시 제거하고 HealthComponent 무적 플래그를 함께 사용한다. World/Structure 충돌은 유지되므로 적은 통과하지만 벽은 통과하지 않는다.
+
 ## E.4 원정 시스템
 
 ### 흐름
@@ -1294,7 +1302,7 @@ Godot 내장 `Image` 로더만 사용해 승인 폴더를 검사한다.
 - 내비게이션 베이크: 건축 변경 묶음당 1회.
 - UI 갱신: 신호 기반, 매 프레임 재구성 금지.
 - 거리 비교: 제곱 거리 사용.
-- 객체 풀: 프로파일러가 생성/해제를 병목으로 지목할 때만 추가.
+- 객체 풀: 세로 조각에서는 투사체·잔상·피해 라벨을 `ProjectilePool`/`VFXPool`로 재사용하고, 새로운 풀은 프로파일러가 실제 병목을 확인할 때만 추가한다.
 
 ### J.2 오류 처리
 

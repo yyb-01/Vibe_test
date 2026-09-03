@@ -8,6 +8,7 @@ const BuildGridClass = preload("res://scripts/systems/build_grid.gd")
 const StructureDataClass = preload("res://scripts/data/structure_data.gd")
 const StructureBaseClass = preload("res://entities/structures/structure_base.gd")
 const GameStateMachine = preload("res://scripts/core/game_state_machine.gd")
+const JuiceHelperClass = preload("res://scripts/systems/juice_helper.gd")
 
 @export var ground_layer: TileMap
 @export var structures_container: Node2D
@@ -21,6 +22,7 @@ var rotation_quarters: int = 0
 var preview_cells: Array[Vector2i] = []
 var is_current_placement_valid: bool = false
 var last_validation_reason: StringName = &"none"
+var _preview_blend: float = 0.0
 
 var rebuild_timer: Timer
 
@@ -52,6 +54,8 @@ func _process(_delta: float) -> void:
 	if cell != current_anchor_cell:
 		current_anchor_cell = cell
 		_update_preview()
+	_preview_blend = move_toward(_preview_blend, 1.0 if is_current_placement_valid else 0.0, _delta * 12.0)
+	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if selected_structure == null:
@@ -126,7 +130,7 @@ func validate_placement(data: StructureDataClass, anchor: Vector2i, rot_quarters
 	# 4. Required materials check
 	var inv = get_node_or_null("/root/InventoryManager")
 	if not data.required_materials.is_empty():
-		if inv != null and not inv.has_materials(data.required_materials):
+		if inv == null or not inv.has_materials(data.required_materials):
 			return {"valid": false, "reason": &"insufficient_materials", "cells": cells}
 			
 	# 5. Route validation to core
@@ -137,12 +141,16 @@ func validate_placement(data: StructureDataClass, anchor: Vector2i, rot_quarters
 	return {"valid": true, "reason": &"ok", "cells": cells}
 
 func try_place(data: StructureDataClass, anchor: Vector2i, rot_quarters: int, free_placement: bool = false) -> bool:
+	if data == null:
+		last_validation_reason = &"no_data"
+		return false
 	var cells: Array[Vector2i] = []
 	
 	if not free_placement:
 		var result: Dictionary = validate_placement(data, anchor, rot_quarters)
 		if not result.get("valid", false):
 			last_validation_reason = result.get("reason", &"invalid")
+			_show_invalid_feedback(anchor)
 			return false
 		cells = result["cells"]
 	else:
@@ -153,9 +161,10 @@ func try_place(data: StructureDataClass, anchor: Vector2i, rot_quarters: int, fr
 	
 	# Transaction Step: Consume materials
 	var inv = get_node_or_null("/root/InventoryManager")
-	if not free_placement and not data.required_materials.is_empty() and inv != null:
-		if not inv.consume_materials(data.required_materials):
+	if not free_placement and not data.required_materials.is_empty():
+		if inv == null or not inv.consume_materials(data.required_materials):
 			last_validation_reason = &"insufficient_materials"
+			_show_invalid_feedback(anchor)
 			return false
 			
 	# Instantiate structure
@@ -181,6 +190,13 @@ func try_place(data: StructureDataClass, anchor: Vector2i, rot_quarters: int, fr
 		structures_container.add_child(structure_instance)
 	else:
 		add_child(structure_instance)
+	if structure_instance.has_method("play_place_feedback"):
+		structure_instance.play_place_feedback()
+	else:
+		JuiceHelperClass.add_trauma(self, 0.025)
+		var pool := JuiceHelperClass.vfx(self)
+		if pool != null:
+			pool.spawn_impact(structure_instance.global_position, Vector2.UP, Color(0.7, 0.85, 0.65, 1.0))
 		
 	# Schedule debounced navigation rebake
 	if rebuild_timer != null:
@@ -222,21 +238,31 @@ func _update_preview() -> void:
 	preview_cells = result.get("cells", [])
 	queue_redraw()
 
+func _show_invalid_feedback(anchor: Vector2i) -> void:
+	var world_position := ground_layer.to_global(ground_layer.map_to_local(anchor)) if ground_layer != null else global_position
+	JuiceHelperClass.add_trauma(self, 0.03)
+	var pool := JuiceHelperClass.vfx(self)
+	if pool != null:
+		pool.spawn_impact(world_position, Vector2.ZERO, Color(1.0, 0.2, 0.18, 1.0))
+		pool.play_feedback(false)
+
 func _draw() -> void:
 	if selected_structure == null or preview_cells.is_empty() or ground_layer == null:
 		return
 		
-	var fill_color: Color = Color(0.2, 0.85, 0.3, 0.45) if is_current_placement_valid else Color(0.9, 0.2, 0.2, 0.45)
-	var border_color: Color = Color(0.3, 1.0, 0.4, 0.9) if is_current_placement_valid else Color(1.0, 0.3, 0.3, 0.9)
+	var fill_color: Color = Color(0.9, 0.2, 0.2, 0.45).lerp(Color(0.2, 0.85, 0.3, 0.45), _preview_blend)
+	var border_color: Color = Color(1.0, 0.3, 0.3, 0.9).lerp(Color(0.3, 1.0, 0.4, 0.9), _preview_blend)
+	var tile_size := ground_layer.tile_set.tile_size if ground_layer.tile_set != null else Vector2i(128, 64)
+	var half_size := Vector2(tile_size.x * 0.5, tile_size.y * 0.5)
 	
 	for cell in preview_cells:
 		var center_local: Vector2 = to_local(ground_layer.to_global(ground_layer.map_to_local(cell)))
-		# 128x64 diamond vertices relative to center
+		# The preview uses the same TileSet dimensions as the authoritative grid.
 		var diamond: PackedVector2Array = [
-			center_local + Vector2(0, -32),
-			center_local + Vector2(64, 0),
-			center_local + Vector2(0, 32),
-			center_local + Vector2(-64, 0)
+			center_local + Vector2(0, -half_size.y),
+			center_local + Vector2(half_size.x, 0),
+			center_local + Vector2(0, half_size.y),
+			center_local + Vector2(-half_size.x, 0)
 		]
 		draw_colored_polygon(diamond, fill_color)
 		draw_polyline(PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]), border_color, 2.0)

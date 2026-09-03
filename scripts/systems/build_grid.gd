@@ -25,6 +25,7 @@ func _init_astar() -> void:
 
 func setup(p_region: Rect2i, p_core_cells: Array = [], p_spawn_cells: Array = []) -> void:
 	region = p_region
+	reserved_cells.clear()
 	core_cells.clear()
 	for c in p_core_cells:
 		core_cells.append(Vector2i(c))
@@ -58,12 +59,20 @@ func check_route_to_core(test_cells: Array = []) -> bool:
 		return true
 		
 	# 1. Temporarily apply solid flags
+	var applied_cells: Array[Vector2i] = []
+	var invalid_test_cell := false
 	for item in test_cells:
 		var cell: Vector2i = Vector2i(item)
 		if cell in core_cells or cell in spawn_cells:
-			return false
+			invalid_test_cell = true
+			continue
 		if is_in_bounds(cell):
 			astar.set_point_solid(cell, true)
+			applied_cells.append(cell)
+	if invalid_test_cell:
+		for cell in applied_cells:
+			astar.set_point_solid(cell, occupied_cells.has(cell))
+		return false
 			
 	# 2. Check each spawn cell has a path to at least one core cell
 	var all_reachable: bool = true
@@ -79,11 +88,8 @@ func check_route_to_core(test_cells: Array = []) -> bool:
 			break
 			
 	# 3. Revert temporary solid flags
-	for item in test_cells:
-		var cell: Vector2i = Vector2i(item)
-		if is_in_bounds(cell):
-			var was_solid: bool = occupied_cells.has(cell)
-			astar.set_point_solid(cell, was_solid)
+	for cell in applied_cells:
+		astar.set_point_solid(cell, occupied_cells.has(cell))
 			
 	return all_reachable
 

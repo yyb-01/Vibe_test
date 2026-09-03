@@ -13,6 +13,7 @@ signal died(source: Variant)
 
 var current_health: float = 100.0
 var is_dead: bool = false
+var invulnerable: bool = false
 var _invulnerability_timer: float = 0.0
 
 func _ready() -> void:
@@ -24,6 +25,8 @@ func _process(delta: float) -> void:
 
 func apply_damage(amount: float, source: Variant = null) -> bool:
 	if is_dead or amount <= 0.0:
+		return false
+	if invulnerable:
 		return false
 	if _invulnerability_timer > 0.0:
 		return false
@@ -65,6 +68,10 @@ func heal(amount: float) -> float:
 
 func reset() -> void:
 	is_dead = false
+	invulnerable = false
 	current_health = max_health
 	_invulnerability_timer = 0.0
 	health_changed.emit(current_health, max_health)
+
+func set_invulnerable(value: bool) -> void:
+	invulnerable = value

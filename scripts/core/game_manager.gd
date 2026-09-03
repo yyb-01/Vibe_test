@@ -36,8 +36,18 @@ var day_stats: Dictionary = {
 	"items_harvested": {}
 }
 
+const STARTING_STORAGE: Dictionary = {
+	&"wood": 40,
+	&"scrap_metal": 24,
+	&"electronics": 10,
+	&"ammo": 60
+}
+
 func _ready() -> void:
 	state_machine.state_changed.connect(_on_state_changed)
+	if SaveManager != null and not SaveManager.has_save_file() and InventoryManager.storage.is_empty():
+		InventoryManager.storage = STARTING_STORAGE.duplicate()
+		EventBus.inventory_changed.emit(&"storage")
 	create_day_start_snapshot()
 
 func _on_state_changed(prev: int, curr: int) -> void:
@@ -54,6 +64,8 @@ func request_expedition(map_id: StringName) -> bool:
 
 
 func complete_expedition(success: bool) -> void:
+	if current_state != GameStateMachine.State.EXPEDITION:
+		return
 	if success:
 		# Track items harvested
 		for slot in InventoryManager.expedition_bag.slots:
@@ -89,6 +101,8 @@ func start_night() -> bool:
 	return state_machine.transition_to(GameStateMachine.State.NIGHT_DEFENSE)
 
 func complete_night(survived: bool) -> void:
+	if current_state != GameStateMachine.State.NIGHT_DEFENSE:
+		return
 	if survived:
 		day_result = {
 			"day": day,
@@ -233,6 +247,8 @@ func restore_structures_data(structures_data: Array) -> void:
 			
 	for item in structures_data:
 		var data_id = item.get("id", item.get("data_id", ""))
+		if StringName(data_id) == &"base_core":
+			continue
 		var coords = item.get("cell", item.get("anchor_cell", [0, 0]))
 		var anchor = Vector2i(coords[0], coords[1])
 		var rot = int(item.get("rot", item.get("rotation_quarters", 0)))
@@ -319,4 +335,3 @@ func load_saved_game() -> bool:
 		day_start_snapshot = save_dict["day_start_snapshot"].duplicate(true)
 		
 	return true
-

@@ -30,8 +30,8 @@ func _process(delta: float) -> void:
 	if extraction_done or not player_inside:
 		return
 		
-	# Check if player is holding interaction key (interact action, E or Space/Accept)
-	var holding: bool = Input.is_action_pressed("interact") or Input.is_key_pressed(KEY_E) or Input.is_action_pressed("ui_accept")
+	# Space belongs to the dash action; extraction deliberately remains hold-E.
+	var holding: bool = Input.is_action_pressed("interact") or Input.is_key_pressed(KEY_E)
 	if holding:
 		if not is_extracting:
 			is_extracting = true
@@ -93,4 +93,3 @@ func _update_ui_state() -> void:
 		else:
 			floating_label.text = "[ EXTRACTION POINT ]\nHold [E] to Return to Base"
 			floating_label.modulate = Color(0.2, 1.0, 0.5)
-

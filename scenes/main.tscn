@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_main_script"]
 [ext_resource type="PackedScene" path="res://scenes/base/isometric_tile_layers.tscn" id="2_world"]
@@ -11,6 +11,14 @@
 [ext_resource type="PackedScene" path="res://scenes/summary/day_summary.tscn" id="9_day_summary"]
 [ext_resource type="PackedScene" path="res://entities/structures/structure_base.tscn" id="10_core"]
 [ext_resource type="PackedScene" path="res://ui/hud/expedition_hud.tscn" id="11_exp_hud"]
+[ext_resource type="Script" path="res://scripts/systems/camera_trauma.gd" id="12_camera"]
+[ext_resource type="Script" path="res://scripts/systems/vfx_pool.gd" id="13_vfx"]
+[ext_resource type="Script" path="res://scripts/systems/projectile_pool.gd" id="14_projectile_pool"]
+[ext_resource type="Resource" path="res://data/structures/base_core.tres" id="15_core_data"]
+
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_main"]
+vertices = PackedVector2Array(-1000, -650, 1000, -650, 1000, 650, -1000, 650)
+polygons = [PackedInt32Array(0, 1, 2, 3)]
 
 
 [node name="Main" type="Node2D"]
@@ -22,15 +30,30 @@ color = Color(1, 1, 1, 1)
 
 [node name="IsometricWorld" parent="." instance=ExtResource("2_world")]
 
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="IsometricWorld"]
+navigation_polygon = SubResource("NavigationPolygon_main")
+
 [node name="Player" parent="IsometricWorld/Actors" index="0" instance=ExtResource("3_player")]
 position = Vector2(0, 0)
 
 [node name="Camera2D" type="Camera2D" parent="IsometricWorld/Actors/Player"]
 zoom = Vector2(1.2, 1.2)
 position_smoothing_enabled = true
+script = ExtResource("12_camera")
 
 [node name="BaseCore" parent="IsometricWorld/Actors" instance=ExtResource("10_core")]
 position = Vector2(0, 0)
+structure_data = ExtResource("15_core_data")
+
+[node name="EffectsFront" type="Node2D" parent="IsometricWorld"]
+z_index = 20
+
+[node name="VFXPool" type="Node2D" parent="IsometricWorld/EffectsFront"]
+script = ExtResource("13_vfx")
+
+[node name="ProjectilePool" type="Node2D" parent="IsometricWorld"]
+z_index = 5
+script = ExtResource("14_projectile_pool")
 
 [node name="BuildingManager" parent="." instance=ExtResource("4_building")]
 
@@ -53,6 +76,26 @@ offset_bottom = 46.0
 theme_override_font_sizes/font_size = 18
 text = "DAY 1 | HUB"
 
+[node name="StorageLabel" type="Label" parent="UILayer/HUD"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 48.0
+offset_right = 520.0
+offset_bottom = 72.0
+theme_override_colors/font_color = Color(0.8, 0.95, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "WOOD 0   SCRAP 0   ELEC 0   AMMO 0"
+
+[node name="StatusLabel" type="Label" parent="UILayer/HUD"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 680.0
+offset_right = 900.0
+offset_bottom = 710.0
+theme_override_colors/font_color = Color(0.78, 0.82, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "WASD MOVE   LMB FIRE   SPACE DASH   E INTERACT"
+
 [node name="MapSelect" parent="UILayer" instance=ExtResource("6_map_select")]
 visible = false
 
@@ -71,4 +114,3 @@ visible = false
 [editable path="IsometricWorld"]
 
 [editable path="IsometricWorld/Actors/Player"]
-

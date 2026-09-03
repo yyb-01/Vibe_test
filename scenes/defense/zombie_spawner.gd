@@ -36,7 +36,8 @@ func get_spawn_position(direction_enum: int) -> Vector2:
 		var idx = randi() % target_group.get_child_count()
 		var marker = target_group.get_child(idx) as Marker2D
 		if marker != null:
-			return marker.global_position
+			var tangent := Vector2.RIGHT if dir == 0 or dir == 2 else Vector2.DOWN
+			return marker.global_position + tangent * randf_range(-110.0, 110.0) + Vector2(0.0, randf_range(-18.0, 18.0))
 			
 	return global_position + Vector2(randf_range(-300, 300), randf_range(-200, 200))
 

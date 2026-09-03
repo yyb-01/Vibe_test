@@ -63,6 +63,7 @@ func start_expedition(map_data: MapData) -> void:
 		cam.zoom = Vector2(1.5, 1.5)
 		cam.position_smoothing_enabled = true
 		player_instance.add_child(cam)
+		cam.make_current()
 		
 	_update_hud()
 

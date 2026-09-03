@@ -91,20 +91,42 @@ func _acquire_nearest_target() -> void:
 func _fire_at_target() -> void:
 	if current_target == null:
 		return
+	if not _has_line_of_sight(current_target):
+		current_target = null
+		return
 	_attack_timer = 1.0 / attacks_per_second
 	
 	var dir: Vector2 = (current_target.global_position - global_position).normalized()
 	var spawn_pos: Vector2 = global_position + Vector2(0, -48) + dir * 14.0
 	
-	var proj = ProjectileScene.instantiate()
-	proj.setup(spawn_pos, dir, attack_damage, 700.0, self)
-	get_parent().add_child(proj)
+	var proj: Projectile = null
+	var pool := get_tree().get_first_node_in_group("projectile_pool")
+	if pool != null and pool.has_method("spawn"):
+		proj = pool.spawn(spawn_pos, dir, attack_damage, 700.0, self)
+	else:
+		proj = ProjectileScene.instantiate() as Projectile
+		get_parent().add_child(proj)
+		proj.setup(spawn_pos, dir, attack_damage, 700.0, self)
+	if proj == null:
+		return
+	JuiceHelperClass.shot_feedback(self, spawn_pos, dir)
+	var gm := get_node_or_null("/root/GameManager")
+	if gm != null:
+		gm.day_stats["ammo_consumed"] = int(gm.day_stats.get("ammo_consumed", 0)) + 1
 	
 	# Small recoil wobble
 	if visual != null:
 		var tween = create_tween()
 		tween.tween_property(visual, "position", -dir * 2.0, 0.03)
 		tween.tween_property(visual, "position", Vector2.ZERO, 0.05)
+
+func _has_line_of_sight(target: Node2D) -> bool:
+	var start := global_position + Vector2(0.0, -36.0)
+	var end := target.global_position + Vector2(0.0, -24.0)
+	var query := PhysicsRayQueryParameters2D.create(start, end, 9, [get_rid(), target.get_rid()])
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 func _on_enemy_entered(body: Node2D) -> void:
 	if body not in _enemies_in_range:
