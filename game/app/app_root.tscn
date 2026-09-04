@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://game/app/app_root.gd" id="1_root"]
+[ext_resource type="Script" path="res://game/content/content_catalog.gd" id="2_catalog"]
+[ext_resource type="Resource" path="res://game/content/content_manifest.tres" id="3_manifest"]
+[ext_resource type="Script" path="res://game/campaign/campaign_controller.gd" id="4_campaign"]
+
+[node name="AppRoot" type="Node"]
+script = ExtResource("1_root")
+content_manifest = ExtResource("3_manifest")
+
+[node name="ContentCatalog" type="Node" parent="."]
+script = ExtResource("2_catalog")
+
+[node name="CampaignController" type="Node" parent="."]
+script = ExtResource("4_campaign")
+
+[node name="CurrentScreen" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

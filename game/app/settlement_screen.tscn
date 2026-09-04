@@ -1,0 +1,47 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/app/settlement_screen.gd" id="1_settlement"]
+
+[node name="SettlementScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_settlement")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 300.0
+offset_top = 150.0
+offset_right = 980.0
+offset_bottom = 570.0
+
+[node name="Layout" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "Settlement"
+horizontal_alignment = 1
+
+[node name="Result" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "정산 중"
+horizontal_alignment = 1
+
+[node name="Details" type="Label" parent="Panel/Layout"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+text = "결과를 읽는 중"
+vertical_alignment = 1
+
+[node name="Campaign" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "캠페인"
+
+[node name="Continue" type="Button" parent="Panel/Layout"]
+layout_mode = 2
+text = "Campaign으로 계속"

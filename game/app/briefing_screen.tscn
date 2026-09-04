@@ -1,0 +1,68 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/app/briefing_screen.gd" id="1_briefing"]
+
+[node name="BriefingScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_briefing")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 300.0
+offset_top = 130.0
+offset_right = 980.0
+offset_bottom = 650.0
+
+[node name="Layout" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "BRIEFING"
+horizontal_alignment = 1
+
+[node name="Operation" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "작전"
+
+[node name="Terrain" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "Terrain"
+
+[node name="TerrainSelect" type="OptionButton" parent="Panel/Layout"]
+layout_mode = 2
+tooltip_text = "작전에서 사용할 Terrain을 선택합니다."
+
+[node name="Loadout" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "Loadout"
+
+[node name="Blueprints" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "Blueprint"
+
+[node name="BlueprintSelect" type="OptionButton" parent="Panel/Layout"]
+layout_mode = 2
+tooltip_text = "작전에서 사용할 Blueprint를 선택합니다."
+
+[node name="Risk" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "위험 조건"
+
+[node name="ActionStatus" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "StartOperationAction: 대기"
+
+[node name="StartOperation" type="Button" parent="Panel/Layout"]
+layout_mode = 2
+text = "작전 시작"
+
+[node name="Back" type="Button" parent="Panel/Layout"]
+layout_mode = 2
+text = "Campaign으로 돌아가기"

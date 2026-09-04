@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="TerrainDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/content/definitions/terrain_definition.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"grass"
+display_name = "Grass"
+walkable = true
+buildable = true

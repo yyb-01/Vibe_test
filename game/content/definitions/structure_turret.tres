@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="StructureDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/content/definitions/structure_definition.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"turret"
+display_name = "Turret"
+footprint = [Vector2i(0, 0)]
+occupied_channels = [&"SOLID"]
+connection_group = &"turret"
+compatible_groups = [&"turret"]
+cost_item_id = &"scrap"
+cost_amount = 3
+max_health = 6
+blocks_player = true
+blocks_enemy = true

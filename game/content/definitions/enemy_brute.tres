@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/content/definitions/enemy_definition.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"enemy_brute"
+display_name = "Brute"
+presentation_id = &"brute"
+max_health = 8
+attack_damage = 2
+attack_cooldown_ticks = 14
+drop_item_id = &"stone"
+drop_amount = 2

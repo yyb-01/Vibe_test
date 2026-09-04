@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ContentManifest" load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://game/content/content_manifest.gd" id="1_manifest"]
+[ext_resource type="Resource" path="res://game/content/definitions/item_wood.tres" id="2_item"]
+[ext_resource type="Resource" path="res://game/content/definitions/terrain_grass.tres" id="3_terrain"]
+[ext_resource type="Resource" path="res://game/content/definitions/operation_outpost.tres" id="4_operation"]
+[ext_resource type="Resource" path="res://game/content/definitions/structure_wall.tres" id="5_wall"]
+[ext_resource type="Resource" path="res://game/content/definitions/item_scrap.tres" id="6_scrap"]
+[ext_resource type="Resource" path="res://game/content/definitions/item_stone.tres" id="7_stone"]
+[ext_resource type="Resource" path="res://game/content/definitions/item_medicine.tres" id="8_medicine"]
+[ext_resource type="Resource" path="res://game/content/definitions/terrain_dirt.tres" id="9_dirt"]
+[ext_resource type="Resource" path="res://game/content/definitions/terrain_rock.tres" id="10_rock"]
+[ext_resource type="Resource" path="res://game/content/definitions/terrain_path.tres" id="11_path"]
+[ext_resource type="Resource" path="res://game/content/definitions/structure_gate.tres" id="12_gate"]
+[ext_resource type="Resource" path="res://game/content/definitions/structure_turret.tres" id="13_turret"]
+[ext_resource type="Resource" path="res://game/content/definitions/structure_storage.tres" id="14_storage"]
+[ext_resource type="Resource" path="res://game/content/definitions/enemy_scavenger.tres" id="15_scavenger"]
+[ext_resource type="Resource" path="res://game/content/definitions/enemy_runner.tres" id="16_runner"]
+[ext_resource type="Resource" path="res://game/content/definitions/enemy_brute.tres" id="17_brute"]
+
+[resource]
+script = ExtResource("1_manifest")
+definitions = [ExtResource("2_item"), ExtResource("3_terrain"), ExtResource("4_operation"), ExtResource("5_wall"), ExtResource("6_scrap"), ExtResource("7_stone"), ExtResource("8_medicine"), ExtResource("9_dirt"), ExtResource("10_rock"), ExtResource("11_path"), ExtResource("12_gate"), ExtResource("13_turret"), ExtResource("14_storage"), ExtResource("15_scavenger"), ExtResource("16_runner"), ExtResource("17_brute")]

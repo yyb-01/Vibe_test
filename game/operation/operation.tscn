@@ -1,0 +1,204 @@
+[gd_scene load_steps=25 format=3]
+
+[ext_resource type="Script" path="res://game/operation/operation.gd" id="1_operation"]
+[ext_resource type="Script" path="res://game/operation/operation_controller.gd" id="2_controller"]
+[ext_resource type="Script" path="res://game/operation/operation_world.gd" id="3_world"]
+[ext_resource type="Script" path="res://game/operation/operation_player.gd" id="4_player"]
+[ext_resource type="Script" path="res://game/operation/operation_core.gd" id="5_core"]
+[ext_resource type="Script" path="res://game/inventory/inventory_controller.gd" id="6_inventory"]
+[ext_resource type="Script" path="res://game/inventory/pickup_view.gd" id="7_pickup"]
+[ext_resource type="Script" path="res://game/build/build_controller.gd" id="8_build"]
+[ext_resource type="Script" path="res://game/build/build_preview.gd" id="9_preview"]
+[ext_resource type="Script" path="res://game/combat/combat_controller.gd" id="10_combat"]
+[ext_resource type="Script" path="res://game/combat/enemy_agent.gd" id="11_enemy"]
+[ext_resource type="Script" path="res://game/objective/objective_controller.gd" id="12_objective"]
+[ext_resource type="Script" path="res://game/threat/threat_director.gd" id="13_threat"]
+[ext_resource type="Script" path="res://game/threat/telegraph.gd" id="14_telegraph"]
+[ext_resource type="Script" path="res://game/presentation/operation_presenter.gd" id="15_presenter"]
+[ext_resource type="Script" path="res://game/presentation/operation_hud.gd" id="16_hud"]
+[ext_resource type="Texture2D" path="res://assets/generated/player_explorer.png" id="17_player_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/enemy_scavenger.png" id="18_enemy_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/core_reactor.png" id="19_core_texture"]
+[ext_resource type="Texture2D" path="res://assets/generated/wood_salvage.png" id="20_pickup_texture"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_wood.svg" id="21_wood_icon"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_wall.svg" id="22_wall_icon"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_extract.svg" id="23_extract_icon"]
+
+[node name="Operation" type="Node2D"]
+script = ExtResource("1_operation")
+
+[node name="World" type="Node2D" parent="."]
+script = ExtResource("3_world")
+
+[node name="DynamicEntities" type="Node2D" parent="World"]
+
+[node name="Pickups" type="Node2D" parent="World"]
+
+[node name="Structures" type="Node2D" parent="World"]
+
+[node name="BuildPreview" type="Node2D" parent="World"]
+z_index = 2
+script = ExtResource("9_preview")
+
+[node name="Telegraph" type="Node2D" parent="World"]
+z_index = 3
+script = ExtResource("14_telegraph")
+
+[node name="WoodPickup" type="Node2D" parent="World/Pickups"]
+script = ExtResource("7_pickup")
+
+[node name="Sprite" type="Sprite2D" parent="World/Pickups/WoodPickup"]
+position = Vector2(0, -5)
+scale = Vector2(0.04, 0.04)
+texture = ExtResource("20_pickup_texture")
+
+[node name="EnemyAgent" type="Node2D" parent="World/DynamicEntities"]
+script = ExtResource("11_enemy")
+
+[node name="Sprite" type="Sprite2D" parent="World/DynamicEntities/EnemyAgent"]
+position = Vector2(0, -5)
+scale = Vector2(0.045, 0.045)
+texture = ExtResource("18_enemy_texture")
+
+[node name="Player" type="CharacterBody2D" parent="World/DynamicEntities"]
+script = ExtResource("4_player")
+
+[node name="Sprite" type="Sprite2D" parent="World/DynamicEntities/Player"]
+position = Vector2(0, -8)
+scale = Vector2(0.05, 0.05)
+texture = ExtResource("17_player_texture")
+
+[node name="Core" type="Node2D" parent="World"]
+z_index = 1
+script = ExtResource("5_core")
+
+[node name="Sprite" type="Sprite2D" parent="World/Core"]
+position = Vector2(0, -10)
+scale = Vector2(0.055, 0.055)
+texture = ExtResource("19_core_texture")
+
+[node name="OperationController" type="Node" parent="."]
+script = ExtResource("2_controller")
+
+[node name="InventoryController" type="Node" parent="."]
+script = ExtResource("6_inventory")
+
+[node name="BuildController" type="Node" parent="."]
+script = ExtResource("8_build")
+
+[node name="CombatController" type="Node" parent="."]
+script = ExtResource("10_combat")
+
+[node name="ObjectiveController" type="Node" parent="."]
+script = ExtResource("12_objective")
+
+[node name="ThreatDirector" type="Node" parent="."]
+script = ExtResource("13_threat")
+
+[node name="Presentation" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="OperationPresenter" type="Node" parent="Presentation"]
+script = ExtResource("15_presenter")
+
+[node name="HUD" type="Control" parent="Presentation"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("16_hud")
+
+[node name="StatusPanel" type="PanelContainer" parent="Presentation/HUD"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 450.0
+offset_bottom = 520.0
+
+[node name="Layout" type="VBoxContainer" parent="Presentation/HUD/StatusPanel"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "OPERATION HUD"
+
+[node name="TerrainStatus" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "지형: 준비 중"
+
+[node name="ObjectiveStatus" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "목표: 준비 중"
+autowrap_mode = 2
+
+[node name="ThreatStatus" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "위협: 준비 중"
+autowrap_mode = 2
+
+[node name="InventoryStatus" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "물자: 준비 중"
+autowrap_mode = 2
+
+[node name="InventoryIcon" type="TextureRect" parent="Presentation/HUD/StatusPanel/Layout"]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("21_wood_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BuildStatus" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "건축: 준비 중"
+autowrap_mode = 2
+
+[node name="BlueprintSelect" type="OptionButton" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+tooltip_text = "작전에서 사용할 Blueprint를 선택합니다."
+
+[node name="BuildWall" type="Button" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+icon = ExtResource("22_wall_icon")
+text = "Wall Preview"
+tooltip_text = "현재 플레이어 옆 Cell에 Wall 설치 Preview를 표시합니다."
+
+[node name="ConfirmBuild" type="Button" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "Confirm Wall"
+disabled = true
+
+[node name="CancelBuild" type="Button" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "Cancel Preview"
+disabled = true
+
+[node name="ExtractionStatus" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "탈출: 잠김"
+autowrap_mode = 2
+
+[node name="Extract" type="Button" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+icon = ExtResource("23_extract_icon")
+text = "Request Extraction"
+tooltip_text = "목표를 완료한 뒤 작전을 정산합니다."
+
+[node name="Prompt" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "안내: 준비 중"
+autowrap_mode = 2
+
+[node name="ActionStatus" type="Label" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "ActionResult: 대기"
+autowrap_mode = 2
+
+[node name="HighContrast" type="CheckButton" parent="Presentation/HUD/StatusPanel/Layout"]
+layout_mode = 2
+text = "고대비: 꺼짐"

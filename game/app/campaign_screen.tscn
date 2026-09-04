@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/app/campaign_screen.gd" id="1_campaign"]
+
+[node name="CampaignScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_campaign")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 360.0
+offset_top = 170.0
+offset_right = 920.0
+offset_bottom = 550.0
+
+[node name="Layout" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "CAMPAIGN"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "Campaign 상태"
+autowrap_mode = 2
+
+[node name="Operation" type="Label" parent="Panel/Layout"]
+layout_mode = 2
+text = "작전"
+
+[node name="SelectOperation" type="Button" parent="Panel/Layout"]
+layout_mode = 2
+text = "작전 계획 열기"
+
+[node name="Back" type="Button" parent="Panel/Layout"]
+layout_mode = 2
+text = "Main Menu"
