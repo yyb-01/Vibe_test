@@ -1,0 +1,27 @@
+# 구현 현황
+
+기준: `SURVIVAL_TECHNICAL_SPECIFICATION.md` v1.0. UE5 미설치 환경에서 독립 C++ 코어를 먼저 작성한다.
+
+| 단계 | 상태 | 근거 / 다음 완료 조건 |
+|---|---|---|
+| C++20 독립 빌드 | 완료 | Zig 로컬 빌드, CMake 구성 제공 |
+| A 아이템/컨테이너 POD | 완료 | 실제 컴파일 static_assert |
+| A 그리드/슬롯/중첩/질량/부피 | 완료 | `core/validate.cpp`, `grid.hpp`, `ancestry.cpp` |
+| A 메모리 원자적 거래 | 완료 | 이동·교환·분할·병합·드롭·줍기, 실패 시 무변경 |
+| A 중복/권한/순서/버전 검사 | 완료, 프로세스 범위 | `core/inventory.cpp`, `check_request.cpp` |
+| A 거래 payload codec | 완료 | 44+88N byte, 길이/예약 비트/개수 검사 |
+| 직접 조작 콘솔 | 완료 | `scripts/play.ps1`, 데모는 메모리 상태만 사용 |
+| A PostgreSQL 영속 커밋/복구 | 미구현 | 다음 구현: 변경 집합·durable 요청 결과·crash 복구 |
+| A 분산 2PC | 미구현 | 별도 영속 RM 경계가 생길 때 명세 A.7 적용 |
+| A 네트워크/UI | 미구현 | 실제 인증·거리/LOS·복제·낙관 UI |
+| B 총기/탄도 | 미구현 | 조립, fixed-point solver, 충돌/rewind |
+| C 방어구/생체 | 미구현 | 보호 zone, wound, 대사·환경 |
+| D 차량 | 미구현 | 질량/관성, 구동계, Chaos 및 예측 연결 |
+| E 제작/전력/하우징 | 미구현 | escrow, stage 저장, 구조/환경 사건 |
+| F AI 에셋 파이프라인 | 명세만 존재 | 실제 asset validator/cook/조립 검사 |
+
+검증: 9개 C++ 테스트 그룹. 실제 스레드 20개 동시 루팅, 무작위 거래 1,000회 수량·질량 보존, snapshot 불변성, 중복 요청/변조, 원자적 swap/실패 rollback, 중첩 권한/cycle/depth, 조건 불일치 merge, 32bit 전체 폭 grid, slot 중복, 수량·질량 overflow, 패킷 절단/오염.
+
+20개의 실제 네트워크 클라이언트, 서버 60Hz 예산, 20만 아이템 부하, Windows 외 플랫폼, PostgreSQL/Redis 장애 주입, UE/콘솔 빌드는 아직 시험하지 않았다. 첫 기반 단계의 메모리 코어가 완료된 상태이며 상용 멀티플레이어 게임 전체가 완성된 상태는 아니다.
+
+게임 코어에는 외부 라이브러리를 추가하지 않았다. 개발 도구는 [Zig 공식 배포](https://ziglang.org/download/index.json)의 고정 버전/해시를 사용한다. 도구 모음과 빌드 결과는 `.gitignore`에서 제외한다.
