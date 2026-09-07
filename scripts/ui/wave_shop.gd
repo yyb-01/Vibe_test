@@ -93,28 +93,28 @@ const CONTRACT_OFFERS := [
 		"id": "volatile_ammo",
 		"name": "불안정 탄약 계약",
 		"description": "【이점】 모든 공격 피해량 +25% 대폭 증가\n【위험】 적에게 받는 피해량 +15% 증가",
-		"cost": 15
+		"cost": 24
 	},
 	{
 		"kind": "contract",
 		"id": "scavenger_route",
 		"name": "위험 회수로 계약",
-		"description": "【이점】 스크랩 획득량 +40% 대폭 증가\n【위험】 최대 체력 -15 감소",
-		"cost": 15
+		"description": "【이점】 스크랩 획득량 +8% 소폭 증가\n【위험】 최대 체력 -15 감소",
+		"cost": 25
 	},
 	{
 		"kind": "contract",
 		"id": "last_stand",
 		"name": "배수의 진 계약",
 		"description": "【이점】 공격 피해 +35%, 이동 속도 +12%\n【위험】 최대 체력 -25 감소",
-		"cost": 20
+		"cost": 30
 	},
 	{
 		"kind": "contract",
 		"id": "bounty_hunt",
 		"name": "현상금 추적 계약",
-		"description": "【이점】 스크랩 획득량 +15% 증가, 영구 골드 +20 획득\n【위험】 고위험 현상 수배 작전 수행",
-		"cost": 18
+		"description": "【이점】 스크랩 획득량 +4% 소폭 증가, 영구 골드 +20 획득\n【위험】 고위험 현상 수배 작전 수행",
+		"cost": 25
 	}
 ]
 
@@ -415,7 +415,11 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	content.add_child(tools)
 
 	var kind_label := Label.new()
-	kind_label.text = _offer_kind_label(kind)
+	var stack_count := int(offer.get("stack_count", 0))
+	var kind_text := _offer_kind_label(kind)
+	if stack_count > 0:
+		kind_text += " · %d회 중첩" % stack_count
+	kind_label.text = kind_text
 	kind_label.add_theme_font_size_override("font_size", 13)
 	kind_label.add_theme_color_override("font_color", accent if can_afford and not is_purchased else Color(0.55, 0.6, 0.62, 0.8))
 	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -529,11 +533,18 @@ func _offer_name(offer: Dictionary) -> String:
 
 func _offer_description(offer: Dictionary) -> String:
 	var kind := String(offer.get("kind", ""))
+	var desc := ""
 	if kind == "evolution":
 		var w = offer.get("item")
 		var evo_desc: String = w.get_evolution_description() if is_instance_valid(w) and w.has_method("get_evolution_description") else ""
-		return "%s\n(진화 코어 보유 시 무료로 즉시 승급)" % evo_desc
-	return String(offer.get("description", ""))
+		desc = "%s\n(진화 코어 보유 시 무료로 즉시 승급)" % evo_desc
+	else:
+		desc = String(offer.get("description", ""))
+	var stack_count := int(offer.get("stack_count", 0))
+	if stack_count > 0:
+		var surge_pct := int(round((pow(1.8, float(stack_count)) - 1.0) * 100.0))
+		desc += "\n※ 중첩 구매 인상: 가격 +%d%% 적용됨" % surge_pct
+	return desc
 
 func _offer_color(kind: String) -> Color:
 	match kind:
@@ -600,8 +611,14 @@ func _banish_offer(index: int) -> void:
 func _apply_discount(offer: Dictionary) -> Dictionary:
 	if offer.is_empty():
 		return offer
+	var base_cost := int(offer.get("cost", 0))
+	var offer_id := String(offer.get("id", ""))
+	var stack_count := RunStats.get_shop_purchase_count(offer_id)
+	var stack_multiplier := pow(1.8, float(stack_count))
+	var scaled_cost := int(round(float(base_cost) * stack_multiplier))
 	var discount := SaveManager.get_upgrade_level("shop_discount") * 0.06
-	offer["cost"] = maxi(1, ceili(int(offer.get("cost", 0)) * (1.0 - discount)))
+	offer["cost"] = maxi(1, ceili(float(scaled_cost) * (1.0 - discount)))
+	offer["stack_count"] = stack_count
 	return offer
 
 func _buy_offer(index: int) -> void:
@@ -623,6 +640,7 @@ func _buy_offer(index: int) -> void:
 		if not free_evolution:
 			RunStats.add_scrap(cost)
 		return
+	RunStats.record_shop_purchase(String(offer.get("id", "")))
 	offer["purchased"] = true
 	offers[index] = offer
 	AudioManager.play_named("pickup", -2.0, 1.2)
@@ -695,7 +713,7 @@ func _apply_contract(player: Player, contract_id: String) -> bool:
 			player.incoming_damage_mult *= 1.15
 			return true
 		"scavenger_route":
-			RunStats.scrap_multiplier *= 1.40
+			RunStats.scrap_multiplier += 0.08
 			player.max_health = maxi(25, player.max_health - 15)
 			player.health = clampi(player.health, 1, player.max_health)
 			EventBus.player_health_changed.emit(player.health, player.max_health)
@@ -708,7 +726,7 @@ func _apply_contract(player: Player, contract_id: String) -> bool:
 			EventBus.player_health_changed.emit(player.health, player.max_health)
 			return true
 		"bounty_hunt":
-			RunStats.scrap_multiplier *= 1.15
+			RunStats.scrap_multiplier += 0.04
 			SaveManager.add_gold(20)
 			return true
 	return false

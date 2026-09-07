@@ -28,7 +28,7 @@ corner_radius_bottom_left = 6
 
 [node name="GameOverUI" type="CanvasLayer"]
 process_mode = 3
-layer = 10
+layer = 200
 script = ExtResource("1_a2b3c")
 
 [node name="ColorRect" type="ColorRect" parent="."]
@@ -37,7 +37,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.8)
+color = Color(0, 0, 0, 0.85)
 mouse_filter = 0
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
@@ -46,47 +46,51 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
-theme_override_constants/separation = 40
+theme_override_constants/separation = 18
 
 [node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 64
+theme_override_font_sizes/font_size = 54
 text = "GAME OVER"
 horizontal_alignment = 1
 
 [node name="GoldLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 26
 text = "Total Gold: 0"
 horizontal_alignment = 1
 
 [node name="SummaryLabel" type="Label" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 150)
+custom_minimum_size = Vector2(680, 110)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.8, 0.8, 1)
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 text = "생존 00:00 · 처치 0 · 웨이브 01 · 구조 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="ReturnButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 60)
+[node name="ButtonRow" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 24
-theme_override_styles/normal = SubResource("StyleBoxFlat_return")
-theme_override_styles/hover = SubResource("StyleBoxFlat_retry")
-text = "메인 화면으로"
+theme_override_constants/separation = 24
+alignment = 1
 
-[node name="RetryButton" type="Button" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(300, 60)
+[node name="RetryButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonRow"]
+custom_minimum_size = Vector2(250, 54)
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_retry")
 theme_override_styles/hover = SubResource("StyleBoxFlat_retry")
-text = "다시 도전하기"
+text = "다시 도전하기 [Space]"
+
+[node name="ReturnButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonRow"]
+custom_minimum_size = Vector2(250, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_return")
+theme_override_styles/hover = SubResource("StyleBoxFlat_retry")
+text = "메인 화면으로 [Esc]"

@@ -33,6 +33,7 @@ var evolved_weapons: Array[String] = []
 var last_damage_source: String = "알 수 없는 위협"
 var last_damage_attack: String = "피해"
 var death_cause: String = ""
+var shop_purchases: Dictionary = {}
 const KILL_QUEST_TARGET: int = 25
 const KILL_QUEST_REWARD: int = 100
 
@@ -48,8 +49,9 @@ func start_run(new_map_id: String) -> void:
 	survivors_rescued = 0
 	supply_caches_opened = 0
 	elite_kills = 0
-	scrap = SaveManager.get_upgrade_level("start_gold") * 40
+	scrap = SaveManager.get_upgrade_level("start_gold") * 25
 	scrap_multiplier = 1.0
+	shop_purchases.clear()
 	companion_role = ""
 	missions_completed = 0
 	evolution_cores = 0
@@ -159,6 +161,13 @@ func add_pet_blueprint(blueprint_id: String) -> bool:
 		SaveManager.unlock_pet_blueprint(blueprint_id)
 		return true
 	return false
+
+func get_shop_purchase_count(item_id: String) -> int:
+	return int(shop_purchases.get(item_id, 0))
+
+func record_shop_purchase(item_id: String) -> void:
+	if not item_id.is_empty():
+		shop_purchases[item_id] = get_shop_purchase_count(item_id) + 1
 
 func register_supply_cache() -> void:
 	if not run_active:
