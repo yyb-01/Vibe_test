@@ -8,29 +8,29 @@ const MEDICAL_OFFERS := [
 	{
 		"kind": "medical",
 		"id": "field_repair",
-		"name": "야전 응급 수리",
-		"description": "체력을 40 회복합니다.\n위급 상황에서 생존을 보장합니다.",
+		"name": "야전 응급 치료",
+		"description": "체력을 40 즉시 회복합니다.\n전투 중 위급 상황에서 생존력을 확보합니다.",
 		"cost": 14
 	},
 	{
 		"kind": "medical",
 		"id": "ceramic_plating",
-		"name": "세라믹 복합 플레이트",
-		"description": "최대 체력 +25 영구 증가 및\n즉시 체력 25를 회복합니다.",
+		"name": "세라믹 방탄판",
+		"description": "최대 체력이 25 영구 증가하며,\n동시에 체력 25를 즉시 회복합니다.",
 		"cost": 24
 	},
 	{
 		"kind": "medical",
 		"id": "trauma_patch",
-		"name": "외상 봉합 패치",
-		"description": "체력을 65 대폭 회복합니다.\n치명상을 입었을 때 유용합니다.",
+		"name": "외상 지혈 패치",
+		"description": "체력을 65 대폭 회복합니다.\n치명적인 상처를 빠르게 치료합니다.",
 		"cost": 22
 	},
 	{
 		"kind": "medical",
 		"id": "adrenaline_shot",
-		"name": "전술 아드레날린 주사",
-		"description": "이동 속도 +10% 영구 강화,\n긴급 회피(대시) 쿨타임 -0.2초 단축.",
+		"name": "전술 아드레날린",
+		"description": "이동 속도가 10% 영구 증가하며,\n긴급 회피(대시) 쿨타임이 0.2초 단축됩니다.",
 		"cost": 24
 	}
 ]
@@ -40,49 +40,49 @@ const TACTICAL_OFFERS := [
 		"kind": "tactical",
 		"id": "evolution_core",
 		"name": "진화 코어 조달",
-		"description": "진화 코어 1개를 획득합니다.\n레벨업이나 상점에서 무료 승급 가능.",
+		"description": "진화 코어 1개를 확보합니다.\n무기 진화 시 스크랩 대신 소모할 수 있습니다.",
 		"cost": 45
 	},
 	{
 		"kind": "tactical",
 		"id": "reroll_pack",
 		"name": "작전 재검토서",
-		"description": "무료 리롤 +2회를 즉시 충전합니다.\n(레벨업 및 상점 공용)",
+		"description": "무료 리롤 기회를 2회 즉시 충전합니다.\n(레벨업 및 보급소 공용)",
 		"cost": 16
 	},
 	{
 		"kind": "tactical",
 		"id": "banish_protocol",
 		"name": "불량품 폐기 인가서",
-		"description": "카드 영구 제외(Banish) +1회를\n즉시 충전합니다.",
+		"description": "불필요한 카드를 게임에서 제외하는\n폐기(Banish) 기회를 1회 충전합니다.",
 		"cost": 20
 	},
 	{
 		"kind": "tactical",
 		"id": "magnet_drone",
 		"name": "자력 견인 모듈",
-		"description": "경험치 젬 및 보급품 흡수 반경이\n+60px 대폭 증가합니다.",
+		"description": "경험치 젬 및 전리품 자석 흡수 반경이\n60px 넓어집니다.",
 		"cost": 18
 	},
 	{
 		"kind": "tactical",
 		"id": "tungsten_core",
 		"name": "텅스텐 철갑 탄심",
-		"description": "모든 탄환/발사체의 관통력이\n+1 영구 증가합니다.",
+		"description": "모든 탄환 및 발사체의 관통력이\n1 영구 증가합니다.",
 		"cost": 32
 	},
 	{
 		"kind": "tactical",
 		"id": "overclock_loader",
-		"name": "오버클럭 급탄 모듈",
-		"description": "모든 무기의 재장전 및 연사 속도가\n+18% 빨라집니다.",
+		"name": "과부하 급탄 장치",
+		"description": "모든 무기의 연사 속도 및 재장전 속도가\n18% 빨라집니다.",
 		"cost": 28
 	},
 	{
 		"kind": "tactical",
 		"id": "hollow_point_kit",
 		"name": "특수 작열탄 키트",
-		"description": "치명타 확률 +6% 증가,\n치명타 피해량 +25% 증폭.",
+		"description": "치명타 확률이 6% 증가하고,\n치명타 피해량이 25% 증폭됩니다.",
 		"cost": 26
 	}
 ]
@@ -92,28 +92,28 @@ const CONTRACT_OFFERS := [
 		"kind": "contract",
 		"id": "volatile_ammo",
 		"name": "불안정 탄약 계약",
-		"description": "모든 피해량 +25% 대폭 증가\n대신 받는 피해량 +15% 증가",
+		"description": "【이점】 모든 공격 피해량 +25% 대폭 증가\n【위험】 적에게 받는 피해량 +15% 증가",
 		"cost": 15
 	},
 	{
 		"kind": "contract",
 		"id": "scavenger_route",
-		"name": "회수꾼 위험 경로",
-		"description": "스크랩 획득량 +40% 증가\n대신 최대 체력 -15 감소",
+		"name": "위험 회수로 계약",
+		"description": "【이점】 스크랩 획득량 +40% 대폭 증가\n【위험】 최대 체력 -15 감소",
 		"cost": 15
 	},
 	{
 		"kind": "contract",
 		"id": "last_stand",
 		"name": "배수의 진 계약",
-		"description": "모든 피해 +35%, 이동 속도 +12%\n대신 최대 체력 -25 감소",
+		"description": "【이점】 공격 피해 +35%, 이동 속도 +12%\n【위험】 최대 체력 -25 감소",
 		"cost": 20
 	},
 	{
 		"kind": "contract",
 		"id": "bounty_hunt",
 		"name": "현상금 추적 계약",
-		"description": "스크랩 획득 배율 +15% 증가\n즉시 영구 골드 +20 획득",
+		"description": "【이점】 스크랩 배율 +15% 증가, 영구 골드 +20 획득\n【위험】 정예 좀비 처치 필요",
 		"cost": 18
 	}
 ]
@@ -267,7 +267,7 @@ func _make_unique_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
 	var evolution_candidates: Array[Weapon] = []
 	for weapon in player.weapons:
-		if is_instance_valid(weapon) and weapon.can_evolve(player):
+		if is_instance_valid(weapon) and weapon.has_method("can_evolve") and weapon.can_evolve(player):
 			evolution_candidates.append(weapon)
 	if current_wave >= 3 and not evolution_candidates.is_empty() and randf() < 0.22:
 		var evolution_weapon: Weapon = evolution_candidates.pick_random()
@@ -325,10 +325,16 @@ func _make_tactical_offer(used_ids: Array[String]) -> Dictionary:
 	return candidates.pick_random()
 
 func _render() -> void:
-	title_label.text = "파동 %02d 방어 완료  ·  야전 전술 보급소 (Tactical Depot)" % current_wave
-	scrap_label.text = "보유 스크랩  %d   ·   응급 의료, 전술 조달 및 작전 계약을 선택하세요" % RunStats.scrap
-	reroll_button.text = "무료 작전 재검토  ·  %d회" % RunStats.rerolls_remaining if RunStats.rerolls_remaining > 0 else "진열 새로고침  ·  %d 스크랩" % reroll_cost
-	reroll_button.disabled = RunStats.rerolls_remaining <= 0 and RunStats.scrap < reroll_cost
+	title_label.text = "제 %02d 웨이브 방어 성공  ·  야전 전술 보급소" % current_wave
+	scrap_label.text = "보유 스크랩: %d 개   |   생존 보급품, 전술 장비 및 작전 계약을 조달하세요" % RunStats.scrap
+	
+	if RunStats.rerolls_remaining > 0:
+		reroll_button.text = "무료 작전 재검토 (%d회 남음)" % RunStats.rerolls_remaining
+		reroll_button.disabled = false
+	else:
+		reroll_button.text = "진열 새로고침 (%d 스크랩)" % reroll_cost
+		reroll_button.disabled = (RunStats.scrap < reroll_cost)
+
 	for child in offer_row.get_children():
 		child.free()
 	for index in offers.size():
@@ -343,6 +349,10 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var kind := String(offer.get("kind", ""))
 	var is_evolution := (kind == "evolution")
 	var is_contract := (kind == "contract")
+	var is_purchased := bool(offer.get("purchased", false))
+	var free_evolution := is_evolution and RunStats.evolution_cores > 0
+	var cost := int(offer.get("cost", 0))
+	var can_afford := free_evolution or (cost > 0 and RunStats.scrap >= cost)
 
 	var accent := _offer_color(kind)
 	var bg_color := Color(0.02, 0.058, 0.07, 0.98)
@@ -356,7 +366,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = bg_color
-	normal.border_color = Color(accent, 0.85)
+	normal.border_color = Color(accent, 0.85 if can_afford and not is_purchased else 0.35)
 	normal.set_border_width_all(border_width)
 	normal.set_corner_radius_all(10)
 	normal.set_content_margin_all(10.0)
@@ -370,22 +380,22 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var shortcut := Label.new()
 	shortcut.text = "[%d]" % (index + 1)
 	shortcut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shortcut.add_theme_color_override("font_color", accent)
+	shortcut.add_theme_color_override("font_color", accent if can_afford and not is_purchased else Color(0.5, 0.55, 0.58, 0.8))
 	tools.add_child(shortcut)
 
 	var lock_button := Button.new()
 	lock_button.custom_minimum_size = Vector2(34, 30)
 	lock_button.text = "🔓" if bool(offer.get("locked", false)) else "🔒"
-	lock_button.tooltip_text = "잠금: 새로고침 시 이 카드를 유지합니다."
-	lock_button.disabled = bool(offer.get("purchased", false))
+	lock_button.tooltip_text = "카드 고정: 다음 새로고침 때 이 카드를 유지합니다."
+	lock_button.disabled = is_purchased
 	lock_button.pressed.connect(func() -> void: _toggle_lock(index))
 	tools.add_child(lock_button)
 
-	if RunStats.banishes_remaining > 0 and not bool(offer.get("purchased", false)):
+	if RunStats.banishes_remaining > 0 and not is_purchased:
 		var banish_button := Button.new()
 		banish_button.custom_minimum_size = Vector2(34, 30)
 		banish_button.text = "🗑"
-		banish_button.tooltip_text = "이번 런에서 폐기(제외) · %d회 남음" % RunStats.banishes_remaining
+		banish_button.tooltip_text = "불량품 폐기: 이번 런에서 완전히 제외합니다. (%d회 남음)" % RunStats.banishes_remaining
 		banish_button.pressed.connect(func() -> void: _banish_offer(index))
 		tools.add_child(banish_button)
 	content.add_child(tools)
@@ -393,7 +403,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var kind_label := Label.new()
 	kind_label.text = _offer_kind_label(kind)
 	kind_label.add_theme_font_size_override("font_size", 13)
-	kind_label.add_theme_color_override("font_color", accent)
+	kind_label.add_theme_color_override("font_color", accent if can_afford and not is_purchased else Color(0.55, 0.6, 0.62, 0.8))
 	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(kind_label)
 
@@ -403,7 +413,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	visual.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	visual.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	visual.add_theme_font_size_override("font_size", 36)
-	visual.add_theme_color_override("font_color", accent)
+	visual.add_theme_color_override("font_color", accent if can_afford and not is_purchased else Color(0.55, 0.6, 0.62, 0.8))
 	content.add_child(visual)
 
 	var name_label := Label.new()
@@ -428,36 +438,49 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 
 	var buy_button := Button.new()
 	buy_button.custom_minimum_size = Vector2(0, 42.0 if compact else 46.0)
-	var free_evolution := is_evolution and RunStats.evolution_cores > 0
-	var cost := int(offer.get("cost", 0))
-
-	if bool(offer.get("purchased", false)):
-		buy_button.text = "조달 완료"
-	elif free_evolution:
-		buy_button.text = "[%d] 코어 1개로 진화" % (index + 1)
-	else:
-		buy_button.text = "[%d] 조달 · %d 스크랩" % [index + 1, cost]
-
 	buy_button.add_theme_font_size_override("font_size", 15)
-	buy_button.add_theme_color_override("font_color", Color(0.95, 1.0, 0.98, 1.0))
 
 	var buy_normal := StyleBoxFlat.new()
 	buy_normal.bg_color = Color(accent, 0.28 if is_evolution else 0.22)
 	buy_normal.border_color = accent
 	buy_normal.set_border_width_all(2)
 	buy_normal.set_corner_radius_all(6)
+
 	var buy_hover := buy_normal.duplicate() as StyleBoxFlat
-	buy_hover.bg_color = Color(accent, 0.48)
+	buy_hover.bg_color = Color(accent, 0.5)
+
+	var buy_disabled := StyleBoxFlat.new()
+	buy_disabled.bg_color = Color(0.08, 0.1, 0.12, 0.85)
+	buy_disabled.border_color = Color(0.28, 0.32, 0.36, 0.6)
+	buy_disabled.set_border_width_all(1)
+	buy_disabled.set_corner_radius_all(6)
+
 	buy_button.add_theme_stylebox_override("normal", buy_normal)
 	buy_button.add_theme_stylebox_override("hover", buy_hover)
 	buy_button.add_theme_stylebox_override("focus", buy_hover)
+	buy_button.add_theme_stylebox_override("disabled", buy_disabled)
 
-	buy_button.disabled = bool(offer.get("purchased", false)) or (not free_evolution and RunStats.scrap < cost)
+	if is_purchased:
+		buy_button.text = "조달 완료"
+		buy_button.disabled = true
+		buy_button.add_theme_color_override("font_disabled_color", Color(0.5, 0.8, 0.6, 0.8))
+	elif not can_afford:
+		buy_button.text = "스크랩 부족 (%d/%d)" % [RunStats.scrap, cost]
+		buy_button.disabled = true
+		buy_button.add_theme_color_override("font_disabled_color", Color(0.65, 0.68, 0.72, 0.7))
+		card.modulate = Color(0.52, 0.55, 0.58, 0.68)
+	elif free_evolution:
+		buy_button.text = "[%d] 코어 1개로 진화" % (index + 1)
+		buy_button.disabled = false
+		buy_button.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8, 1.0))
+	else:
+		buy_button.text = "[%d] 조달 (%d 스크랩)" % [index + 1, cost]
+		buy_button.disabled = false
+		buy_button.add_theme_color_override("font_color", Color(0.95, 1.0, 0.98, 1.0))
+
 	buy_button.pressed.connect(func() -> void: _buy_offer(index))
 	content.add_child(buy_button)
 
-	if buy_button.disabled and not bool(offer.get("purchased", false)):
-		card.modulate = Color(0.58, 0.62, 0.64, 0.72)
 	return card
 
 func _offer_icon(kind: String) -> String:
@@ -516,7 +539,7 @@ func _reroll() -> void:
 	if RunStats.rerolls_remaining > 0:
 		RunStats.rerolls_remaining -= 1
 	else:
-		if not RunStats.spend_scrap(reroll_cost):
+		if RunStats.scrap < reroll_cost or not RunStats.spend_scrap(reroll_cost):
 			return
 		reroll_cost += 5
 	var used_ids: Array[String] = []
@@ -564,15 +587,17 @@ func _buy_offer(index: int) -> void:
 	if not visible or index < 0 or index >= offers.size():
 		return
 	var offer := offers[index]
-	var free_evolution := String(offer.get("kind", "")) == "evolution" and RunStats.evolution_cores > 0
+	var is_evolution := String(offer.get("kind", "")) == "evolution"
+	var free_evolution := is_evolution and RunStats.evolution_cores > 0
 	if bool(offer.get("purchased", false)):
 		return
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if not RunStats.run_active or not is_instance_valid(player) or player.dead or player.health <= 0:
 		return
 	var cost := int(offer.get("cost", 0))
-	if not free_evolution and not RunStats.spend_scrap(cost):
-		return
+	if not free_evolution:
+		if cost <= 0 or RunStats.scrap < cost or not RunStats.spend_scrap(cost):
+			return
 	if not _apply_offer(player, offer, free_evolution):
 		if not free_evolution:
 			RunStats.add_scrap(cost)
@@ -687,5 +712,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.keycode >= KEY_1 and event.keycode <= KEY_5:
 		var index := int(event.keycode - KEY_1)
 		if index < offers.size():
-			get_viewport().set_input_as_handled()
-			_buy_offer(index)
+			var offer := offers[index]
+			var is_evolution := String(offer.get("kind", "")) == "evolution"
+			var free_evolution := is_evolution and RunStats.evolution_cores > 0
+			var cost := int(offer.get("cost", 0))
+			var can_afford := free_evolution or (cost > 0 and RunStats.scrap >= cost)
+			if not bool(offer.get("purchased", false)) and can_afford:
+				get_viewport().set_input_as_handled()
+				_buy_offer(index)

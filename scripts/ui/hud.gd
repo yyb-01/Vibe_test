@@ -76,9 +76,9 @@ func _build_information_ui() -> void:
 	build_toggle_button = Button.new()
 	build_toggle_button.position = Vector2(14, 206)
 	build_toggle_button.size = Vector2(154, 34)
-	build_toggle_button.text = "빌드 보기  [TAB]"
+	build_toggle_button.text = "빌드 인벤토리  [TAB]"
 	build_toggle_button.add_theme_font_size_override("font_size", 13)
-	build_toggle_button.tooltip_text = "무기·패시브·진화 조합 정보를 펼치거나 접습니다."
+	build_toggle_button.tooltip_text = "현재 보유한 무기, 패시브 및 진화 조합 정보를 확인합니다."
 	build_toggle_button.pressed.connect(_toggle_build_panel)
 	add_child(build_toggle_button)
 	inventory_slots.resized.connect(_layout_build_button)
@@ -252,23 +252,23 @@ func _process(delta: float) -> void:
 	time_elapsed += delta
 	var minutes := int(time_elapsed) / 60
 	var seconds := int(time_elapsed) % 60
-	time_label.text = "Time: %02d:%02d" % [minutes, seconds]
-	wave_label.text = "WAVE %02d" % (int(time_elapsed / 30.0) + 1)
+	time_label.text = "생존 %02d:%02d" % [minutes, seconds]
+	wave_label.text = "제 %02d 웨이브" % (int(time_elapsed / 30.0) + 1)
 	threat_label.text = "위협 %03d" % _get_active_enemy_count()
 	_update_objective_panel()
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if player:
-		var fire_mode := "AUTO [F]" if player.auto_fire_enabled else "MANUAL [LMB]"
-		var run_mode := "%s%s" % [RunStats.get_difficulty_name(), "·무한" if RunStats.endless_mode else ""]
+		var fire_mode := "자동 사격 [F]" if player.auto_fire_enabled else "수동 사격 [LMB]"
+		var run_mode := "%s%s" % [RunStats.get_difficulty_name(), " · 무한" if RunStats.endless_mode else ""]
 		mode_label.text = "%s  ·  %s" % [run_mode, fire_mode]
 		_update_skill_panel(player)
 
 func _update_objective_panel() -> void:
 	var lines: Array[String] = []
-	var rescue_text := "✓ 구조" if RunStats.survivors_rescued > 0 else "구조 %d/1" % RunStats.survivors_rescued
-	var quest_text := "✓ 처치 의뢰" if RunStats.quest_completed else "처치 %d/%d" % [RunStats.kills, RunStats.KILL_QUEST_TARGET]
-	var elite_text := "✓ 정예" if RunStats.elite_kills >= 5 else "정예 %d/5" % RunStats.elite_kills
-	lines.append("목표  ·  %s  ·  %s  ·  %s" % [rescue_text, quest_text, elite_text])
+	var rescue_text := "✓ 구조" if RunStats.survivors_rescued > 0 else "생존자 구조 %d/1" % RunStats.survivors_rescued
+	var quest_text := "✓ 처치 완료" if RunStats.quest_completed else "좀비 처치 %d/%d" % [RunStats.kills, RunStats.KILL_QUEST_TARGET]
+	var elite_text := "✓ 정예 완료" if RunStats.elite_kills >= 5 else "정예 처치 %d/5" % RunStats.elite_kills
+	lines.append("작전 목표  ·  %s  ·  %s  ·  %s" % [rescue_text, quest_text, elite_text])
 	if not mission_status.is_empty():
 		lines.append("맵 사건  ·  " + mission_status)
 	if RunStats.active_challenge != "none":
@@ -287,7 +287,7 @@ func _update_skill_panel(player: Player) -> void:
 	var max_cooldown := maxf(player.get_unique_skill_max_cooldown(), 0.01)
 	skill_bar.max_value = max_cooldown
 	skill_bar.value = clampf(max_cooldown - cooldown, 0.0, max_cooldown)
-	var state := "사용 가능" if cooldown <= 0.0 else "%.1f초" % cooldown
+	var state := "준비 완료" if cooldown <= 0.0 else "%.1f초" % cooldown
 	skill_label.text = "[E]  %s  ·  %s" % [player.get_unique_skill_name(), state]
 	skill_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.72, 1.0) if cooldown <= 0.0 else Color(0.62, 0.82, 1.0, 1.0))
 	var doctrines := player.get_active_build_labels()
@@ -302,7 +302,7 @@ func _on_scrap_changed(total_scrap: int) -> void:
 func _on_wave_started(wave: int) -> void:
 	if wave_banner.visible:
 		return
-	wave_banner.text = "WAVE %02d  ·  위협 단계 상승" % wave
+	wave_banner.text = "제 %02d 웨이브 시작  ·  적 공세 강화" % wave
 	wave_banner.modulate = Color(0.65, 1.0, 0.85, 1.0)
 	wave_banner.visible = true
 	_start_banner_fade(1.35)
