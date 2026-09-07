@@ -402,21 +402,21 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	for index in 6:
 		if index < weapons.size() and is_instance_valid(weapons[index]):
 			var weapon = weapons[index]
-			var w_name: String = weapon.get_display_name() if weapon.has_method("get_display_name") else String(weapon.get("weapon_name", "무기"))
-			var w_level: int = int(weapon.get("current_level", 1))
-			var w_evolved: bool = bool(weapon.get("evolved", false))
+			var w_name: String = weapon.get_display_name() if weapon.has_method("get_display_name") else (String(weapon.weapon_name) if "weapon_name" in weapon and weapon.weapon_name != null else "무기")
+			var w_level: int = int(weapon.current_level) if "current_level" in weapon else 1
+			var w_evolved: bool = bool(weapon.evolved) if "evolved" in weapon else false
 			weapon_slots.add_child(_make_inventory_slot(w_name, w_level, w_evolved, true))
 		else: weapon_slots.add_child(_make_inventory_slot("", 0, false, true))
 		if index < passives.size() and is_instance_valid(passives[index]):
 			var passive = passives[index]
 			var p_name: String = ""
-			if passive.get("perk_name") != null:
-				p_name = String(passive.get("perk_name"))
-			elif passive.get("display_name") != null:
-				p_name = String(passive.get("display_name"))
-			elif passive.get("name") != null:
-				p_name = String(passive.get("name"))
-			var p_level: int = int(passive.get("level", 1))
+			if "perk_name" in passive and passive.perk_name != null:
+				p_name = String(passive.perk_name)
+			elif "display_name" in passive and passive.display_name != null:
+				p_name = String(passive.display_name)
+			elif "name" in passive and passive.name != null:
+				p_name = String(passive.name)
+			var p_level: int = int(passive.level) if "level" in passive else 1
 			passive_slots.add_child(_make_inventory_slot(p_name, p_level, false, false))
 		else: passive_slots.add_child(_make_inventory_slot("", 0, false, false))
 	var weapon_names: Array[String] = []
@@ -424,9 +424,9 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	for w in weapons:
 		if not is_instance_valid(w):
 			continue
-		var w_name: String = w.get_display_name() if w.has_method("get_display_name") else String(w.get("weapon_name", "무기"))
-		var w_level: int = int(w.get("current_level", 1))
-		var w_evolved: bool = bool(w.get("evolved", false))
+		var w_name: String = w.get_display_name() if w.has_method("get_display_name") else (String(w.weapon_name) if "weapon_name" in w and w.weapon_name != null else "무기")
+		var w_level: int = int(w.current_level) if "current_level" in w else 1
+		var w_evolved: bool = bool(w.evolved) if "evolved" in w else false
 		var weapon_text := "◆ %s Lv%d" % [w_name, w_level]
 		if w_evolved:
 			weapon_text = "★ %s Lv%d" % [w_name, w_level]
@@ -440,12 +440,12 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	for p in passives:
 		if is_instance_valid(p):
 			var p_name: String = ""
-			if p.get("perk_name") != null:
-				p_name = String(p.get("perk_name"))
-			elif p.get("display_name") != null:
-				p_name = String(p.get("display_name"))
-			elif p.get("name") != null:
-				p_name = String(p.get("name"))
+			if "perk_name" in p and p.perk_name != null:
+				p_name = String(p.perk_name)
+			elif "display_name" in p and p.display_name != null:
+				p_name = String(p.display_name)
+			elif "name" in p and p.name != null:
+				p_name = String(p.name)
 			if not p_name.is_empty():
 				passive_names.append(p_name)
 	var p_text := "생존 개조  ·  " + ("  |  ".join(passive_names) if not passive_names.is_empty() else "없음")
