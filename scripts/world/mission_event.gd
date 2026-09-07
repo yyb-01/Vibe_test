@@ -101,9 +101,14 @@ func _activate() -> void:
 	state = State.ACTIVE
 	progress = 0.0
 	EventBus.combat_modifier_changed.emit(mission_title, _mission_start_message(), 3.0)
-	_show_branch_choices()
+	if ModalManager.has_active_modal():
+		ModalManager.request(self, _show_branch_choices)
+	else:
+		_show_branch_choices()
 
 func _show_branch_choices() -> void:
+	if not branch_name.is_empty() or is_instance_valid(choice_layer):
+		return
 	var branches: Array[Dictionary] = [
 		{"name": "안전 우선", "description": "적의 압박이 25% 느려집니다.\n골드 80% · 무작위 보상 1회", "pressure": 1.25, "gold": 0.8, "rolls": 1, "color": Color(0.3, 0.9, 0.72, 1.0)},
 		{"name": "현장 수색", "description": "표준 난이도로 임무를 수행합니다.\n골드 100% · 무작위 보상 2회", "pressure": 1.0, "gold": 1.0, "rolls": 2, "color": Color(0.35, 0.78, 1.0, 1.0)},
@@ -113,7 +118,7 @@ func _show_branch_choices() -> void:
 	branches.shuffle()
 	choice_layer = CanvasLayer.new()
 	choice_layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	choice_layer.layer = 90
+	choice_layer.layer = 128
 	var scene_root := get_tree().current_scene
 	if not is_instance_valid(scene_root):
 		choice_layer.free()

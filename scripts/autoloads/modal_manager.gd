@@ -12,10 +12,9 @@ func has_active_modal() -> bool:
 	return is_instance_valid(_current_owner) or not _queue.is_empty()
 
 func request(owner: Node, on_granted: Callable) -> void:
-	if not is_instance_valid(owner):
+	if not is_instance_valid(owner) or owner.is_queued_for_deletion() or not owner.is_inside_tree() or not on_granted.is_valid():
 		return
 	if owner == _current_owner:
-		on_granted.call()
 		return
 	for entry in _queue:
 		if entry.get("owner") == owner:
@@ -28,7 +27,7 @@ func release(owner: Node) -> void:
 		var queued_owner = entry.get("owner")
 		return is_instance_valid(queued_owner) and queued_owner != owner
 	)
-	if owner == _current_owner or not is_instance_valid(_current_owner):
+	if owner == _current_owner or not is_instance_valid(_current_owner) or _current_owner.is_queued_for_deletion() or not _current_owner.is_inside_tree():
 		_current_owner = null
 		if _queue.is_empty():
 			_cancel_hit_stop()
@@ -49,20 +48,22 @@ func clear() -> void:
 	get_tree().paused = false
 
 func _try_grant_next() -> void:
-	if is_instance_valid(_current_owner) and _current_owner.is_inside_tree():
+	if is_instance_valid(_current_owner) and not _current_owner.is_queued_for_deletion() and _current_owner.is_inside_tree():
 		return
 	_current_owner = null
 	while not _queue.is_empty():
 		var entry: Dictionary = _queue.pop_front()
-		var owner := entry.owner as Node
-		if not is_instance_valid(owner) or not owner.is_inside_tree():
+		var owner = entry.get("owner")
+		var callback: Callable = entry.get("callback", Callable())
+		if not is_instance_valid(owner) or owner.is_queued_for_deletion() or not owner.is_inside_tree() or not callback.is_valid():
 			continue
 		_current_owner = owner
 		_connect_owner_exit(owner)
 		_cancel_hit_stop()
 		get_tree().paused = true
-		(entry.callback as Callable).call()
+		callback.call()
 		return
+	_cancel_hit_stop()
 	get_tree().paused = false
 
 func _connect_owner_exit(owner: Node) -> void:

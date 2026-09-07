@@ -43,6 +43,11 @@ func _ready() -> void:
 	set_master_volume(SaveManager.master_volume)
 
 func _exit_tree() -> void:
+	stop_all()
+	players.clear()
+	named_sfx.clear()
+
+func stop_all() -> void:
 	if is_instance_valid(bgm_player):
 		bgm_player.stop()
 		bgm_player.stream = null
@@ -50,8 +55,6 @@ func _exit_tree() -> void:
 		if is_instance_valid(player):
 			player.stop()
 			player.stream = null
-	players.clear()
-	named_sfx.clear()
 	current_bgm = ""
 
 func play_sfx(stream: AudioStream, volume_db: float = 0.0, pitch_scale: float = 1.0) -> void:

@@ -73,10 +73,13 @@ func spawn(scene: PackedScene, global_pos: Vector2, rot: float = 0.0, args: Arra
 		return null
 	var free_list: Array[Node2D] = inactive_pool[key]
 	var instance: Node2D = null
-	while not free_list.is_empty():
-		var candidate: Node2D = free_list.pop_back()
-		if is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+	for index in range(free_list.size() - 1, -1, -1):
+		var candidate: Node2D = free_list[index]
+		if not is_instance_valid(candidate) or candidate.is_queued_for_deletion():
+			free_list.remove_at(index)
+		elif not candidate.get_meta("_pool_returning", false):
 			instance = candidate
+			free_list.remove_at(index)
 			break
 	if instance == null:
 		var active_count := (active_pool[key] as Array[Node2D]).size()
@@ -90,7 +93,7 @@ func spawn(scene: PackedScene, global_pos: Vector2, rot: float = 0.0, args: Arra
 	instance.set_meta("_pool_release_pending", false)
 	instance.global_position = global_pos
 	instance.rotation = rot
-	instance.process_mode = Node.PROCESS_MODE_INHERIT
+	instance.set_deferred("process_mode", Node.PROCESS_MODE_INHERIT)
 	instance.set_process(true)
 	instance.set_physics_process(true)
 	instance.show()
@@ -112,6 +115,7 @@ func despawn(instance: Node2D) -> void:
 	if not _configs.has(key):
 		return
 	instance.set_meta("_pool_release_pending", true)
+	instance.set_meta("_pool_returning", true)
 	if instance.has_method("on_despawn"):
 		instance.call("on_despawn")
 	_remove_from_spatial_index(instance)
@@ -124,6 +128,11 @@ func despawn(instance: Node2D) -> void:
 	active_list.erase(instance)
 	var free_list: Array[Node2D] = inactive_pool[key]
 	free_list.append(instance)
+	_finish_despawn.call_deferred(instance)
+
+func _finish_despawn(instance) -> void:
+	if is_instance_valid(instance) and not instance.is_queued_for_deletion() and _instance_keys.has(instance):
+		instance.set_meta("_pool_returning", false)
 
 const DEFAULT_POOL_SCENES := {
 	"bullet": "res://scenes/weapons/bullet.tscn",
@@ -157,7 +166,7 @@ func acquire(pool_id: String, global_pos: Vector2) -> Node:
 	return spawn(_pool_ids[pool_id] as PackedScene, global_pos)
 
 func release(instance: Node) -> void:
-	if instance is Node2D:
+	if is_instance_valid(instance) and instance is Node2D:
 		despawn(instance as Node2D)
 
 func get_active_count(scene: PackedScene) -> int:
@@ -186,7 +195,13 @@ func clear() -> void:
 		for instance in nodes:
 			if is_instance_valid(instance) and not instance.is_queued_for_deletion():
 				_remove_from_spatial_index(instance)
-				instance.free()
+				instance.set_meta("_pool_release_pending", true)
+				instance.hide()
+				instance.set_process(false)
+				instance.set_physics_process(false)
+				instance.set_deferred("process_mode", Node.PROCESS_MODE_DISABLED)
+				_disable_collision(instance)
+				instance.queue_free()
 
 func _scene_key(scene: PackedScene) -> String:
 	if scene.resource_path.is_empty():
@@ -206,10 +221,10 @@ func _create_instance(scene: PackedScene, key: String, parent: Node) -> Node2D:
 	instance.hide()
 	parent.add_child(instance)
 	_instance_keys[instance] = key
+	_disable_collision(instance)
 	if instance.has_method("on_despawn"):
 		instance.call("on_despawn")
 	instance.tree_exiting.connect(_on_pooled_instance_exiting.bind(instance), CONNECT_ONE_SHOT)
-	_disable_collision(instance)
 	_remove_from_spatial_index(instance)
 	return instance
 

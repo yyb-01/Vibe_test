@@ -66,6 +66,7 @@ var incoming_damage_mult: float = 1.0
 var auto_fire_enabled: bool = true
 var character_id: String = "scavenger"
 var active_synergies: Array[String] = []
+var magnet_bonus: float = 0.0
 var walk_time: float = 0.0
 var animation_time: float = 0.0
 var gun_recoil: float = 0.0
@@ -101,6 +102,10 @@ const MOVEMENT_SAFETY_MARGIN := 16.0
 @onready var muzzle: Marker2D = $GunPivot/GunSprite/Muzzle
 
 func _ready() -> void:
+	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+	collision_mask = 2
+	platform_floor_layers = 0
+	platform_wall_layers = 0
 	invulnerability_timer = Timer.new()
 	invulnerability_timer.one_shot = true
 	invulnerability_timer.timeout.connect(_clear_invulnerability)
@@ -167,13 +172,14 @@ func _update_ui() -> void:
 	EventBus.exp_changed.emit(maxi(0, current_exp), maxi(1, required_exp), maxi(1, current_level))
 
 func _physics_process(_delta: float) -> void:
-	if get_tree().paused or input_locked:
+	if dead or get_tree().paused or input_locked:
 		return
 	dash_cooldown = maxf(0.0, dash_cooldown - _delta)
 	var was_dashing := dash_time > 0.0
 	dash_time = maxf(0.0, dash_time - _delta)
 	if was_dashing and dash_time <= 0.0:
 		velocity = Vector2.ZERO
+		dash_direction = Vector2.ZERO
 	_update_unique_skill(_delta)
 	_update_build_effects(_delta)
 	_handle_movement(_delta)
@@ -311,10 +317,18 @@ func play_weapon_feedback(weapon_name: String, target_pos: Vector2) -> void:
 	gun_kick_angle = deg_to_rad(recoil * 0.75) * (1.0 if facing == "left" else -1.0)
 	EventBus.camera_shake_requested.emit(shake)
 	var flash: Node2D
-	for pooled_flash in muzzle_flashes:
+	for index in range(muzzle_flashes.size() - 1, -1, -1):
+		var pooled_flash := muzzle_flashes[index]
+		if not is_instance_valid(pooled_flash) or pooled_flash.is_queued_for_deletion():
+			muzzle_flashes.remove_at(index)
+			continue
 		if not pooled_flash.visible:
 			flash = pooled_flash
 			break
+	if not flash and muzzle_flashes.size() >= 12:
+		# ponytail: reuse the oldest flash at 12 concurrent shots; raise if visually needed.
+		flash = muzzle_flashes.pop_front()
+		muzzle_flashes.append(flash)
 	if not flash:
 		flash = Node2D.new()
 		flash.set_script(MUZZLE_FLASH_SCRIPT)
@@ -335,6 +349,7 @@ func _handle_movement(delta: float) -> void:
 	_move_safely(max_allowed_speed, delta)
 
 func _move_safely(max_speed: float, delta: float) -> void:
+	velocity = velocity.limit_length(maxf(0.0, max_speed)) if velocity.is_finite() else Vector2.ZERO
 	var previous_position := global_position
 	move_and_slide()
 	var displacement := global_position - previous_position
@@ -355,7 +370,8 @@ func _handle_shooting() -> void:
 
 	# Iterate over all weapons and attempt to fire
 	for weapon in weapons:
-		weapon.fire(self, target_pos)
+		if is_instance_valid(weapon) and not weapon.is_queued_for_deletion():
+			weapon.fire(self, target_pos)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if dead or get_tree().paused or input_locked:
@@ -369,7 +385,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		auto_fire_enabled = not auto_fire_enabled
 	if event.is_action_pressed("reload"):
 		for weapon in weapons:
-			weapon.reload(self)
+			if is_instance_valid(weapon) and not weapon.is_queued_for_deletion():
+				weapon.reload(self)
 
 func add_weapon(weapon_script: Script, data: WeaponData) -> bool:
 	if weapons.size() >= max_weapons or weapon_script == null or data == null:
@@ -598,7 +615,7 @@ func get_unique_skill_max_cooldown() -> float:
 		_: return 15.0
 
 func use_unique_skill() -> bool:
-	if input_locked or skill_cooldown > 0.0 or health <= 0 or dash_time > 0.0:
+	if dead or get_tree().paused or input_locked or skill_cooldown > 0.0 or health <= 0 or dash_time > 0.0:
 		return false
 	_spawn_unique_skill_effect()
 	match character_id:
@@ -643,7 +660,7 @@ func set_input_locked(locked: bool) -> void:
 func _spawn_unique_skill_effect() -> void:
 	if not is_instance_valid(get_tree().current_scene):
 		return
-	if not unique_skill_effect:
+	if not is_instance_valid(unique_skill_effect) or unique_skill_effect.is_queued_for_deletion():
 		unique_skill_effect = Node2D.new()
 		unique_skill_effect.set_script(UNIQUE_SKILL_EFFECT_SCRIPT)
 		unique_skill_effect.top_level = true
@@ -653,7 +670,7 @@ func _spawn_unique_skill_effect() -> void:
 		var targets := _get_nearest_active_enemies(7)
 		for index in mini(7, targets.size()):
 			var target = targets[index]
-			if is_instance_valid(target) and (character_id != "reaper" or global_position.distance_to(target.global_position) <= 420.0):
+			if _is_active_enemy(target) and (character_id != "reaper" or global_position.distance_to(target.global_position) <= 420.0):
 				target_points.append(target.global_position)
 	unique_skill_effect.call("setup", character_id, global_position, target_points)
 
@@ -681,13 +698,13 @@ func _start_temporary_modifier(kind: String, original: float, boosted: float, du
 
 func _damage_enemies_in_radius(radius: float, base_damage: int, knockback_force: float, impact_kind: String = "normal") -> void:
 	for enemy in _get_active_enemies():
-		if not is_instance_valid(enemy):
+		if not _is_active_enemy(enemy):
 			continue
 		var distance := global_position.distance_to(enemy.global_position)
 		if distance <= radius:
 			var direction := global_position.direction_to(enemy.global_position)
 			enemy.take_damage(int(float(base_damage) * damage_mult), direction, impact_kind)
-			if not is_instance_valid(enemy):
+			if not _is_active_enemy(enemy):
 				continue
 			if enemy.has_method("apply_knockback"):
 				enemy.call("apply_knockback", direction * knockback_force)
@@ -698,13 +715,13 @@ func _damage_enemies_in_radius(radius: float, base_damage: int, knockback_force:
 
 func _attack_nearest_enemies(count: int, base_damage: int) -> void:
 	for enemy in _get_nearest_active_enemies(count):
-		if is_instance_valid(enemy) and enemy.has_method("take_damage"):
+		if _is_active_enemy(enemy):
 			enemy.take_damage(int(float(base_damage) * damage_mult), global_position.direction_to(enemy.global_position))
 
 func _execute_wounded_enemies(radius: float) -> void:
 	var executed := 0
 	for enemy in _get_active_enemies():
-		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+		if not _is_active_enemy(enemy):
 			continue
 		if global_position.distance_to(enemy.global_position) > radius:
 			continue
@@ -719,18 +736,25 @@ func _execute_wounded_enemies(radius: float) -> void:
 
 func _time_collapse(radius: float) -> void:
 	for enemy in _get_active_enemies():
+		if not _is_active_enemy(enemy):
+			continue
 		if global_position.distance_to(enemy.global_position) > radius:
 			continue
 		var speed_value = enemy.get("move_speed")
 		enemy.take_damage(int(20.0 * damage_mult), global_position.direction_to(enemy.global_position))
-		if is_instance_valid(enemy) and speed_value != null and enemy.has_method("apply_slow"):
+		if _is_active_enemy(enemy) and speed_value != null and enemy.has_method("apply_slow"):
 			enemy.call("apply_slow", 0.38, 4.0)
+
+func _is_active_enemy(enemy) -> bool:
+	if not is_instance_valid(enemy) or enemy.is_queued_for_deletion() or enemy.get_meta("_pool_release_pending", false):
+		return false
+	var enemy_health = enemy.get("health")
+	return enemy is Node2D and enemy.is_in_group("enemies") and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and enemy_health != null and int(enemy_health) > 0 and enemy.has_method("take_damage")
 
 func _get_active_enemies() -> Array[Node]:
 	var active: Array[Node] = []
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		var health = enemy.get("health") if is_instance_valid(enemy) else null
-		if is_instance_valid(enemy) and not enemy.is_queued_for_deletion() and enemy is CanvasItem and enemy.visible and enemy.process_mode != Node.PROCESS_MODE_DISABLED and health != null and int(health) > 0:
+		if _is_active_enemy(enemy):
 			active.append(enemy)
 	return active
 
@@ -756,7 +780,7 @@ func configure_projectile(projectile: Node) -> void:
 		projectile.set("execute_threshold", execute_threshold)
 
 func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critical_chance: float = 0.0, impact_kind: String = "normal", weapon_id: String = "") -> void:
-	if amount <= 0 or not is_instance_valid(target) or target.is_queued_for_deletion() or not target.has_method("take_damage"):
+	if amount <= 0 or not _is_active_enemy(target):
 		return
 	var final_damage := amount
 	var hit_kind := impact_kind
@@ -771,7 +795,7 @@ func apply_build_hit(target: Node, amount: int, direction: Vector2, base_critica
 	target.take_damage(final_damage, direction, hit_kind, weapon_id)
 
 func _start_dash() -> void:
-	if get_tree().paused or dash_cooldown > 0.0 or health <= 0:
+	if dead or input_locked or get_tree().paused or dash_cooldown > 0.0 or health <= 0:
 		return
 	var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if input_direction == Vector2.ZERO:

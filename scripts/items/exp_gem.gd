@@ -9,13 +9,16 @@ var collected: bool = false
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
-	reset()
+	if not get_meta("_pool_release_pending", false):
+		reset()
 
 func reset() -> void:
 	speed = 0.0
 	collected = false
 	target = get_tree().get_first_node_in_group("player")
-	magnet_range = 150.0 * (1.0 + SaveManager.get_upgrade_level("magnet_radius") * 0.2)
+	var bonus = target.get("magnet_bonus") if is_instance_valid(target) else null
+	var bonus_range := float(bonus) if bonus != null else 0.0
+	magnet_range = (150.0 + bonus_range) * (1.0 + SaveManager.get_upgrade_level("magnet_radius") * 0.2)
 	$Sprite2D.position.y = 0
 	set_exp_amount(10)
 
@@ -38,6 +41,8 @@ func set_exp_amount(amount: int) -> void:
 		sprite.scale = Vector2(1.0, 1.0)
 
 func _physics_process(delta: float) -> void:
+	if collected or get_meta("_pool_release_pending", false):
+		return
 	if not is_instance_valid(target) or target.is_queued_for_deletion():
 		target = get_tree().get_first_node_in_group("player")
 		return
@@ -47,6 +52,8 @@ func _physics_process(delta: float) -> void:
 		# Magnet effect accelerates smoothly as it gets closer
 		speed += 1200.0 * delta
 		global_position = global_position.move_toward(target.global_position, speed * delta)
+		if SpatialGrid.item_cells.get(self) != SpatialGrid._get_cell(global_position):
+			SpatialGrid.insert_item(self)
 
 func _on_body_entered(body: Node2D) -> void:
 	if collected or get_meta("_pool_release_pending", false) or not is_instance_valid(body) or body.is_queued_for_deletion():

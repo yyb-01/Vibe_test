@@ -13,6 +13,7 @@ func clear() -> void:
 	item_grid.clear()
 	item_cells.clear()
 	_clustering_cells.clear()
+	is_clustering = false
 
 func insert(entity: Node2D) -> void:
 	if not is_instance_valid(entity) or entity.is_queued_for_deletion():
@@ -74,9 +75,10 @@ func _get_cell(pos: Vector2) -> Vector2i:
 var item_grid: Dictionary = {}
 var item_cells: Dictionary = {}
 var _clustering_cells: Dictionary = {}
+var is_clustering := false
 
 func insert_item(item: Node2D) -> void:
-	if not is_instance_valid(item) or item.is_queued_for_deletion():
+	if not is_instance_valid(item) or item.is_queued_for_deletion() or item.get_meta("_pool_release_pending", false):
 		return
 	remove_item(item)
 	var cell := _get_cell(item.global_position)
@@ -85,7 +87,9 @@ func insert_item(item: Node2D) -> void:
 	item_grid[cell].append(item)
 	item_cells[item] = cell
 
-	_check_cluster(cell)
+	if not _clustering_cells.has(cell):
+		_clustering_cells[cell] = true
+		_check_cluster.call_deferred(cell)
 
 func remove_item(item: Node2D) -> void:
 	if not item_cells.has(item):
@@ -98,26 +102,25 @@ func remove_item(item: Node2D) -> void:
 	item_cells.erase(item)
 
 func _check_cluster(cell: Vector2i) -> void:
-	if not item_grid.has(cell) or _clustering_cells.has(cell): return
+	_clustering_cells.erase(cell)
+	if is_clustering or not item_grid.has(cell):
+		return
 	var cell_items = item_grid[cell]
 
 	var exp_gems = []
 	for item in cell_items:
-		if is_instance_valid(item) and item.has_method("get_exp_amount"):
+		if is_instance_valid(item) and not item.is_queued_for_deletion() and not item.get_meta("_pool_release_pending", false) and item.has_method("get_exp_amount"):
 			exp_gems.append(item)
 
 	if exp_gems.size() > 20:
-		_clustering_cells[cell] = true
+		is_clustering = true
 		var total_exp := 0
-		var pos = exp_gems[0].global_position
-		var new_gem = ObjectPoolManager.acquire("exp_gem", pos)
-		if not new_gem:
-			_clustering_cells.erase(cell)
-			return
+		var merged_gem = exp_gems[0]
 		for gem in exp_gems:
 			total_exp += maxi(0, int(gem.get_exp_amount()))
-			remove_item(gem)
-			ObjectPoolManager.release(gem)
+			if gem != merged_gem:
+				remove_item(gem)
+				ObjectPoolManager.release(gem)
 
-		new_gem.set_exp_amount(total_exp)
-		_clustering_cells.erase(cell)
+		merged_gem.set_exp_amount(total_exp)
+		is_clustering = false

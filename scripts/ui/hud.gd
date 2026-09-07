@@ -41,6 +41,7 @@ var boss_phase_label: Label
 var objective_cache := ""
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_information_ui()
 	pause_confirm.z_index = 100
 	EventBus.player_health_changed.connect(_on_player_health_changed)
@@ -80,7 +81,7 @@ func _build_information_ui() -> void:
 	build_toggle_button.tooltip_text = "무기·패시브·진화 조합 정보를 펼치거나 접습니다."
 	build_toggle_button.pressed.connect(_toggle_build_panel)
 	add_child(build_toggle_button)
-	ThemeDB.fallback_changed.connect(_layout_build_button)
+	inventory_slots.resized.connect(_layout_build_button)
 	call_deferred("_layout_build_button")
 	inventory_box.hide()
 	inventory_backplate.hide()
@@ -162,7 +163,7 @@ func _build_inventory_slots() -> void:
 		passive_slots.add_child(_make_inventory_slot("", 0, false, false))
 
 func _layout_build_button() -> void:
-	build_toggle_button.position.y = inventory_slots.position.y + inventory_slots.size.y + 8.0
+	build_toggle_button.position.y = maxf(206.0, inventory_slots.position.y + inventory_slots.size.y + 8.0)
 
 func _make_inventory_slot(title: String, level: int, evolved: bool, weapon: bool) -> PanelContainer:
 	var slot := PanelContainer.new()
@@ -389,19 +390,24 @@ func _on_exp_changed(current_exp: int, required_exp: int, level: int) -> void:
 	exp_bar.get_node("LevelLabel").text = "Lv " + str(level)
 
 func _on_inventory_updated(weapons: Array, passives: Array) -> void:
-	for child in weapon_slots.get_children(): child.free()
-	for child in passive_slots.get_children(): child.free()
+	for row in [weapon_slots, passive_slots]:
+		for child in row.get_children():
+			if child is PanelContainer:
+				row.remove_child(child)
+				child.queue_free()
 	for index in 6:
-		if index < weapons.size():
+		if index < weapons.size() and is_instance_valid(weapons[index]):
 			var weapon: Weapon = weapons[index]
 			weapon_slots.add_child(_make_inventory_slot(weapon.get_display_name(), weapon.current_level, weapon.evolved, true))
 		else: weapon_slots.add_child(_make_inventory_slot("", 0, false, true))
-		if index < passives.size():
+		if index < passives.size() and is_instance_valid(passives[index]):
 			var passive: PerkData = passives[index]
-			passive_slots.add_child(_make_inventory_slot(passive.perk_name, 1, false, false))
+			passive_slots.add_child(_make_inventory_slot(passive.perk_name, passive.level, false, false))
 		else: passive_slots.add_child(_make_inventory_slot("", 0, false, false))
 	var weapon_names: Array[String] = []
 	for w in weapons:
+		if not is_instance_valid(w):
+			continue
 		var weapon_text := "◆ %s Lv%d" % [w.get_display_name(), w.current_level]
 		if w.evolved:
 			weapon_text = "★ %s Lv%d" % [w.get_display_name(), w.current_level]
@@ -410,11 +416,11 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 		elif w.current_level >= Weapon.MAX_LEVEL:
 			weapon_text += " [필요: %s]" % w.get_evolution_requirement_text()
 		weapon_names.append(weapon_text)
-	weapons_label.text = "무장  ·  " + "   |   ".join(weapon_names)
 
 	var passive_names: Array[String] = []
 	for p in passives:
-		passive_names.append(p.perk_name)
+		if is_instance_valid(p):
+			passive_names.append(p.perk_name)
 	var p_text := "생존 개조  ·  " + "  |  ".join(passive_names)
 	var player := get_tree().get_first_node_in_group("player") as Player
 	if player and player.active_synergies.size() > 0:
@@ -422,9 +428,9 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 	var build_hint := player.get_next_build_hint() if player else ""
 	if not build_hint.is_empty():
 		p_text += "\n다음 조합  ·  " + build_hint
-	passives_label.text = p_text
-	weapons_label.add_theme_color_override("font_color", Color(0.78, 0.92, 1.0, 1.0))
-	passives_label.add_theme_color_override("font_color", Color(0.65, 1.0, 0.82, 1.0) if player and not player.active_synergies.is_empty() else Color(0.72, 0.78, 0.78, 1.0))
+	build_toggle_button.tooltip_text = "\n".join(weapon_names) + "\n" + p_text
+	weapons_label.text = ""
+	passives_label.text = ""
 
 func _unhandled_input(event: InputEvent) -> void:
 	var player := get_tree().get_first_node_in_group("player") as Player
@@ -451,6 +457,10 @@ func _cancel_return_to_menu() -> void:
 	ModalManager.release(self)
 
 func _confirm_return_to_menu() -> void:
+	var menu := load("res://scenes/ui/main_menu.tscn") as PackedScene
+	if menu == null:
+		pause_confirm_button.text = "메뉴 로드 실패 · 다시 시도"
+		return
 	SaveManager.save_data()
 	if RunStats.run_active:
 		SaveManager.record_run(RunStats.get_summary())
@@ -458,4 +468,7 @@ func _confirm_return_to_menu() -> void:
 	ObjectPoolManager.clear()
 	SpatialGrid.clear()
 	ModalManager.clear()
-	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	var error := get_tree().change_scene_to_packed(menu)
+	if error != OK:
+		pause_confirm.visible = false
+		EventBus.game_over.emit(false)

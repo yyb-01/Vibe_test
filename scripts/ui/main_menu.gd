@@ -64,10 +64,13 @@ var trait_progress: ProgressBar
 var ui_scale_select: OptionButton
 var character_grid: GridContainer
 var map_grid: GridContainer
+var loading_map := false
 
 func _ready() -> void:
-	ModalManager.clear()
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().paused = false
+	ModalManager.clear()
+	AudioManager.stop_all()
 	map_1_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_1.tscn"))
 	map_2_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_2.tscn"))
 	map_3_btn.pressed.connect(func() -> void: _load_map("res://scenes/maps/map_3.tscn"))
@@ -456,18 +459,29 @@ func _update_shop_ui() -> void:
 	hp_upgrade_btn.text = "🧬 영구 성장 특성 트리  ·  %.0f%%" % (SaveManager.get_upgrade_progress() * 100.0)
 
 func _load_map(path: String) -> void:
-	if not ResourceLoader.exists(path):
-		OS.alert("맵 리소스를 찾을 수 없습니다.\n%s" % path, "맵 로드 실패")
+	if loading_map:
 		return
-	SaveManager.save_data()
+	loading_map = true
+	var candidates: Array[String] = [path]
+	var fallback := "res://scenes/maps/map_1.tscn"
+	if path != fallback:
+		candidates.append(fallback)
+	var error := ERR_FILE_NOT_FOUND
+	for candidate in candidates:
+		if not ResourceLoader.exists(candidate, "PackedScene"):
+			continue
+		var scene := load(candidate) as PackedScene
+		if scene == null:
+			continue
+		SaveManager.save_data()
+		ModalManager.clear()
+		ObjectPoolManager.clear()
+		SpatialGrid.clear()
+		error = get_tree().change_scene_to_packed(scene)
+		if error == OK:
+			RunStats.start_run(candidate.get_file().get_basename())
+			return
+	loading_map = false
 	ModalManager.clear()
-	RunStats.start_run(path.get_file().get_basename())
-
-	# Clear Autoload states before launching a new game
-	ObjectPoolManager.clear()
-	SpatialGrid.clear()
-
-	var error := get_tree().change_scene_to_file(path)
-	if error != OK:
-		RunStats.finish_run()
-		OS.alert("맵을 불러오지 못했습니다.\n오류 코드: %d" % error, "맵 로드 실패")
+	progress_label.text = "맵 로드 실패 · 오류 %d · 맵 카드를 다시 선택하세요." % error
+	(map_grid.get_node("MapCard1") as Button).grab_focus()
