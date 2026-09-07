@@ -121,7 +121,7 @@ func _show_branch_choices() -> void:
 	choice_layer.layer = 128
 	var scene_root := get_tree().current_scene
 	if not is_instance_valid(scene_root):
-		choice_layer.free()
+		choice_layer.queue_free()
 		choice_layer = null
 		_select_default_branch()
 		return

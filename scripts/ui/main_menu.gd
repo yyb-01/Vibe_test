@@ -271,7 +271,8 @@ func _refresh_trait_tree() -> void:
 	trait_summary.text = "보유 골드  %d G   ·   총 업그레이드 달성률" % SaveManager.gold
 	trait_progress.value = SaveManager.get_upgrade_progress() * 100.0
 	for child in trait_tabs.get_children():
-		child.free()
+		trait_tabs.remove_child(child)
+		child.queue_free()
 	var categories := {"survival": "🛡 생존", "combat": "⚔ 전투", "utility": "🧲 유틸", "economy": "💰 경제"}
 	for category_id in categories:
 		var scroll := ScrollContainer.new()

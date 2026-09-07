@@ -79,7 +79,8 @@ func _show_level_up() -> void:
 	visible = true
 
 	for child in container.get_children():
-		child.free()
+		container.remove_child(child)
+		child.queue_free()
 
 	AudioManager.play_named("level_up", -2.0)
 
@@ -357,9 +358,9 @@ func _on_reroll_pressed() -> void:
 		return
 	if RunStats.rerolls_remaining > 0:
 		RunStats.rerolls_remaining -= 1
-		_show_level_up()
+		call_deferred("_show_level_up")
 	elif SaveManager.spend_gold(REROLL_COST):
-		_show_level_up()
+		call_deferred("_show_level_up")
 
 func _on_banish_pressed(item: Variant) -> void:
 	if not visible or RunStats.banishes_remaining <= 0:
@@ -376,7 +377,7 @@ func _on_banish_pressed(item: Variant) -> void:
 		item_id = String(choice_data.get("id") if choice_data is Object else item.get("kind", "choice"))
 	RunStats.banished_ids.append(String(item_id))
 	RunStats.banishes_remaining -= 1
-	_show_level_up()
+	call_deferred("_show_level_up")
 
 func _on_skip_pressed() -> void:
 	_finish_level_up()

@@ -377,11 +377,15 @@ func _on_mission_completed(title: String, reward: int) -> void:
 	mission_status = "%s 완료  ·  +%dG  ·  진화 코어 +1" % [title, reward]
 
 func _on_player_health_changed(current_hp: int, max_hp: int) -> void:
+	if not is_instance_valid(hp_bar):
+		return
 	var safe_max_hp := maxi(1, max_hp)
 	var safe_hp := clampi(current_hp, 0, safe_max_hp)
 	hp_bar.max_value = safe_max_hp
 	hp_bar.value = safe_hp
-	hp_bar.get_node("HPLabel").text = "HP  %d / %d" % [safe_hp, safe_max_hp]
+	var hp_label := hp_bar.get_node_or_null("HPLabel") as Label
+	if is_instance_valid(hp_label):
+		hp_label.text = "HP  %d / %d" % [safe_hp, safe_max_hp]
 
 func _on_exp_changed(current_exp: int, required_exp: int, level: int) -> void:
 	var safe_required_exp := maxi(1, required_exp)

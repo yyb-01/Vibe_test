@@ -113,7 +113,7 @@ const CONTRACT_OFFERS := [
 		"kind": "contract",
 		"id": "bounty_hunt",
 		"name": "현상금 추적 계약",
-		"description": "【이점】 스크랩 배율 +15% 증가, 영구 골드 +20 획득\n【위험】 정예 좀비 처치 필요",
+		"description": "【이점】 스크랩 획득량 +15% 증가, 영구 골드 +20 획득\n【위험】 고위험 현상 수배 작전 수행",
 		"cost": 18
 	}
 ]
@@ -121,6 +121,7 @@ const CONTRACT_OFFERS := [
 var offers: Array[Dictionary] = []
 var current_wave := 1
 var reroll_cost := BASE_REROLL_COST
+var _render_pending: bool = false
 
 var overlay: ColorRect
 var title_label: Label
@@ -324,6 +325,18 @@ func _make_tactical_offer(used_ids: Array[String]) -> Dictionary:
 		return fallback
 	return candidates.pick_random()
 
+func _request_render() -> void:
+	if _render_pending:
+		return
+	_render_pending = true
+	call_deferred("_deferred_render")
+
+func _deferred_render() -> void:
+	_render_pending = false
+	if not is_inside_tree() or not visible:
+		return
+	_render()
+
 func _render() -> void:
 	title_label.text = "제 %02d 웨이브 방어 성공  ·  야전 전술 보급소" % current_wave
 	scrap_label.text = "보유 스크랩: %d 개   |   생존 보급품, 전술 장비 및 작전 계약을 조달하세요" % RunStats.scrap
@@ -336,7 +349,8 @@ func _render() -> void:
 		reroll_button.disabled = (RunStats.scrap < reroll_cost)
 
 	for child in offer_row.get_children():
-		child.free()
+		offer_row.remove_child(child)
+		child.queue_free()
 	for index in offers.size():
 		offer_row.add_child(_create_offer_card(index, offers[index]))
 
@@ -463,22 +477,29 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	if is_purchased:
 		buy_button.text = "조달 완료"
 		buy_button.disabled = true
+		buy_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		buy_button.add_theme_color_override("font_disabled_color", Color(0.5, 0.8, 0.6, 0.8))
 	elif not can_afford:
 		buy_button.text = "스크랩 부족 (%d/%d)" % [RunStats.scrap, cost]
 		buy_button.disabled = true
+		buy_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		buy_button.add_theme_color_override("font_disabled_color", Color(0.65, 0.68, 0.72, 0.7))
 		card.modulate = Color(0.52, 0.55, 0.58, 0.68)
 	elif free_evolution:
 		buy_button.text = "[%d] 코어 1개로 진화" % (index + 1)
 		buy_button.disabled = false
+		buy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		buy_button.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8, 1.0))
 	else:
 		buy_button.text = "[%d] 조달 (%d 스크랩)" % [index + 1, cost]
 		buy_button.disabled = false
+		buy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		buy_button.add_theme_color_override("font_color", Color(0.95, 1.0, 0.98, 1.0))
 
-	buy_button.pressed.connect(func() -> void: _buy_offer(index))
+	buy_button.pressed.connect(func() -> void:
+		if not bool(offer.get("purchased", false)) and can_afford:
+			_buy_offer(index)
+	)
 	content.add_child(buy_button)
 
 	return card
@@ -528,7 +549,7 @@ func _toggle_lock(index: int) -> void:
 	var offer := offers[index]
 	offer["locked"] = not bool(offer.get("locked", false))
 	offers[index] = offer
-	_render()
+	_request_render()
 
 func _reroll() -> void:
 	if not visible:
@@ -552,7 +573,7 @@ func _reroll() -> void:
 			if not replacement.is_empty():
 				offers[index] = _apply_discount(replacement)
 				used_ids.append(String(replacement.get("id", "")))
-	_render()
+	_request_render()
 
 func _banish_offer(index: int) -> void:
 	if not visible or index < 0 or index >= offers.size() or RunStats.banishes_remaining <= 0:
@@ -574,7 +595,7 @@ func _banish_offer(index: int) -> void:
 		offers[index] = _apply_discount(replacement)
 	else:
 		offers.remove_at(index)
-	_render()
+	_request_render()
 
 func _apply_discount(offer: Dictionary) -> Dictionary:
 	if offer.is_empty():
@@ -606,7 +627,7 @@ func _buy_offer(index: int) -> void:
 	offers[index] = offer
 	AudioManager.play_named("pickup", -2.0, 1.2)
 	EventBus.inventory_updated.emit(player.weapons, player.passives)
-	_render()
+	_request_render()
 
 func _apply_offer(player: Player, offer: Dictionary, free_evolution: bool) -> bool:
 	if not is_instance_valid(player):
@@ -701,7 +722,7 @@ func _close_shop() -> void:
 
 func _on_viewport_resized() -> void:
 	if visible:
-		_render()
+		_request_render()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not event.is_pressed() or event.is_echo():
