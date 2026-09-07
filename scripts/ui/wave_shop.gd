@@ -1,37 +1,122 @@
 class_name WaveShop
 extends CanvasLayer
 
-const PASSIVES: Array[PerkData] = [
-	preload("res://data/perks/fast_hands.tres"),
-	preload("res://data/perks/hollow_point.tres"),
-	preload("res://data/perks/light_foot.tres"),
-	preload("res://data/perks/piercing_rounds.tres"),
-	preload("res://data/perks/heavy_caliber.tres"),
-	preload("res://data/perks/medic_kit.tres"),
-	preload("res://data/perks/adrenaline.tres"),
-	preload("res://data/perks/scavenged_ammo.tres"),
-	preload("res://data/perks/bloodlust.tres"),
-	preload("res://data/perks/reinforced_vest.tres"),
-	preload("res://data/perks/stabilizer.tres"),
-	preload("res://data/perks/field_rations.tres"),
-	preload("res://data/perks/momentum.tres"),
-	preload("res://data/perks/executioner.tres"),
-	preload("res://data/perks/trauma_kit.tres")
-]
-
-const WEAPON_PATHS = [
-	"res://data/perks/weap_pistol.tres",
-	"res://data/perks/weap_shotgun.tres",
-	"res://data/perks/weap_orbital.tres",
-	"res://data/perks/weap_lightning.tres",
-	"res://data/perks/weap_smg.tres",
-	"res://data/perks/weap_burst.tres",
-	"res://data/perks/weap_railgun.tres",
-	"res://data/perks/weap_nova.tres"
-]
-
 const OFFER_COUNT := 5
 const BASE_REROLL_COST := 8
+
+const MEDICAL_OFFERS := [
+	{
+		"kind": "medical",
+		"id": "field_repair",
+		"name": "야전 응급 수리",
+		"description": "체력을 40 회복합니다.\n위급 상황에서 생존을 보장합니다.",
+		"cost": 14
+	},
+	{
+		"kind": "medical",
+		"id": "ceramic_plating",
+		"name": "세라믹 복합 플레이트",
+		"description": "최대 체력 +25 영구 증가 및\n즉시 체력 25를 회복합니다.",
+		"cost": 24
+	},
+	{
+		"kind": "medical",
+		"id": "trauma_patch",
+		"name": "외상 봉합 패치",
+		"description": "체력을 65 대폭 회복합니다.\n치명상을 입었을 때 유용합니다.",
+		"cost": 22
+	},
+	{
+		"kind": "medical",
+		"id": "adrenaline_shot",
+		"name": "전술 아드레날린 주사",
+		"description": "이동 속도 +10% 영구 강화,\n긴급 회피(대시) 쿨타임 -0.2초 단축.",
+		"cost": 24
+	}
+]
+
+const TACTICAL_OFFERS := [
+	{
+		"kind": "tactical",
+		"id": "evolution_core",
+		"name": "진화 코어 조달",
+		"description": "진화 코어 1개를 획득합니다.\n레벨업이나 상점에서 무료 승급 가능.",
+		"cost": 45
+	},
+	{
+		"kind": "tactical",
+		"id": "reroll_pack",
+		"name": "작전 재검토서",
+		"description": "무료 리롤 +2회를 즉시 충전합니다.\n(레벨업 및 상점 공유)",
+		"cost": 16
+	},
+	{
+		"kind": "tactical",
+		"id": "banish_protocol",
+		"name": "불량품 폐기 인가서",
+		"description": "카드 영구 제외(Banish) +1회를\n즉시 충전합니다.",
+		"cost": 20
+	},
+	{
+		"kind": "tactical",
+		"id": "magnet_drone",
+		"name": "자력 견인 모듈",
+		"description": "경험치 젬 및 보급품 흡수 반경이\n+60px 대폭 증가합니다.",
+		"cost": 18
+	},
+	{
+		"kind": "tactical",
+		"id": "tungsten_core",
+		"name": "텅스텐 철갑 탄심",
+		"description": "모든 탄환/발사체의 관통력이\n+1 영구 증가합니다.",
+		"cost": 32
+	},
+	{
+		"kind": "tactical",
+		"id": "overclock_loader",
+		"name": "오버클럭 급탄 모듈",
+		"description": "모든 무기의 재장전 및 연사 속도가\n+18% 빨라집니다.",
+		"cost": 28
+	},
+	{
+		"kind": "tactical",
+		"id": "hollow_point_kit",
+		"name": "특수 작열탄 키트",
+		"description": "치명타 확률 +6% 증가,\n치명타 피해량 +25% 증폭.",
+		"cost": 26
+	}
+]
+
+const CONTRACT_OFFERS := [
+	{
+		"kind": "contract",
+		"id": "volatile_ammo",
+		"name": "불안정 탄약 계약",
+		"description": "모든 피해량 +25% 대폭 증가,\n대신 받는 피해량 +15% 증가.",
+		"cost": 15
+	},
+	{
+		"kind": "contract",
+		"id": "scavenger_route",
+		"name": "회수꾼 위험 경로",
+		"description": "스크랩 획득량 +40% 증가,\n대신 최대 체력 -15 감소.",
+		"cost": 15
+	},
+	{
+		"kind": "contract",
+		"id": "last_stand",
+		"name": "배수의 진 계약",
+		"description": "최대 체력 -25 감소,\n모든 피해 +35%, 이동 속도 +12%.",
+		"cost": 20
+	},
+	{
+		"kind": "contract",
+		"id": "bounty_hunt",
+		"name": "현상금 추적 계약",
+		"description": "스크랩 획득 배율 +15% 증가,\n즉시 골드 +20 획득.",
+		"cost": 18
+	}
+]
 
 var offers: Array[Dictionary] = []
 var current_wave := 1
@@ -72,16 +157,16 @@ func _open_shop(wave: int) -> void:
 
 func _build_interface() -> void:
 	overlay = ColorRect.new()
-	overlay.color = Color(0.004, 0.012, 0.018, 0.9)
+	overlay.color = Color(0.004, 0.012, 0.018, 0.92)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(overlay)
 
 	var panel := PanelContainer.new()
 	panel.anchor_left = 0.02
-	panel.anchor_top = 0.04
+	panel.anchor_top = 0.03
 	panel.anchor_right = 0.98
-	panel.anchor_bottom = 0.96
+	panel.anchor_bottom = 0.97
 	panel.offset_left = 0.0
 	panel.offset_top = 0.0
 	panel.offset_right = 0.0
@@ -90,10 +175,10 @@ func _build_interface() -> void:
 	overlay.add_child(panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 26)
-	margin.add_theme_constant_override("margin_top", 20)
-	margin.add_theme_constant_override("margin_right", 26)
-	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_bottom", 18)
 	panel.add_child(margin)
 
 	var content := VBoxContainer.new()
@@ -101,13 +186,13 @@ func _build_interface() -> void:
 	margin.add_child(content)
 
 	title_label = Label.new()
-	title_label.add_theme_font_size_override("font_size", 30)
+	title_label.add_theme_font_size_override("font_size", 28)
 	title_label.add_theme_color_override("font_color", Color(0.75, 1.0, 0.92, 1.0))
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(title_label)
 
 	scrap_label = Label.new()
-	scrap_label.add_theme_font_size_override("font_size", 18)
+	scrap_label.add_theme_font_size_override("font_size", 17)
 	scrap_label.add_theme_color_override("font_color", Color(0.4, 0.9, 1.0, 1.0))
 	scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(scrap_label)
@@ -127,13 +212,13 @@ func _build_interface() -> void:
 	reroll_button.pressed.connect(_reroll)
 	actions.add_child(reroll_button)
 
-	leave_button = _make_action_button("다음 웨이브 시작", Color(0.28, 0.72, 0.46, 1.0))
+	leave_button = _make_action_button("다음 웨이브 출동", Color(0.28, 0.75, 0.46, 1.0))
 	leave_button.pressed.connect(_close_shop)
 	actions.add_child(leave_button)
 
 func _panel_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.018, 0.048, 0.06, 0.99)
+	style.bg_color = Color(0.015, 0.042, 0.054, 0.99)
 	style.border_color = Color(0.2, 0.78, 0.72, 0.82)
 	style.set_border_width_all(3)
 	style.set_corner_radius_all(14)
@@ -141,9 +226,9 @@ func _panel_style() -> StyleBoxFlat:
 
 func _make_action_button(button_text: String, color: Color) -> Button:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(250, 52)
+	button.custom_minimum_size = Vector2(240, 50)
 	button.text = button_text
-	button.add_theme_font_size_override("font_size", 19)
+	button.add_theme_font_size_override("font_size", 18)
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = Color(color, 0.26)
 	normal.border_color = color
@@ -163,120 +248,86 @@ func _roll_offers(player: Player) -> void:
 		if offer.is_empty():
 			break
 		offers.append(offer)
-		used_ids.append(String(offer.get("id", "supply_%d" % offers.size())))
+		used_ids.append(String(offer.get("id", "depot_%d" % offers.size())))
 
 func _make_unique_offer(player: Player, used_ids: Array[String]) -> Dictionary:
-	for _attempt in range(20):
+	for _attempt in range(25):
 		var offer := _make_offer(player, used_ids)
 		if not offer.is_empty():
 			var offer_id := String(offer.get("id", ""))
 			if not offer_id.is_empty() and offer_id not in used_ids and offer_id not in RunStats.banished_ids:
 				return offer
+	# Fallback guaranteed offer if pool is restricted
+	for supply in MEDICAL_OFFERS:
+		if String(supply.id) not in RunStats.banished_ids:
+			var copy: Dictionary = supply.duplicate()
+			copy["locked"] = false
+			return copy
 	return {}
 
 func _make_offer(player: Player, used_ids: Array[String]) -> Dictionary:
+	# 1. Emergency Evolution Offer (If player has an evolvable weapon)
 	var evolution_candidates: Array[Weapon] = []
 	for weapon in player.weapons:
 		if weapon.can_evolve(player):
 			evolution_candidates.append(weapon)
-	if current_wave >= 3 and not evolution_candidates.is_empty() and randf() < 0.2:
+	if current_wave >= 3 and not evolution_candidates.is_empty() and randf() < 0.22:
 		var evolution_weapon: Weapon = evolution_candidates.pick_random()
 		var evolution_id := "evolution_" + evolution_weapon.data.weapon_name
 		if evolution_id not in used_ids and evolution_id not in RunStats.banished_ids:
-			return {"kind": "evolution", "id": evolution_id, "item": evolution_weapon, "cost": 52, "locked": false}
+			return {
+				"kind": "evolution",
+				"id": evolution_id,
+				"item": evolution_weapon,
+				"cost": 48,
+				"locked": false
+			}
 
+	# 2. Weighted roll among Medical (35%), Tactical Supplies (35%), Contracts (30%)
 	var roll := randf()
-	if current_wave >= 2 and roll < 0.18:
+	if current_wave >= 2 and roll < 0.30:
 		return _make_contract_offer(used_ids)
-	if roll < 0.34:
-		return _make_supply_offer(used_ids)
-	if roll < 0.70:
-		var passive_offer := _make_passive_offer(player, used_ids)
-		if not passive_offer.is_empty():
-			return passive_offer
-	return _make_weapon_offer(player, used_ids)
+	elif roll < 0.65:
+		return _make_tactical_offer(used_ids)
+	return _make_medical_offer(used_ids)
 
 func _make_contract_offer(used_ids: Array[String]) -> Dictionary:
-	var contracts := [
-		{"kind": "contract", "id": "volatile_ammo", "name": "불안정 탄약 계약", "description": "모든 피해 +22%\n대신 받는 피해 +18%", "cost": 18},
-		{"kind": "contract", "id": "scavenger_route", "name": "회수꾼 경로", "description": "스크랩 획득량 +45%\n대신 최대 체력 -15", "cost": 16},
-		{"kind": "contract", "id": "last_stand", "name": "최후의 저항", "description": "최대 체력 -25\n모든 피해 +35%, 이동 속도 +12%", "cost": 24}
-	]
 	var candidates: Array[Dictionary] = []
-	for contract in contracts:
+	for contract in CONTRACT_OFFERS:
 		if String(contract.id) not in used_ids and String(contract.id) not in RunStats.banished_ids:
-			contract["locked"] = false
-			candidates.append(contract)
-	return _make_supply_offer(used_ids) if candidates.is_empty() else candidates.pick_random()
+			var item: Dictionary = contract.duplicate()
+			item["locked"] = false
+			candidates.append(item)
+	return _make_medical_offer(used_ids) if candidates.is_empty() else candidates.pick_random()
 
-func _make_passive_offer(player: Player, used_ids: Array[String]) -> Dictionary:
-	if player.passives.size() >= player.max_passives:
-		return {}
-	var owned_ids: Array[String] = []
-	for passive in player.passives:
-		owned_ids.append(passive.id)
-	var candidates: Array[PerkData] = []
-	for passive in PASSIVES:
-		if passive.id not in owned_ids and passive.id not in used_ids and passive.id not in RunStats.banished_ids:
-			candidates.append(passive)
-	if candidates.is_empty():
-		return {}
-	var picked: PerkData = candidates.pick_random()
-	return {"kind": "passive", "id": picked.id, "item": picked, "cost": 28, "locked": false}
-
-func _make_weapon_offer(player: Player, used_ids: Array[String]) -> Dictionary:
+func _make_medical_offer(used_ids: Array[String]) -> Dictionary:
 	var candidates: Array[Dictionary] = []
-	for weapon in player.weapons:
-		var upgrade_id := "upgrade_" + weapon.data.weapon_name
-		if weapon.current_level < Weapon.MAX_LEVEL and upgrade_id not in used_ids and upgrade_id not in RunStats.banished_ids:
-			candidates.append({"kind": "weapon_upgrade", "id": upgrade_id, "item": weapon, "cost": 22, "locked": false})
-	if player.weapons.size() < player.max_weapons:
-		for weapon_path in WEAPON_PATHS:
-			var weapon_data: WeaponUpgradeData = load(weapon_path) as WeaponUpgradeData
-			if not is_instance_valid(weapon_data) or not is_instance_valid(weapon_data.weapon_data) or weapon_data.weapon_script == null:
-				continue
-			var has_weapon := false
-			for owned_weapon in player.weapons:
-				if owned_weapon.data.weapon_name == weapon_data.weapon_data.weapon_name:
-					has_weapon = true
-					break
-			if not has_weapon and weapon_data.weapon_id not in used_ids and weapon_data.weapon_id not in RunStats.banished_ids:
-				candidates.append({"kind": "weapon_new", "id": weapon_data.weapon_id, "item": weapon_data, "cost": 34, "locked": false})
+	for med in MEDICAL_OFFERS:
+		if String(med.id) not in used_ids and String(med.id) not in RunStats.banished_ids:
+			var item: Dictionary = med.duplicate()
+			item["locked"] = false
+			candidates.append(item)
 	if candidates.is_empty():
-		return _make_supply_offer(used_ids)
+		return _make_tactical_offer(used_ids)
 	return candidates.pick_random()
 
-func _make_supply_offer(used_ids: Array[String]) -> Dictionary:
-	var supplies := [
-		{"kind": "repair", "id": "repair", "name": "응급 수리", "description": "체력을 35 회복합니다.", "cost": 14},
-		{"kind": "plating", "id": "plating", "name": "세라믹 플레이트", "description": "최대 체력 +20, 즉시 회복 +20", "cost": 24},
-		{"kind": "amplifier", "id": "amplifier", "name": "화력 증폭기", "description": "모든 피해량 +10%", "cost": 26},
-		{"kind": "boots", "id": "boots", "name": "전술 부츠", "description": "이동 속도 +8%", "cost": 20}
-	]
+func _make_tactical_offer(used_ids: Array[String]) -> Dictionary:
 	var candidates: Array[Dictionary] = []
-	for supply in supplies:
-		if String(supply.id) not in used_ids and String(supply.id) not in RunStats.banished_ids:
-			supply["locked"] = false
-			candidates.append(supply)
+	for tac in TACTICAL_OFFERS:
+		if String(tac.id) not in used_ids and String(tac.id) not in RunStats.banished_ids:
+			var item: Dictionary = tac.duplicate()
+			item["locked"] = false
+			candidates.append(item)
 	if candidates.is_empty():
-		for supply in supplies:
-			if String(supply.id) not in RunStats.banished_ids:
-				var fallback: Dictionary = supply.duplicate()
-				var fallback_index := used_ids.size()
-				var fallback_id := "supply_fallback_%d" % fallback_index
-				while fallback_id in used_ids or fallback_id in RunStats.banished_ids:
-					fallback_index += 1
-					fallback_id = "supply_fallback_%d" % fallback_index
-				fallback["id"] = fallback_id
-				fallback["locked"] = false
-				return fallback
-		return {}
+		var fallback: Dictionary = MEDICAL_OFFERS[0].duplicate()
+		fallback["locked"] = false
+		return fallback
 	return candidates.pick_random()
 
 func _render() -> void:
-	title_label.text = "파동 %02d 종료  ·  야전 상점" % current_wave
-	scrap_label.text = "보유 스크랩  %d   ·   처치 보상과 웨이브 보너스로 획득" % RunStats.scrap
-	reroll_button.text = "무료 진열 새로고침  ·  %d회" % RunStats.rerolls_remaining if RunStats.rerolls_remaining > 0 else "진열 새로고침  ·  %d 스크랩" % reroll_cost
+	title_label.text = "파동 %02d 방어 성공  ·  야전 전술 보급소 (Tactical Depot)" % current_wave
+	scrap_label.text = "보유 스크랩  %d   ·   전술 보급품, 응급 수리 및 작전 계약을 조달하세요" % RunStats.scrap
+	reroll_button.text = "무료 작전 재검토  ·  %d회" % RunStats.rerolls_remaining if RunStats.rerolls_remaining > 0 else "진열 새로고침  ·  %d 스크랩" % reroll_cost
 	reroll_button.disabled = RunStats.rerolls_remaining <= 0 and RunStats.scrap < reroll_cost
 	for child in offer_row.get_children():
 		child.free()
@@ -290,8 +341,8 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var accent := _offer_color(String(offer.kind))
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color(0.025, 0.07, 0.08, 0.98)
-	normal.border_color = Color(accent, 0.8)
+	normal.bg_color = Color(0.022, 0.065, 0.075, 0.98)
+	normal.border_color = Color(accent, 0.82)
 	normal.set_border_width_all(2)
 	normal.set_corner_radius_all(8)
 	normal.set_content_margin_all(10.0)
@@ -310,7 +361,7 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var lock_button := Button.new()
 	lock_button.custom_minimum_size = Vector2(34, 30)
 	lock_button.text = "🔓" if bool(offer.get("locked", false)) else "🔒"
-	lock_button.tooltip_text = "잠금: 새로고침 때 이 카드를 유지"
+	lock_button.tooltip_text = "잠금: 새로고침 시 이 카드를 유지합니다."
 	lock_button.disabled = bool(offer.get("purchased", false))
 	lock_button.pressed.connect(func() -> void: _toggle_lock(index))
 	tools.add_child(lock_button)
@@ -318,31 +369,32 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 		var banish_button := Button.new()
 		banish_button.custom_minimum_size = Vector2(34, 30)
 		banish_button.text = "🗑"
-		banish_button.tooltip_text = "이번 런에서 폐기 · %d회 남음" % RunStats.banishes_remaining
+		banish_button.tooltip_text = "이번 런에서 폐기(제외) · %d회 남음" % RunStats.banishes_remaining
 		banish_button.pressed.connect(func() -> void: _banish_offer(index))
 		tools.add_child(banish_button)
 	content.add_child(tools)
 
 	var kind_label := Label.new()
 	kind_label.text = _offer_kind_label(String(offer.kind))
-	kind_label.add_theme_font_size_override("font_size", 14)
+	kind_label.add_theme_font_size_override("font_size", 13)
 	kind_label.add_theme_color_override("font_color", accent)
 	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(kind_label)
+
 	var visual := Label.new()
 	visual.text = _offer_icon(String(offer.kind))
-	visual.custom_minimum_size = Vector2(0, 58.0 if compact else 72.0)
+	visual.custom_minimum_size = Vector2(0, 54.0 if compact else 68.0)
 	visual.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	visual.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	visual.add_theme_font_size_override("font_size", 42)
+	visual.add_theme_font_size_override("font_size", 38)
 	visual.add_theme_color_override("font_color", accent)
 	content.add_child(visual)
 
 	var name_label := Label.new()
 	name_label.text = _offer_name(offer)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_label.custom_minimum_size = Vector2(0, 38.0 if compact else 46.0)
-	name_label.add_theme_font_size_override("font_size", 18)
+	name_label.custom_minimum_size = Vector2(0, 36.0 if compact else 44.0)
+	name_label.add_theme_font_size_override("font_size", 17)
 	name_label.add_theme_color_override("font_color", Color(0.92, 0.98, 0.96, 1.0))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -361,16 +413,16 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 	var buy_button := Button.new()
 	buy_button.custom_minimum_size = Vector2(0, 42.0 if compact else 46.0)
 	var free_evolution := String(offer.kind) == "evolution" and RunStats.evolution_cores > 0
-	buy_button.text = "구매 완료" if bool(offer.get("purchased", false)) else ("[%d] 진화 코어 사용" % (index + 1) if free_evolution else "[%d] 구매 · %d 스크랩" % [index + 1, int(offer.cost)])
-	buy_button.add_theme_font_size_override("font_size", 16)
+	buy_button.text = "조달 완료" if bool(offer.get("purchased", false)) else ("[%d] 코어 1개 사용" % (index + 1) if free_evolution else "[%d] 조달 · %d 스크랩" % [index + 1, int(offer.cost)])
+	buy_button.add_theme_font_size_override("font_size", 15)
 	buy_button.add_theme_color_override("font_color", Color(0.9, 1.0, 0.97, 1.0))
 	var buy_normal := StyleBoxFlat.new()
-	buy_normal.bg_color = Color(accent, 0.2)
+	buy_normal.bg_color = Color(accent, 0.22)
 	buy_normal.border_color = accent
 	buy_normal.set_border_width_all(2)
 	buy_normal.set_corner_radius_all(6)
 	var buy_hover := buy_normal.duplicate() as StyleBoxFlat
-	buy_hover.bg_color = Color(accent, 0.44)
+	buy_hover.bg_color = Color(accent, 0.46)
 	buy_button.add_theme_stylebox_override("normal", buy_normal)
 	buy_button.add_theme_stylebox_override("hover", buy_hover)
 	buy_button.add_theme_stylebox_override("focus", buy_hover)
@@ -383,67 +435,36 @@ func _create_offer_card(index: int, offer: Dictionary) -> PanelContainer:
 
 func _offer_icon(kind: String) -> String:
 	match kind:
-		"weapon_new", "weapon_upgrade": return "⚔"
-		"evolution": return "✦"
-		"passive": return "◆"
+		"medical": return "✚"
+		"tactical": return "⚙"
 		"contract": return "⚠"
-		_: return "+"
+		"evolution": return "✦"
+		_: return "★"
 
 func _offer_kind_label(kind: String) -> String:
 	match kind:
-		"passive": return "패시브"
-		"weapon_new": return "신규 무기"
-		"weapon_upgrade": return "무기 강화"
-		"evolution": return "변이 코어"
-		"contract": return "위험 계약"
-		_: return "보급품"
+		"medical": return "응급 의료"
+		"tactical": return "전술 조달"
+		"contract": return "작전 계약"
+		"evolution": return "현장 진화"
+		_: return "야전 보급"
 
 func _offer_name(offer: Dictionary) -> String:
 	match String(offer.kind):
-		"passive": return (offer.item as PerkData).perk_name
-		"weapon_new": return (offer.item as WeaponUpgradeData).weapon_name
-		"weapon_upgrade":
-			var weapon := offer.item as Weapon
-			return "%s\nLv %d → %d" % [weapon.data.weapon_name, weapon.current_level, weapon.current_level + 1]
 		"evolution": return (offer.item as Weapon).get_display_name()
-		"contract": return String(offer.name)
 		_: return String(offer.name)
 
 func _offer_description(offer: Dictionary) -> String:
 	match String(offer.kind):
-		"passive": return (offer.item as PerkData).description
-		"weapon_new": return (offer.item as WeaponUpgradeData).description
-		"weapon_upgrade": return "피해량과 성능을 강화합니다.\n다음 단계의 화력을 준비하세요."
-		"evolution": return "%s\n진화 코어가 있으면 무료로 진화합니다." % (offer.item as Weapon).get_evolution_description()
-		"contract": return String(offer.description)
+		"evolution": return "%s\n(진화 코어 보유 시 무료로 승급)" % (offer.item as Weapon).get_evolution_description()
 		_: return String(offer.description)
-
-func _offer_text(offer: Dictionary) -> String:
-	if bool(offer.get("purchased", false)):
-		return "구매 완료"
-	match String(offer.kind):
-		"passive":
-			var passive := offer.item as PerkData
-			return "[패시브]\n%s\n\n%s\n\n%d 스크랩" % [passive.perk_name, passive.description, offer.cost]
-		"weapon_new":
-			var weapon_data := offer.item as WeaponUpgradeData
-			return "[신규 무기]\n%s\n\n%s\n\n%d 스크랩" % [weapon_data.weapon_name, weapon_data.description, offer.cost]
-		"weapon_upgrade":
-			var weapon := offer.item as Weapon
-			return "[무기 강화]\n%s  Lv %d → %d\n\n피해량과 성능을 강화합니다.\n\n%d 스크랩" % [weapon.data.weapon_name, weapon.current_level, weapon.current_level + 1, offer.cost]
-		"evolution":
-			var evolution_weapon := offer.item as Weapon
-			var evolution_cost: String = "진화 코어 1개" if RunStats.evolution_cores > 0 else "%d 스크랩" % offer.cost
-			return "[무기 진화]\n%s\n\n%s\n\n비용: %s" % [evolution_weapon.get_display_name(), evolution_weapon.get_evolution_description(), evolution_cost]
-		_:
-			return "[보급]\n%s\n\n%s\n\n%d 스크랩" % [offer.name, offer.description, offer.cost]
 
 func _offer_color(kind: String) -> Color:
 	match kind:
-		"weapon_new", "weapon_upgrade": return Color(1.0, 0.58, 0.28, 1.0)
-		"evolution": return Color(0.88, 0.42, 1.0, 1.0)
-		"contract": return Color(1.0, 0.3, 0.28, 1.0)
-		"passive": return Color(0.3, 0.9, 0.78, 1.0)
+		"medical": return Color(0.28, 0.95, 0.65, 1.0)
+		"tactical": return Color(0.28, 0.88, 1.0, 1.0)
+		"contract": return Color(1.0, 0.35, 0.28, 1.0)
+		"evolution": return Color(0.88, 0.45, 1.0, 1.0)
 		_: return Color(0.42, 0.78, 1.0, 1.0)
 
 func _toggle_lock(index: int) -> void:
@@ -526,20 +547,13 @@ func _buy_offer(index: int) -> void:
 		return
 	offer["purchased"] = true
 	offers[index] = offer
+	AudioManager.play_named("pickup", -2.0, 1.2)
 	EventBus.inventory_updated.emit(player.weapons, player.passives)
 	_render()
 
 func _apply_offer(player: Player, offer: Dictionary, free_evolution: bool) -> bool:
+	var offer_id := String(offer.get("id", ""))
 	match String(offer.get("kind", "")):
-		"passive":
-			var passive := offer.get("item") as PerkData
-			return player.apply_perk(passive) if is_instance_valid(passive) else false
-		"weapon_new":
-			var weapon_data := offer.get("item") as WeaponUpgradeData
-			return player.add_weapon(weapon_data.weapon_script, weapon_data.weapon_data) if is_instance_valid(weapon_data) else false
-		"weapon_upgrade":
-			var weapon := offer.get("item") as Weapon
-			return is_instance_valid(weapon) and weapon.get_parent() == player and weapon.upgrade()
 		"evolution":
 			var evolution_weapon := offer.get("item") as Weapon
 			if not is_instance_valid(evolution_weapon) or not evolution_weapon.evolve(player):
@@ -547,22 +561,74 @@ func _apply_offer(player: Player, offer: Dictionary, free_evolution: bool) -> bo
 			if free_evolution:
 				return RunStats.consume_evolution_core()
 			return true
-		"repair":
-			player.heal(35)
+		"medical":
+			match offer_id:
+				"field_repair":
+					player.heal(40)
+					return true
+				"ceramic_plating":
+					player.max_health += 25
+					player.heal(25)
+					EventBus.player_health_changed.emit(player.health, player.max_health)
+					return true
+				"trauma_patch":
+					player.heal(65)
+					return true
+				"adrenaline_shot":
+					player.speed_mult *= 1.10
+					player.dash_cooldown = maxf(0.0, player.dash_cooldown - 0.2)
+					return true
+		"tactical":
+			match offer_id:
+				"evolution_core":
+					RunStats.add_evolution_core(1)
+					return true
+				"reroll_pack":
+					RunStats.add_rerolls(2)
+					return true
+				"banish_protocol":
+					RunStats.add_banishes(1)
+					return true
+				"magnet_drone":
+					player.magnet_bonus += 60.0
+					return true
+				"tungsten_core":
+					player.pierce_add += 1
+					return true
+				"overclock_loader":
+					player.reload_mult *= 0.82
+					return true
+				"hollow_point_kit":
+					player.critical_chance_add += 0.06
+					player.critical_damage_mult += 0.25
+					return true
+		"contract":
+			return _apply_contract(player, offer_id)
+	return false
+
+func _apply_contract(player: Player, contract_id: String) -> bool:
+	match contract_id:
+		"volatile_ammo":
+			player.damage_mult *= 1.25
+			player.incoming_damage_mult *= 1.15
 			return true
-		"plating":
-			player.max_health += 20
-			player.heal(20)
+		"scavenger_route":
+			RunStats.scrap_multiplier *= 1.40
+			player.max_health = maxi(35, player.max_health - 15)
+			player.health = mini(player.health, player.max_health)
 			EventBus.player_health_changed.emit(player.health, player.max_health)
 			return true
-		"amplifier":
-			player.damage_mult *= 1.1
+		"last_stand":
+			player.max_health = maxi(35, player.max_health - 25)
+			player.health = mini(player.health, player.max_health)
+			player.damage_mult *= 1.35
+			player.speed_mult *= 1.12
+			EventBus.player_health_changed.emit(player.health, player.max_health)
 			return true
-		"boots":
-			player.speed_mult *= 1.08
+		"bounty_hunt":
+			RunStats.scrap_multiplier *= 1.15
+			SaveManager.add_gold(20)
 			return true
-		"contract":
-			return _apply_contract(player, String(offer.get("id", "")))
 	return false
 
 func _close_shop() -> void:
@@ -575,27 +641,6 @@ func _close_shop() -> void:
 func _on_viewport_resized() -> void:
 	if visible:
 		_render()
-
-func _apply_contract(player: Player, contract_id: String) -> bool:
-	match contract_id:
-		"volatile_ammo":
-			player.damage_mult *= 1.22
-			player.incoming_damage_mult *= 1.18
-			return true
-		"scavenger_route":
-			RunStats.scrap_multiplier *= 1.45
-			player.max_health = maxi(35, player.max_health - 15)
-			player.health = mini(player.health, player.max_health)
-			EventBus.player_health_changed.emit(player.health, player.max_health)
-			return true
-		"last_stand":
-			player.max_health = maxi(35, player.max_health - 25)
-			player.health = mini(player.health, player.max_health)
-			player.damage_mult *= 1.35
-			player.speed_mult *= 1.12
-			EventBus.player_health_changed.emit(player.health, player.max_health)
-			return true
-	return false
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not event.is_pressed() or event.is_echo():

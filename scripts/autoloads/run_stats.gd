@@ -145,6 +145,14 @@ func consume_evolution_core() -> bool:
 	evolution_cores -= 1
 	return true
 
+func add_rerolls(amount: int = 1) -> void:
+	if run_active:
+		rerolls_remaining += maxi(0, amount)
+
+func add_banishes(amount: int = 1) -> void:
+	if run_active:
+		banishes_remaining += maxi(0, amount)
+
 func add_pet_blueprint(blueprint_id: String) -> bool:
 	if blueprint_id not in pet_blueprints:
 		pet_blueprints.append(blueprint_id)
