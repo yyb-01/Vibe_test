@@ -397,32 +397,54 @@ func _on_inventory_updated(weapons: Array, passives: Array) -> void:
 				child.queue_free()
 	for index in 6:
 		if index < weapons.size() and is_instance_valid(weapons[index]):
-			var weapon: Weapon = weapons[index]
-			weapon_slots.add_child(_make_inventory_slot(weapon.get_display_name(), weapon.current_level, weapon.evolved, true))
+			var weapon = weapons[index]
+			var w_name: String = weapon.get_display_name() if weapon.has_method("get_display_name") else String(weapon.get("weapon_name", "무기"))
+			var w_level: int = int(weapon.get("current_level", 1))
+			var w_evolved: bool = bool(weapon.get("evolved", false))
+			weapon_slots.add_child(_make_inventory_slot(w_name, w_level, w_evolved, true))
 		else: weapon_slots.add_child(_make_inventory_slot("", 0, false, true))
 		if index < passives.size() and is_instance_valid(passives[index]):
-			var passive: PerkData = passives[index]
-			passive_slots.add_child(_make_inventory_slot(passive.perk_name, passive.level, false, false))
+			var passive = passives[index]
+			var p_name: String = ""
+			if passive.get("perk_name") != null:
+				p_name = String(passive.get("perk_name"))
+			elif passive.get("display_name") != null:
+				p_name = String(passive.get("display_name"))
+			elif passive.get("name") != null:
+				p_name = String(passive.get("name"))
+			var p_level: int = int(passive.get("level", 1))
+			passive_slots.add_child(_make_inventory_slot(p_name, p_level, false, false))
 		else: passive_slots.add_child(_make_inventory_slot("", 0, false, false))
 	var weapon_names: Array[String] = []
+	var player := get_tree().get_first_node_in_group("player") as Player
 	for w in weapons:
 		if not is_instance_valid(w):
 			continue
-		var weapon_text := "◆ %s Lv%d" % [w.get_display_name(), w.current_level]
-		if w.evolved:
-			weapon_text = "★ %s Lv%d" % [w.get_display_name(), w.current_level]
-		elif w.can_evolve(get_tree().get_first_node_in_group("player") as Player):
+		var w_name: String = w.get_display_name() if w.has_method("get_display_name") else String(w.get("weapon_name", "무기"))
+		var w_level: int = int(w.get("current_level", 1))
+		var w_evolved: bool = bool(w.get("evolved", false))
+		var weapon_text := "◆ %s Lv%d" % [w_name, w_level]
+		if w_evolved:
+			weapon_text = "★ %s Lv%d" % [w_name, w_level]
+		elif is_instance_valid(player) and w.has_method("can_evolve") and w.can_evolve(player):
 			weapon_text += " [진화 가능]"
-		elif w.current_level >= Weapon.MAX_LEVEL:
+		elif w_level >= 5 and w.has_method("get_evolution_requirement_text"):
 			weapon_text += " [필요: %s]" % w.get_evolution_requirement_text()
 		weapon_names.append(weapon_text)
 
 	var passive_names: Array[String] = []
 	for p in passives:
 		if is_instance_valid(p):
-			passive_names.append(p.perk_name)
-	var p_text := "생존 개조  ·  " + "  |  ".join(passive_names)
-	var player := get_tree().get_first_node_in_group("player") as Player
+			var p_name: String = ""
+			if p.get("perk_name") != null:
+				p_name = String(p.get("perk_name"))
+			elif p.get("display_name") != null:
+				p_name = String(p.get("display_name"))
+			elif p.get("name") != null:
+				p_name = String(p.get("name"))
+			if not p_name.is_empty():
+				passive_names.append(p_name)
+	var p_text := "생존 개조  ·  " + ("  |  ".join(passive_names) if not passive_names.is_empty() else "없음")
 	if player and player.active_synergies.size() > 0:
 		p_text += "\n전투 교리  ·  " + ", ".join(PackedStringArray(player.get_active_build_labels()))
 	var build_hint := player.get_next_build_hint() if player else ""

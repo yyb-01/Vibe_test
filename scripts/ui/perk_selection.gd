@@ -48,10 +48,12 @@ func _ready() -> void:
 	reroll_button.pressed.connect(_on_reroll_pressed)
 	skip_button.pressed.connect(_on_skip_pressed)
 	skip_button.text = "건너뛰기  ·  +10 골드"
+	
 	var codex_button := Button.new()
 	codex_button.text = "★ 진화 도감 보기"
 	codex_button.custom_minimum_size = Vector2(210, 48)
 	$CenterContainer/VBoxContainer/ActionRow.add_child(codex_button)
+	
 	codex_dialog = AcceptDialog.new()
 	codex_dialog.title = "무기 진화 도감"
 	codex_dialog.dialog_text = _codex_text()
@@ -76,7 +78,6 @@ func _open_level_up() -> void:
 func _show_level_up() -> void:
 	visible = true
 
-	# Clear existing children
 	for child in container.get_children():
 		child.free()
 
@@ -96,153 +97,215 @@ func _show_level_up() -> void:
 		_update_reroll_button()
 		return
 
-	var pool = []
+	var pool: Array = []
 	var owned_passive_ids: Array[String] = []
 	for passive in player.passives:
-		owned_passive_ids.append(passive.id)
+		if is_instance_valid(passive):
+			owned_passive_ids.append(String(passive.get("id")))
 	if player.passives.size() < player.max_passives:
 		for passive in available_passives:
 			if passive.id not in owned_passive_ids:
 				pool.append(passive)
 
-	# Check weapons
 	for w_data in available_weapons:
 		var has_weapon = false
 		for w in player.weapons:
-			if w.data.weapon_name == w_data.weapon_data.weapon_name:
+			if is_instance_valid(w) and w.data.weapon_name == w_data.weapon_data.weapon_name:
 				has_weapon = true
 				if w.current_level < Weapon.MAX_LEVEL:
-					pool.append(w) # Can upgrade existing weapon
+					pool.append(w)
 				break
-
 		if not has_weapon and player.weapons.size() < player.max_weapons:
-			pool.append(w_data) # Can buy new weapon
+			pool.append(w_data)
 
 	pool.shuffle()
 
-	var shown_ids = []
+	var shown_ids: Array[String] = []
 	var options_shown = 0
 
 	for item in pool:
-		if options_shown >= 3: break
-
-		# Prevent duplicates of the same passive showing up in the same screen
+		if options_shown >= 3:
+			break
 		var item_id = ""
 		if item is PerkData: item_id = item.id
 		elif item is WeaponUpgradeData: item_id = item.weapon_id
 		elif item is Weapon: item_id = item.data.weapon_name
 
-		if item_id in shown_ids or item_id in RunStats.banished_ids: continue
+		if item_id in shown_ids or item_id in RunStats.banished_ids:
+			continue
 		shown_ids.append(item_id)
-
 		_create_upgrade_button(item)
 		options_shown += 1
 	_update_reroll_button()
 
 func _create_upgrade_button(item: Variant) -> void:
-	# Keep every level-up card identical in size. Long descriptions live in a
-	# dedicated wrapped label instead of stretching a Button unpredictably.
+	var is_evolution := false
+	var choice_kind := ""
+	if item is Dictionary:
+		choice_kind = String(item.get("kind", "upgrade"))
+		is_evolution = (choice_kind == "evolution")
+
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(300, 360)
+	card.custom_minimum_size = Vector2(285, 410)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var accent := Color(0.25, 0.88, 0.82, 1.0)
-	if item is WeaponUpgradeData or item is Weapon or item is Dictionary and String(item.get("kind", "")) == "evolution":
-		accent = Color(1.0, 0.57, 0.28, 1.0)
+
+	var accent := Color(0.24, 0.92, 0.84, 1.0)
+	var bg_color := Color(0.022, 0.055, 0.07, 0.98)
+	var border_width := 2
+
+	if is_evolution:
+		accent = Color(1.0, 0.84, 0.18, 1.0)
+		bg_color = Color(0.09, 0.035, 0.15, 0.98)
+		border_width = 3
+	elif item is WeaponUpgradeData or choice_kind == "weapon_new":
+		accent = Color(1.0, 0.58, 0.22, 1.0)
+	elif item is Weapon or choice_kind == "weapon_upgrade":
+		accent = Color(1.0, 0.72, 0.28, 1.0)
+	elif choice_kind == "passive_upgrade":
+		accent = Color(0.28, 0.92, 0.6, 1.0)
+
 	var normal_style := StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.025, 0.055, 0.07, 0.98)
-	normal_style.border_color = Color(accent, 0.72)
-	normal_style.set_border_width_all(2)
-	normal_style.set_corner_radius_all(8)
-	normal_style.set_content_margin_all(14.0)
+	normal_style.bg_color = bg_color
+	normal_style.border_color = Color(accent, 0.9 if is_evolution else 0.75)
+	normal_style.set_border_width_all(border_width)
+	normal_style.set_corner_radius_all(10)
+	normal_style.set_content_margin_all(12.0)
+
 	var hover_style := normal_style.duplicate() as StyleBoxFlat
-	hover_style.bg_color = Color(0.07, 0.13, 0.15, 1.0)
+	hover_style.bg_color = Color(bg_color.r + 0.05, bg_color.g + 0.05, bg_color.b + 0.06, 1.0)
 	hover_style.border_color = accent
-	hover_style.set_border_width_all(3)
+	hover_style.set_border_width_all(border_width + 1)
 	card.add_theme_stylebox_override("panel", normal_style)
+
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", 6)
 	card.add_child(content)
 
 	var kind_label := Label.new()
-	kind_label.add_theme_font_size_override("font_size", 14)
+	kind_label.add_theme_font_size_override("font_size", 13)
 	kind_label.add_theme_color_override("font_color", accent)
 	kind_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(kind_label)
+
 	var visual := Label.new()
-	visual.text = "◆" if item is PerkData or (item is Dictionary and String(item.get("kind", "")).begins_with("passive")) else "⚔"
-	visual.custom_minimum_size = Vector2(0, 64)
+	visual.custom_minimum_size = Vector2(0, 56)
 	visual.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	visual.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	visual.add_theme_font_size_override("font_size", 38)
+	visual.add_theme_font_size_override("font_size", 36)
 	visual.add_theme_color_override("font_color", accent)
 	content.add_child(visual)
 
 	var name_label := Label.new()
-	name_label.custom_minimum_size = Vector2(0, 58)
+	name_label.custom_minimum_size = Vector2(0, 46)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.add_theme_font_size_override("font_size", 20)
-	name_label.add_theme_color_override("font_color", Color(0.9, 1.0, 0.96, 1.0))
+	name_label.add_theme_font_size_override("font_size", 18 if not is_evolution else 20)
+	name_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8, 1.0) if is_evolution else Color(0.92, 0.98, 0.96, 1.0))
 	content.add_child(name_label)
 
 	var description_label := Label.new()
-	description_label.custom_minimum_size = Vector2(0, 174)
+	description_label.custom_minimum_size = Vector2(0, 130)
 	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	description_label.add_theme_font_size_override("font_size", 15)
-	description_label.add_theme_color_override("font_color", Color(0.7, 0.86, 0.82, 1.0))
+	description_label.add_theme_font_size_override("font_size", 13)
+	description_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.65, 1.0) if is_evolution else Color(0.72, 0.86, 0.84, 1.0))
 	content.add_child(description_label)
 
 	var select_button := Button.new()
-	select_button.custom_minimum_size = Vector2(0, 52)
+	select_button.custom_minimum_size = Vector2(0, 46)
 	select_button.focus_mode = Control.FOCUS_ALL
-	select_button.add_theme_font_size_override("font_size", 18)
-	select_button.add_theme_color_override("font_color", Color(0.86, 1.0, 0.94, 1.0))
-	select_button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 0.86, 1.0))
-	select_button.add_theme_stylebox_override("normal", normal_style)
-	select_button.add_theme_stylebox_override("hover", hover_style)
-	select_button.add_theme_stylebox_override("focus", hover_style)
-	select_button.add_theme_stylebox_override("pressed", hover_style)
+	select_button.add_theme_font_size_override("font_size", 16)
+	select_button.add_theme_color_override("font_color", Color(0.95, 1.0, 0.98, 1.0))
+
+	var btn_normal := StyleBoxFlat.new()
+	btn_normal.bg_color = Color(accent, 0.28 if is_evolution else 0.2)
+	btn_normal.border_color = accent
+	btn_normal.set_border_width_all(2)
+	btn_normal.set_corner_radius_all(6)
+	var btn_hover := btn_normal.duplicate() as StyleBoxFlat
+	btn_hover.bg_color = Color(accent, 0.5)
+	select_button.add_theme_stylebox_override("normal", btn_normal)
+	select_button.add_theme_stylebox_override("hover", btn_hover)
+	select_button.add_theme_stylebox_override("focus", btn_hover)
+	select_button.add_theme_stylebox_override("pressed", btn_hover)
 	content.add_child(select_button)
 
-	if item is PerkData:
+	if is_evolution:
+		kind_label.text = "★ 전설 무기 진화 (EVOLUTION) ★"
+		visual.text = "⚡ ★ ⚡"
+		var recipe = item.get("recipe")
+		var recipe_info := ""
+		if recipe != null:
+			var base_name := _get_base_weapon_display_name(String(recipe.get("base_weapon_id")))
+			var pass_name := _get_advanced_passive_label(String(recipe.get("required_passive_id")))
+			recipe_info = "[진화 조합 충족]\n%s Lv5 + %s\n\n" % [base_name, pass_name]
+		name_label.text = "★ " + String(item.get("display_name", "전설 무기"))
+		description_label.text = recipe_info + String(item.get("description", ""))
+		select_button.text = "★ 전설 무기 진화 승급 ★"
+		
+		# Gentle gold aura pulse
+		var pulse := card.create_tween().set_loops()
+		pulse.tween_property(kind_label, "modulate:a", 0.5, 0.6)
+		pulse.tween_property(kind_label, "modulate:a", 1.0, 0.6)
+	elif item is PerkData:
 		var evolution_links := _get_weapon_evolution_links(item.id)
-		kind_label.text = "[★ 진화 시너지]  ·  [NEW 신규]" if not evolution_links.is_empty() else "[NEW 신규]  ·  패시브"
-		if not evolution_links.is_empty():
-			kind_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.24, 1.0))
-			var pulse := create_tween().set_loops()
-			pulse.tween_property(kind_label, "modulate:a", 0.45, 0.55)
-			pulse.tween_property(kind_label, "modulate:a", 1.0, 0.55)
+		kind_label.text = "[★ 진화 부품] · [NEW 패시브]" if not evolution_links.is_empty() else "[NEW 패시브]"
+		visual.text = "◆"
 		name_label.text = item.perk_name
 		description_label.text = item.description + _get_build_recipe_hint(item.id)
-		if not evolution_links.is_empty():
-			var tip := "보유 무기 진화 연계\n" + "\n".join(evolution_links)
-			card.tooltip_text = tip
-			kind_label.tooltip_text = tip
-			name_label.tooltip_text = tip
-			description_label.tooltip_text = tip
-			select_button.tooltip_text = tip
-	elif item is WeaponUpgradeData:
-		kind_label.text = "[NEW 신규]  ·  무기"
-		name_label.text = item.weapon_name
-		description_label.text = item.description
+		select_button.text = "패시브 습득"
+	elif item is WeaponUpgradeData or choice_kind == "weapon_new":
+		kind_label.text = "[⚔ 신규 무기 장착]"
+		visual.text = "⚔"
+		name_label.text = String(item.weapon_name if item is WeaponUpgradeData else item.get("display_name", "무기"))
+		description_label.text = String(item.description if item is WeaponUpgradeData else item.get("description", ""))
+		select_button.text = "무기 장착"
 	elif item is Weapon:
-		kind_label.text = "[Lv %d ➔ %d]  ·  무기 강화" % [item.current_level, item.current_level + 1]
-		name_label.text = "%s  Lv %d → %d" % [item.data.weapon_name, item.current_level, item.current_level + 1]
-		description_label.text = "피해량 증가 및 성능 강화\n다음 단계의 화력을 준비하세요."
+		kind_label.text = "[⚔ 무기 강화 · Lv %d ➔ %d]" % [item.current_level, item.current_level + 1]
+		visual.text = "⚔ ⇡"
+		name_label.text = "%s (Lv %d → %d)" % [item.data.weapon_name, item.current_level, item.current_level + 1]
+		description_label.text = "피해량 및 탄환 성능 대폭 상승\n다음 레벨의 압도적 화력을 준비하세요."
+		select_button.text = "무기 레벨업"
 	elif item is Dictionary:
-		var choice_kind := String(item.get("kind", "upgrade"))
-		kind_label.text = "[★ 진화]  ·  무기 교체" if choice_kind == "evolution" else "[%s]" % String(item.get("label", "성장"))
-		name_label.text = String(item.get("display_name", "알 수 없음"))
-		description_label.text = String(item.get("description", ""))
+		match choice_kind:
+			"weapon_upgrade":
+				var w_data = item.get("data")
+				var cur_w = item.get("weapon")
+				var cur_lvl: int = cur_w.current_level if cur_w is Weapon else 1
+				kind_label.text = "[⚔ 무기 강화 · Lv %d ➔ %d]" % [cur_lvl, cur_lvl + 1]
+				visual.text = "⚔ ⇡"
+				name_label.text = "%s (Lv %d → %d)" % [String(item.get("display_name", "무기")), cur_lvl, cur_lvl + 1]
+				description_label.text = "무기 공격력, 연사 속도 및 관통력이 향상됩니다."
+				select_button.text = "무기 레벨업"
+			"passive_new":
+				kind_label.text = "[◆ 신규 패시브 습득]"
+				visual.text = "◆"
+				name_label.text = String(item.get("display_name", "패시브"))
+				description_label.text = String(item.get("description", ""))
+				select_button.text = "패시브 습득"
+			"passive_upgrade":
+				var cur_p = item.get("passive")
+				var p_lvl: int = cur_p.get("level") if cur_p != null and cur_p.get("level") != null else 1
+				kind_label.text = "[◆ 패시브 강화 · Lv %d ➔ %d]" % [p_lvl, p_lvl + 1]
+				visual.text = "◆ ⇡"
+				name_label.text = "%s (Lv %d → %d)" % [String(item.get("display_name", "패시브")), p_lvl, p_lvl + 1]
+				description_label.text = String(item.get("description", ""))
+				select_button.text = "패시브 강화"
+			_:
+				kind_label.text = "[전투 강화]"
+				visual.text = "★"
+				name_label.text = String(item.get("display_name", "강화"))
+				description_label.text = String(item.get("description", ""))
+				select_button.text = "선택"
 
-	select_button.text = "이 강화 선택"
 	select_button.pressed.connect(func() -> void: _on_upgrade_selected(item))
 	if RunStats.banishes_remaining > 0:
 		var banish_button := Button.new()
-		banish_button.text = "불량품 폐기  ·  %d회" % RunStats.banishes_remaining
+		banish_button.custom_minimum_size = Vector2(0, 32)
+		banish_button.text = "🗑 폐기(Banish) · %d회" % RunStats.banishes_remaining
+		banish_button.add_theme_font_size_override("font_size", 12)
 		banish_button.pressed.connect(func() -> void: _on_banish_pressed(item))
 		content.add_child(banish_button)
 	container.add_child(card)
@@ -257,12 +320,12 @@ func _get_weapon_evolution_links(perk_id: String) -> Array[String]:
 			var base_id := String(recipe.get("base_weapon_id"))
 			var res_data = recipe.get("result_weapon_data")
 			for weapon in player.weapons:
-				if EvolutionManager.get_weapon_id(weapon) == base_id and not weapon.evolved:
+				if is_instance_valid(weapon) and EvolutionManager.get_weapon_id(weapon) == base_id and not weapon.evolved:
 					var res_name: String = res_data.get_display_name() if res_data else ""
 					links.append("%s  Lv %d/5  →  ★ %s" % [weapon.get_display_name(), weapon.current_level, res_name])
 	if links.is_empty():
 		for weapon in player.weapons:
-			if not weapon.evolved and perk_id in weapon.get_evolution_requirements():
+			if is_instance_valid(weapon) and not weapon.evolved and weapon.has_method("get_evolution_requirements") and perk_id in weapon.get_evolution_requirements():
 				links.append("%s  Lv %d/5  ·  %s" % [weapon.get_display_name(), weapon.current_level, weapon.get_evolution_requirement_text()])
 	return links
 
