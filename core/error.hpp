@@ -6,7 +6,7 @@ enum class Error {
     Ok, InvalidRequest, NotAccessible, EpochMismatch, SequenceMismatch,
     IdempotencyMismatch, RevisionConflict, InvalidQuantity, InvalidPlacement,
     CapacityExceeded, CycleDetected, DepthExceeded, InvalidState, Incompatible,
-    LimitExceeded
+    LimitExceeded, Pending, Busy, StorageUnavailable
 };
 struct Violation { Error code; };
 inline void require(bool condition, Error code) {
@@ -17,7 +17,7 @@ inline std::string_view name(Error code) {
         "Ok", "InvalidRequest", "NotAccessible", "EpochMismatch", "SequenceMismatch",
         "IdempotencyMismatch", "RevisionConflict", "InvalidQuantity", "InvalidPlacement",
         "CapacityExceeded", "CycleDetected", "DepthExceeded", "InvalidState", "Incompatible",
-        "LimitExceeded"
+        "LimitExceeded", "Pending", "Busy", "StorageUnavailable"
     };
     auto index = static_cast<unsigned>(code);
     return index < sizeof(names) / sizeof(*names) ? names[index] : "Unknown";

@@ -15,3 +15,15 @@ file(GLOB DEMO_SOURCES CONFIGURE_DEPENDS demo/*.cpp)
 add_executable(astra_demo ${DEMO_SOURCES})
 target_link_libraries(astra_demo PRIVATE astra_core)
 add_test(NAME astra_demo COMMAND astra_demo --smoke)
+
+option(ASTRA_POSTGRES "Build the optional PostgreSQL adapter and integration runner" OFF)
+if(ASTRA_POSTGRES)
+    find_package(PostgreSQL REQUIRED)
+    add_library(astra_postgres STATIC storage/postgres.cpp)
+    target_include_directories(astra_postgres PUBLIC storage)
+    target_link_libraries(astra_postgres PUBLIC astra_core PostgreSQL::PostgreSQL)
+    add_executable(astra_postgres_tests integration/postgres.cpp)
+    target_link_libraries(astra_postgres_tests PRIVATE astra_postgres)
+    # Integration phases require a dedicated DB/schema and intentional process exit;
+    # scripts/test-postgres.ps1 orchestrates them on Windows.
+endif()
