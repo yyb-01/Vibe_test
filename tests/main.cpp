@@ -10,6 +10,7 @@ void pending_account_limit(); void partial_copy_item_limit();
 void root_snapshot_sharing(); void allocation_free_publication();
 void prepare_allocation_rollback(); void concurrent_root_snapshots();
 void checkpoint_recovery(); void checkpoint_corruption();
+void async_publication(); void async_resolution(); void async_limits(); void async_rollback();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -25,7 +26,9 @@ int main() {
         {"pending account limit", pending_account_limit}, {"partial copy and global item limit", partial_copy_item_limit},
         {"root snapshot sharing", root_snapshot_sharing}, {"allocation-free publication", allocation_free_publication},
         {"prepare allocation rollback", prepare_allocation_rollback}, {"concurrent root snapshots", concurrent_root_snapshots},
-        {"checkpoint recovery", checkpoint_recovery}, {"checkpoint corruption", checkpoint_corruption}
+        {"checkpoint recovery", checkpoint_recovery}, {"checkpoint corruption", checkpoint_corruption},
+        {"async owner publication", async_publication}, {"async uncertain shutdown", async_resolution},
+        {"async queue limits", async_limits}, {"async rollback retry", async_rollback}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

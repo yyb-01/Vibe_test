@@ -12,6 +12,7 @@ DurableInventory::DurableInventory(std::unique_ptr<DurableStore> store, const Ch
 Result DurableInventory::apply(const Request& request, const Access& access) {
     std::lock_guard lock(mutex_);
     auto sequence = inventory_->snapshot_roots({}).sequence;
+    if (closing_) return {Error::Busy, sequence, {}};
     if (fenced_ || access.epoch != epoch_) return {Error::EpochMismatch, sequence, {}};
     if (!access.account) return {Error::NotAccessible, sequence, {}};
     if (waiting_) {
@@ -39,9 +40,9 @@ Result DurableInventory::finish(SaveOutcome outcome) {
     auto sequence = inventory_->snapshot_roots({}).sequence;
     if (outcome == SaveOutcome::Unknown) return {Error::Pending, sequence, {}};
     if (outcome == SaveOutcome::Fenced) { fenced_ = true; return {Error::EpochMismatch, sequence, {}}; }
-    if (outcome == SaveOutcome::Aborted) {
+    if (outcome == SaveOutcome::Aborted || outcome == SaveOutcome::Limited) {
         inventory_->abort(waiting_->changes); waiting_.reset();
-        return {Error::StorageUnavailable, sequence, {}};
+        return {outcome == SaveOutcome::Limited ? Error::LimitExceeded : Error::StorageUnavailable, sequence, {}};
     }
     auto result = inventory_->commit(waiting_->changes);
     const auto& saved = waiting_->target.requests.back().result;

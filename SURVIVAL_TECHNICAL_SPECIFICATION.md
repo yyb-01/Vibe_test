@@ -1,6 +1,6 @@
 # 20인 심리스 오픈 월드 좀비 생존 게임 — 시스템 아키텍처 및 기술 명세
 
-문서 버전: 1.0 · 작성 기준일: 2026-09-07 · 대상: PC / 현세대 콘솔 · C++20 / 전용 서버
+문서 버전: 1.1 · 수정 기준일: 2026-09-08 · 대상: PC / 현세대 콘솔 · C++20 / 방장 PC 리슨 서버
 
 이 문서는 구현 계약이다. `MUST`는 빌드·출시 차단 조건, `SHOULD`는 변경 근거를 기록해야 하는 기본 정책이다. **수치 예산, 밸런스 계수, 허용 오차는 본 프로젝트의 제안값이며 실측 결과나 현실의 총기·방탄·의학 인증값이 아니다.** 코드는 엔진 독립 참조 구조와 의사코드이며, 완성된 게임 구현이나 성능 보증을 뜻하지 않는다.
 
@@ -9,14 +9,14 @@
 | 항목 | 채택 규격 | 근거 / 제한 |
 |---|---|---|
 | 엔진 | UE5, C++20 게임플레이 코어, Chaos 강체·접촉, World Partition | 선택한 엔진 마이너·소스 commit·콘솔 SDK·cook 버전을 릴리스 manifest에 고정 |
-| 세션 | 4,000 × 4,000m, 최대 20인, 하나의 전용 서버가 월드 상태 소유 | 셀 경계는 스트리밍 경계이며 서버 권한 이전 경계가 아님 |
-| 서버 | Linux x86-64 기준, 고정 60Hz | 8개 전용 물리 코어 / 32GiB RAM / NVMe를 초기 측정 환경으로 제안; 실제 SKU 확정은 부하 시험 후 |
+| 세션 | 4,000 × 4,000m, 방장 1명 + 참가자 최대 19명 | 방장 PC의 게임 프로세스가 월드 권위를 소유; 셀 경계는 스트리밍 경계 |
+| 호스팅 | Windows PC 리슨 서버, 고정 시뮬레이션 60Hz 목표 | 렌더링·로컬 플레이·서버 연산을 함께 측정; 8코어/32GiB/NVMe는 초기 측정 환경이며 최소 사양 보증 아님 |
 | 클라이언트 | Windows PC, PS5 / Xbox Series급을 가정, 60fps 목표 | 공개되지 않은 콘솔 예산·인증 조건을 추정하지 않으며 각 SDK 환경에서 별도 검증 |
 | 총알 | 자체 SIMD 탄도 적분 + 자체 단순 충돌 프록시 질의 | Chaos/PhysX 발사체 액터 사용 안 함; 수류탄·물체 낙하는 Chaos |
 | 차량 | 자체 휠 접지·타이어·동력계 + Chaos 단일 차체 강체 | PhysX Vehicle을 UE에 추가 통합하지 않음; 차량 충돌 엔진을 별도로 만들지 않음 |
-| 저장 | PostgreSQL이 영속 권위, Redis는 버전 있는 캐시 | Redis의 유실·재시작이 소유권을 변경할 수 없음 |
-| 아이템 원자성 | 같은 DB: 예약 후 하나의 SQL 트랜잭션 | 애플리케이션의 두 단계와 분산 DB의 진짜 2PC를 구분 |
-| 진짜 2PC | 둘 이상의 영속 Resource Manager를 넘는 이동에 A.7 규격 적용 | 현재 단일 월드 경로에는 불필요하지만 요청 범위에 따라 프로토콜·복구까지 완전 정의 |
+| 저장 | 방장 PC에 게임과 함께 포함하는 SQLite, 월드당 로컬 DB 하나 | 별도 DB 설치·상시 DB 서비스 불필요; 클라이언트 세이브는 권위가 아님 |
+| 아이템 원자성 | 메모리 예약 → SQLite 단일 트랜잭션 → 메모리 확정 | WAL/FULL 영속 커밋 후 ACK; 분산 2PC 사용 안 함 |
+| 월드 경계 | 캐릭터·장비·제작·차량은 해당 월드에 귀속 | 월드 간 아이템 반입·공용 계정 금고 제외; A.7 참조 |
 | 에셋 통일성 | 버전 고정 style pack + 자동 게이트 + 아트 승인 | 자동 검사만으로 미학적 완전 일관성을 수학적으로 보증하지 않음 |
 | 0.001mm 소켓 | 정규 소켓의 제작용 로컬 데이터 정밀도 | 전체 4km 월드의 float 메시·물리·렌더 결과에 같은 오차를 약속하지 않음 |
 
@@ -24,22 +24,44 @@ UE World Partition은 스트리밍 소스와 셀을 기준으로 로딩을 관�
 
 읽는 순서: 공통 계약 → A 인벤토리/거래 → B 총기/탄도 → C 방어구/생체 → D 차량 → E 제작/영속화 → F 에셋 → 검수 기준.
 
+### 0.1 방장 PC 실행 계약
+
+이하 **서버**는 방장 PC 안의 권위 실행 경로를 뜻한다. 별도 게임 서버를 배포하지 않는다. UE의 `NM_ListenServer`에서 방장은 로컬 플레이어이면서 월드 상태를 소유한다. 서버 계산과 그래픽을 함께 수행하므로 호스트 지연 이점과 추가 부하가 있다. [Epic Networking Overview](https://dev.epicgames.com/documentation/en-us/unreal-engine/networking-overview-for-unreal-engine)
+
+- 메뉴: **방 만들기 → 저장 월드 선택/생성 → 복구 완료 → 초대/참가 허용**. 참가자는 **방 참가 → 인증/버전 확인 → 상태 수신 → 플레이** 순서다.
+- UE Game 빌드에 권위 코드와 렌더 코드를 함께 포함한다. 권위 로직을 `UE_SERVER` 전용 분기에 넣지 않는다. `GameMode`는 방장 권위 경로, `GameState/PlayerState`는 필요한 공개 상태 복제에 사용한다.
+- 방장 입력도 원격 RPC와 같은 명령 검증·예약·커밋 함수를 거친다. 로컬 입력은 루프백 패킷 없이 큐에 넣어도 되지만 무기 발사·아이템 이동을 중복 실행하지 않는다. `IsLocallyControlled`를 권한 판정으로 사용하지 않는다.
+- 방장의 원격 플레이어 관측 영역도 시뮬레이션한다. 방장 카메라 밖이라는 이유로 다른 참가자의 충돌·AI·작업대를 언로드하지 않는다.
+- 초기 호스팅은 Windows PC이며 PC/콘솔 참가와 크로스플레이는 각 플랫폼 SDK 검증 대상이다. 콘솔 방장 지원은 별도 검증 전까지 미지원으로 표시한다.
+
+### 0.2 접속·종료·신뢰 경계
+
+LAN은 로컬 주소/방 검색, 인터넷은 채택 플랫폼의 인증·세션 검색·NAT 통과 및 relay 전송을 이용한다. 서비스 공급자는 플랫폼 확정 시 선정한다. 공유기/CGNAT 환경에서 직접 연결만으로 참가를 보장하지 않는다. relay는 패킷 전달만 하고 게임 판정이나 저장을 소유하지 않는다. LAN 직접 연결 경로는 외부 서비스 없이 제공하되 인터넷 인증 세션과 구분한다.
+
+방 정보에는 `sessionId, worldId, hostAccountId, protocolVersion, catalogHash, maxPlayers=20`을 게시하고, 접속 후 인증된 handshake에 `worldEpoch`를 결합한다. 검색 메타데이터를 인증 근거로 쓰지 않는다. 슬롯은 방장 포함 20개이며 인증·버전 검증과 슬롯 예약을 통과한 연결만 admission한다. 연결별 계정/소유 Pawn을 결합하고 전체 DB나 비공개 인벤토리를 전송하지 않는다.
+
+방장이 나가면 신규 명령을 막고 E.8 저장 절차 뒤 모든 참가자를 메뉴로 돌려보낸다. 강제 종료·절전·연결 상실은 참가자에게 연결 끊김으로 표시하고 마지막 durable 저장에서 방장이 다시 연다. **자동 방장 이전은 초기 범위에서 제외**한다. 참가자가 임의로 같은 월드를 승계하거나 자기 인벤토리 사본을 반입할 수 없다. 복귀 시 새 epoch/baseline으로 재동기화하며 이전 epoch의 입력은 버린다. 방장의 메뉴/백그라운드 전환은 접속자가 있는 동안 월드를 일시정지하지 않는다.
+
+원격 참가자의 패킷 변조·중복 요청은 서버 검증으로 방어한다. 그러나 방장은 실행 파일·메모리·디스크·시계를 통제하므로 방장 치트, 세이브 되돌리기, 복제한 월드 파일까지 방지한다고 보증하지 않는다. 따라서 공개 경쟁 랭킹·월드 간 자산 경제를 두지 않으며, 정상 호스트의 한 월드 안에서 자산 원자성과 재접속 일관성을 보장하는 것을 목표로 한다.
+
 ## 1. 시스템 소유권, 월드, 실행 순서
 
 ```mermaid
 flowchart LR
-    C[클라이언트 입력 / 예측 UI] --> G[인증 / 제한 / 명령 큐]
-    G --> S[60Hz 세션 소유 스레드]
+    C[원격 참가자 최대 19명] --> G
+    subgraph Host[방장 PC 게임 프로세스]
+    H[방장 입력 / 화면 / 예측 UI] --> G[인증 / 제한 / 공통 명령 큐]
+    G --> S[60Hz 권위 시뮬레이션]
     S --> I[인벤토리 / 조립 / 제작 상태]
     S --> P[탄도 / 피해 / 차량 / 생존]
     P --> Q[불변 충돌 / 되감기 프록시]
     I --> J[DB 작업 큐 / 원자적 커밋]
     P --> J
-    J --> DB[(PostgreSQL)]
-    DB --> O[트랜잭션 outbox]
-    O --> R[(Redis 버전 캐시)]
+    J --> DB[(로컬 SQLite WAL)]
     J --> S
     S --> N[관심 영역 / 변경분 복제]
+    N --> H
+    end
     N --> C
 ```
 
@@ -55,7 +77,7 @@ flowchart LR
 | Vehicle | 엔진/휠/차체 상태, 운전 입력 히스토리 | 입력 적용, 상태 스냅샷 |
 | Crafting | 작업 큐, escrow, 작업대 상태 | Start/Pause/Resume/Cancel/Collect |
 | World | 설치물, 구조 지지, 전력 연결, 셀 상태 | 설치·파괴·언로드 가능 여부 |
-| Persistence | 거래·journal·snapshot·outbox | durable 결과, 복구 및 fencing |
+| Persistence | 로컬 SQLite 거래·journal·snapshot·요청 결과 | durable 결과, 복구, 단일 프로세스 잠금 및 epoch fencing |
 | AssetCook | 에셋 검증, 고정 포맷 cook | 서명된 콘텐츠 묶음과 검수 보고서 |
 
 하나의 아이템을 Inventory와 Assembly 양쪽에서 복제 보유하지 않는다. 부품 장착은 같은 `ItemId`의 위치를 `Grid`에서 `Socket`으로 옮기는 행위다. 렌더 컴포넌트는 상태의 뷰다. 가방 안의 못 100개에 Actor 100개를 만들지 않는다.
@@ -98,7 +120,7 @@ worker는 UObject나 소유 맵을 직접 변경하지 않는다. job 입력은 
 
 ### 1.4 16.67ms CPU 예산과 부하 한계
 
-아래 수치는 **서버 틱 critical path의 목표 벽시계 시간**이다. 병렬 job의 코어 사용량과 단순 합산하지 않는다.
+아래 수치는 **방장 PC의 권위 시뮬레이션 critical path 목표 벽시계 시간**이다. 병렬 job의 코어 사용량과 단순 합산하지 않는다. 리슨 서버는 로컬 렌더 제출·애니메이션·오디오·스트리밍도 함께 실행하므로 아래 합계만으로 60fps를 보증하지 않는다. 전체 게임 스레드 p99≤16.67ms와 GPU 프레임 예산을 실제 호스트 플레이 중 별도로 통과해야 한다.
 
 | 구간 | p95 예산 |
 |---|---:|
@@ -155,7 +177,7 @@ static_assert(std::is_trivially_copyable_v<ItemState>);
 
 ### 2.2 패킷 운송과 공통 머리말
 
-플랫폼/엔진의 검증된 인증·암호화 transport를 사용한다. 직접 암호 알고리즘을 구현하지 않는다. 연결 인증을 계정·세션·플랫폼 ticket과 결합하며 서버-DB 통신도 TLS 및 최소 권한을 적용한다. 인증된 클라이언트도 모든 게임 필드를 위조할 수 있다고 가정한다.
+플랫폼/엔진의 검증된 인증·암호화 transport를 사용한다. 직접 암호 알고리즘을 구현하지 않는다. 인터넷 연결 인증을 계정·세션·플랫폼 ticket과 결합한다. SQLite는 방장 프로세스 내부에서만 열고 DB 네트워크 포트를 만들지 않는다. LAN의 로컬 식별자는 검증된 플랫폼 계정과 구분한다. 인증된 원격 클라이언트도 모든 게임 필드를 위조할 수 있다고 가정하며 방장 변조에 대한 한계는 0.2를 따른다.
 
 | 공통 헤더 필드 | 바이트 | 의미 |
 |---|---:|---|
@@ -183,7 +205,7 @@ static_assert(std::is_trivially_copyable_v<ItemState>);
 
 관심 영역은 거리+공간 셀+가청 사건+직접 관측으로 구성한다. visibility 갱신에는 히스테리시스를 적용해 출입 시 깜빡임을 막는다. 소유자 UI 상태·거래 ACK·가까운 공격자·차량 운전자 상태가 최우선이며 원거리 장식이 후순위다. 악성 입력은 거절하고 계측하되 한 번의 지연·포즈 오차만으로 자동 제재하지 않는다.
 
-네트워크 목표: client uplink 평균 ≤32KiB/s, downlink 평균 ≤128KiB/s, 전투 p95 ≤256KiB/s/인. 20인 평균 128KiB/s는 약 2.5MiB/s(약 21Mbit/s) 서버 송신이며 transport/재전송 여유 30%를 추가한다. 실제 relevance 분포와 full snapshot burst로 검증한다.
+네트워크 목표: 원격 client uplink 평균 ≤32KiB/s, downlink 평균 ≤128KiB/s, 전투 p95 ≤256KiB/s/인. 방장은 로컬이므로 송신 대상은 최대 19명이다. 19×128KiB/s×1.3은 약 25.9Mbit/s, 19명이 동시에 256KiB/s를 받는 보수적 시나리오는 약 51.8Mbit/s 업로드다. 이는 가정용 회선 보증이나 독립 p95의 합을 통계적 p95로 해석한 값이 아니다. 호스팅 안내에 회선 부하를 표시하고 실제 relay·재전송·baseline burst에서 검증한다. admission과 snapshot 속도를 제한하고 ACK/입력 대역을 우선 확보한다.
 
 ## A. 심층 파밍, 인벤토리와 ACID 거래
 
@@ -282,12 +304,11 @@ Receive(authenticated request)
   -> simulate ALL changes in scratch state; validate final invariants
   -> enqueue immutable write-set + payload hash + captured context
 DB worker:
-  BEGIN ISOLATION LEVEL SERIALIZABLE
-  lock world owner fence and touched root rows in stable order
-  verify DB revisions and lease epoch
+  BEGIN IMMEDIATE (single SQLite writer)
+  verify local world owner epoch and touched revisions
   claim unique request key; reject hash mismatch
   mutate items, placements, cells, counts, revisions
-  append event + final result + outbox in same transaction
+  append event + final result in same transaction
   COMMIT (required WAL durability acknowledgement)
 Game tick:
   apply committed versions once; unlock reservations; replicate result
@@ -295,9 +316,9 @@ Game tick:
 
 예약은 메모리의 pending map이며 DB prepare와 동일한 보증을 갖지 않는다. 명령 도착 시점의 거리/LOS를 권위 있는 admission context로 확정한다. 커밋을 기다리는 동안 플레이어가 걸었다는 이유만으로 이미 승인한 이동을 취소하지 않는다. 사망·소유권 변경·장착 등 상충하는 명령은 같은 root 예약 뒤에서 순서대로 처리한다. 한 root를 검증하면서 관련 없는 전 월드를 잠그지 않는다.
 
-DB 실패가 확실하면 scratch만 폐기한다. COMMIT 결과가 불명확하면 해당 예약을 유지하고 request 결과를 DB에서 조회한다. 타임아웃 후 임의로 새 requestId를 발급하거나 반대 거래를 실행하면 안 된다. serialization 실패는 전체 거래를 동일 requestId로 제한 재시도한다. 콘텐츠 입력 자체가 잘못된 경우 재시도하지 않는다.
+DB 실패가 확실하면 scratch만 폐기한다. COMMIT 결과가 불명확하면 해당 예약을 유지하고 복구한 DB에서 request 결과를 조회한다. 타임아웃 후 임의로 새 requestId를 발급하거나 반대 거래를 실행하면 안 된다. 시작 시 `SQLITE_BUSY`는 제한 재시도하며 이미 열린 거래는 상태를 확인해 완료/rollback한 뒤 재시도한다. I/O 실패를 단순 Busy로 취급하지 않는다. 콘텐츠 입력 자체가 잘못된 경우 재시도하지 않는다.
 
-PostgreSQL SERIALIZABLE에서도 직렬화 실패 처리가 필요하다. 고정 잠금 순서와 재시도는 생략할 수 없다. [PostgreSQL Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+SQLite writer는 하나의 작업 큐로 직렬화한다. `BEGIN IMMEDIATE`는 쓰기 거래를 먼저 확보하며 경합 시 실패할 수 있다. 메모리 root 예약과 DB revision 검증은 유지한다. [SQLite Transactions](https://www.sqlite.org/lang_transaction.html)
 
 20명이 같은 소총을 가져가면 첫 커밋 하나만 성공한다. 다른 요청은 item revision 또는 Placement가 달라 실패한다. 20명이 서로 다른 아이템을 같은 상자에서 가져가도 container revision 충돌로 재시도할 수 있다. 초판은 상자 단위 잠금으로 명확히 직렬화한다. 이 경합이 측정상 문제일 때만 개별 슬롯 예약으로 세분화한다.
 
@@ -305,90 +326,66 @@ PostgreSQL SERIALIZABLE에서도 직렬화 실패 처리가 필요하다. 고정
 
 ```sql
 CREATE TABLE item (
-  world_id uuid NOT NULL, item_id uuid NOT NULL,
-  def_id integer NOT NULL, quantity bigint NOT NULL CHECK (quantity >= 0),
-  revision bigint NOT NULL CHECK (revision >= 0),
-  state bytea NOT NULL, deleted boolean NOT NULL DEFAULT false,
+  world_id BLOB NOT NULL CHECK(length(world_id)=16),
+  item_id BLOB NOT NULL CHECK(length(item_id)=16),
+  def_id INTEGER NOT NULL CHECK(def_id BETWEEN 1 AND 2147483647),
+  quantity INTEGER NOT NULL CHECK(quantity BETWEEN 0 AND 4294967295),
+  revision INTEGER NOT NULL CHECK(revision >= 0),
+  state BLOB NOT NULL, deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1)),
   CHECK ((deleted AND quantity = 0) OR (NOT deleted AND quantity > 0)),
   PRIMARY KEY (world_id, item_id)
-);
+) STRICT;
 CREATE TABLE placement (
-  world_id uuid NOT NULL, item_id uuid NOT NULL, container_id uuid NOT NULL,
-  kind smallint NOT NULL, socket_id integer, x smallint, y smallint,
-  rotation smallint NOT NULL CHECK (rotation IN (0,1)),
+  world_id BLOB NOT NULL CHECK(length(world_id)=16),
+  item_id BLOB NOT NULL CHECK(length(item_id)=16),
+  container_id BLOB NOT NULL CHECK(length(container_id)=16),
+  kind INTEGER NOT NULL CHECK(kind BETWEEN 0 AND 4),
+  socket_id INTEGER, x INTEGER, y INTEGER,
+  rotation INTEGER NOT NULL CHECK (rotation IN (0,1)),
   PRIMARY KEY (world_id, item_id),
   FOREIGN KEY (world_id,item_id) REFERENCES item(world_id,item_id)
     DEFERRABLE INITIALLY DEFERRED
-);
+) STRICT;
 CREATE UNIQUE INDEX occupied_socket ON placement(world_id,container_id,socket_id)
   WHERE socket_id IS NOT NULL;
 CREATE TABLE occupied_cell (
-  world_id uuid NOT NULL, container_id uuid NOT NULL,
-  x smallint NOT NULL, y smallint NOT NULL, item_id uuid NOT NULL,
+  world_id BLOB NOT NULL CHECK(length(world_id)=16),
+  container_id BLOB NOT NULL CHECK(length(container_id)=16),
+  x INTEGER NOT NULL CHECK(x >= 0), y INTEGER NOT NULL CHECK(y >= 0),
+  item_id BLOB NOT NULL CHECK(length(item_id)=16),
   PRIMARY KEY(world_id,container_id,x,y),
   FOREIGN KEY(world_id,item_id) REFERENCES placement(world_id,item_id)
     DEFERRABLE INITIALLY DEFERRED
-);
+) STRICT;
 CREATE TABLE request_result (
-  world_id uuid NOT NULL, account_id uuid NOT NULL, request_id uuid NOT NULL,
-  action_seq bigint NOT NULL, payload_hash bytea NOT NULL, result bytea NOT NULL,
+  world_id BLOB NOT NULL CHECK(length(world_id)=16),
+  account_id BLOB NOT NULL CHECK(length(account_id)=16),
+  request_id BLOB NOT NULL CHECK(length(request_id)=16),
+  action_seq INTEGER NOT NULL CHECK(action_seq > 0),
+  payload_hash BLOB NOT NULL CHECK(length(payload_hash)=32), result BLOB NOT NULL,
   PRIMARY KEY(world_id,account_id,request_id),
   UNIQUE(world_id,account_id,action_seq)
-);
+) STRICT;
 ```
 
-위 SQL은 핵심 제약 발췌다. 실제 migration에는 `container` 행·FK, kind 범위, grid 좌표 범위, `world_owner`, event/outbox, 삭제와 배치의 일관성 검사를 추가해야 한다. occupied_cell은 x,y 원점만이 아니라 아이템이 차지한 **모든 칸**을 기록한다. Grid가 아닌 Placement는 칸을 만들지 않는다. 교환 시 두 아이템의 기존 점유 행을 먼저 삭제하고 마지막 상태를 삽입한다.
+위 SQL은 SQLite 핵심 제약 발췌다. 모든 연결에서 `PRAGMA foreign_keys=ON`을 설정하고 확인한다. ID는 canonical 16바이트 BLOB, 영속 u64 값은 INT64_MAX 이하로 바인딩한다. 실제 migration에는 `container` 행·FK, kind별 좌표/소켓 제약, `world_owner`, event, 삭제와 배치의 일관성 검사를 추가해야 한다. occupied_cell은 x,y 원점만이 아니라 아이템이 차지한 **모든 칸**을 기록한다. Grid가 아닌 Placement는 칸을 만들지 않는다. 교환 시 기존 점유와 socket 배치 행을 먼저 삭제하고 마지막 상태를 삽입한다. `STRICT`에서도 트리 검증은 별도다. [SQLite STRICT Tables](https://www.sqlite.org/stricttables.html)
 
-활성 item의 정확히 하나인 Placement, 트리 cycle, cell footprint 일치는 커밋 전 validator와 DB deferred constraint trigger로 확인한다. 게임 서버는 전용 서비스 역할만 사용하고 일반 클라이언트는 DB에 접근할 수 없다. admin 도구도 같은 거래 함수를 거친다. DB CHECK 하나가 트리 전체를 검증해 준다고 가정하지 않는다.
+활성 item의 정확히 하나인 Placement, 트리 cycle, cell footprint 일치는 writer의 커밋 전 최종 상태 validator로 확인한다. SQLite의 deferred FK는 참조 무결성을 검사하며 임의의 deferred constraint trigger를 제공한다고 가정하지 않는다. DB는 방장 프로세스만 열고 원격 참가자는 접근할 수 없다. 관리 도구도 같은 거래 함수를 거친다. 파일 소유자인 방장의 직접 변조는 0.2의 보증 밖이다.
 
-- **Atomicity:** 수량·위치·출력·결과·outbox가 하나의 커밋에서 모두 바뀐다.
+- **Atomicity:** 수량·위치·출력·event·결과가 하나의 커밋에서 모두 바뀐다.
 - **Consistency:** ID·수량·점유·트리·질량·권한 불변식이 최종 상태에서 성립한다.
-- **Isolation:** root 예약+정렬된 DB 잠금+직렬화 가능 격리. 캐시는 소유권 판단 근거가 아니다.
-- **Durability:** 요구된 PostgreSQL WAL flush 및 동기 복제 ACK 후에만 `Committed`를 보낸다.
+- **Isolation:** root 예약+SQLite 단일 writer 거래+revision 검증. 캐시는 소유권 판단 근거가 아니다.
+- **Durability:** SQLite WAL과 `synchronous=FULL`에서 COMMIT 성공 후에만 `Committed`를 보낸다. 디스크 flush가 정상인 단일 PC 장애 모델이며 디스크 소실·수동 세이브 복원은 포함하지 않는다.
 
 네트워크는 exactly-once delivery가 아니다. 재전송 + durable idempotency + 조건부 mutation으로 **게임 효과를 한 번만 적용**한다. 최종 결과 보관 기간은 30일을 초기값으로 두되 계정별 actionSeq high-watermark와 미완료 gap ledger는 계속 유지한다. 오래된 결과를 지워도 같은 actionSeq를 다시 실행하지 않고 resync를 요구한다.
 
-### A.7 둘 이상의 영속 저장소를 넘는 진짜 2PC
+### A.7 월드별 저장 경계와 재시작
 
-이 절은 타 월드 이동·별도 계정 금고처럼 서로 다른 PostgreSQL RM을 반드시 건너야 할 때 적용하는 필수 규격이다. 클라이언트와 Redis는 participant가 아니다. 현재 20인 단일 월드 이동을 두 DB로 쪼갤 이유는 없으므로 A.5를 기본 경로로 유지한다.
+방장 월드의 아이템·컨테이너·캐릭터·제작·차량·요청 결과는 같은 SQLite DB에 저장한다. 참가자의 로컬 캐릭터 파일이나 다른 방의 장비를 가져오지 않는다. 여러 DB에 걸친 `ATTACH` 쓰기와 분산 2PC는 사용하지 않는다. 기존 요구의 두 단계는 **애플리케이션 준비/영속 커밋**으로 충족하고 이를 분산 commit 프로토콜이라고 부르지 않는다.
 
-**Coordinator**는 durable transaction decision store를 가지고, `TxId`, 요청 hash, immutable participant 목록, 각 준비 결과, `UNDECIDED/COMMIT/ABORT`, coordinator epoch를 기록한다. participant는 SourceRM, DestinationRM 등 각자 WAL을 가진 DB다. 이전 coordinator가 살아 있어도 새 epoch 이후 결정을 쓰지 못하도록 fencing한다.
+미확정 요청은 E.7 복구 후 durable `request_result`로 확인한다. 커밋된 요청은 같은 결과만 반환하고 미커밋 요청은 새 세션의 권한을 검증한 뒤 처리한다. 예전 epoch 패킷 자체는 실행하지 않는다. 이미 소비한 actionSeq의 결과가 정리되었으면 실행 대신 resync를 요구한다.
 
-```text
-1. BEGIN(tx): coordinator가 participant 전체 목록을 durable 기록
-2. PREPARE(tx, writeSetHash, fence): 각 RM이 권한/용량/수량을 검증
-3. 각 RM: BEGIN; mutate; PREPARE TRANSACTION 'txId:rmId'; -> PREPARED
-4a. 모두 PREPARED: coordinator가 COMMIT 결정을 durable 기록
-4b. 하나라도 확정 실패: coordinator가 ABORT 결정을 durable 기록
-5. 결정에 따라 각 RM에 COMMIT PREPARED / ROLLBACK PREPARED 재전송
-6. 전 participant 완료를 확인한 뒤 Finalize/Committed를 클라이언트에 전달
-```
-
-| RM 메시지 필드 | 표현 |
-|---|---|
-| txId / coordinatorEpoch / participantId | UUID / u64 / u32 |
-| phase / decision / writeSetVersion | u8 / u8 / u16 |
-| writeSetHash / decisionRecordId | SHA-256 32B / UUID |
-| expectedVersions / writeSet | 길이 제한된 내부 포맷; 서버 간 mTLS |
-
-한 RM이 commit된 뒤 다른 RM이 아직 prepared이면 외부 observer가 한쪽만 볼 수 있다. 따라서 **2PC만으로 애플리케이션 전역 동시 가시성을 얻는다고 주장하지 않는다.** 교차 이전 물품은 transfer gate를 통해서만 접근하고 전체 완료 전 Source/Destination 모두 소비·재거래 불가다. coordinator의 확정 decision과 모든 completion을 읽은 뒤 gate를 연다. 2PC 중간 행을 직접 gameplay 조회에 노출하지 않는다.
-
-복구 규칙:
-
-| 장애 지점 | 복구 행동 |
-|---|---|
-| coordinator BEGIN 전 | participant를 호출하지 않았으므로 안전하게 새 요청 처리 |
-| 일부만 PREPARED, decision 없음 | 권위 있는 coordinator 복구가 ABORT를 durable 기록; 참여 RM을 전부 조사 |
-| 모든 RM PREPARED, decision 없음 | 복구 coordinator가 기록을 읽고 하나의 결정을 확정; 아직 commit 명령은 전송되지 않았어야 함 |
-| COMMIT durable 후 통신 단절 | COMMIT만 재전송; 절대로 ABORT로 변경하지 않음 |
-| RM 재시작 | `pg_prepared_xacts`와 coordinator decision을 대조 |
-| coordinator decision store 접근 불가 | prepared 상태 유지, 사용자에게 Resolving; 자체 timeout rollback 금지 |
-| COMMIT PREPARED 응답 유실 | RM의 completion ledger를 확인, 상태가 없다고 blind rollback하지 않음 |
-| 오래된 coordinator 재등장 | epoch fence로 요청 거절; durable 결정과 다른 명령 거절 |
-
-`PREPARE TRANSACTION`은 잠금을 유지하며 방치하면 vacuum 등에 영향을 준다. 반드시 복구 관리자·미완료 거래 경보·상한을 갖추고, 진짜 2PC 경로를 배포하지 않는 DB에서는 `max_prepared_transactions=0`을 유지한다. 이 값과 복제·장애 조치 설정은 채택 버전의 지원 범위에 맞춰 검증한다. [PostgreSQL PREPARE TRANSACTION](https://www.postgresql.org/docs/18/sql-prepare-transaction.html)
-
-준비된 거래는 2초에 경고, 30초에 운영 장애로 올리되 경보 시간이 rollback 권한이 되지 않는다. 결정 로그는 모든 RM completion과 감사 보존 조건을 충족하기 전 삭제하지 않는다. 2PC는 네트워크 partition 중 가용성을 희생한다. 원자성과 동시에 항상 진행되는 가용성을 약속하지 않는다.
+`worldEpoch`는 월드 DB 안에서 부팅마다 증가시키고 `idOrigin`도 영속 증가/예약한다. 같은 origin의 low ID를 재사용하지 않으며 overflow에서 중단한다. 세이브 복제본 사이의 유일성은 보증하지 않으므로 복제·백업 복원 월드는 별도 lineage로 취급하고 서로 자산을 합치지 않는다. 자동 방장 이전이나 교차 월드 경제가 필요해질 때 소유권 이전 프로토콜을 별도 설계한다.
 
 ### A.8 낙관적 UI와 물리 분리
 
@@ -592,11 +589,13 @@ spall/파편 생성 시 `ΣE_fragment+E_residual+E_deposited≤E_in`을 강제�
 
 `ShotAccepted`: shotId(u64), fireSeq(u32), launchTick(u32), assemblyRev(u64), origin(cell+localPos), direction(quantized), v0(u16, 0.1m/s), ammoDef(u32), visualSeed(u32). 원격에는 필요한 tracer/음향만 전달하며 총알 transform을 60Hz 복제하지 않는다.
 
-탄약 감소·내구도·shot event는 같은 critical 사건이다. 5ms 이하 WAL microbatch 커밋을 초기 목표로 두고 총구 FX는 예측한다. authoritative 피해·사망·loot의 durable 결과는 해당 shot event 뒤에 순서화한다. DB 장애 시 수락되지 않은 샷으로 피해를 확정하지 않는다. ammo 소비와 피해를 서로 다른 순서로 복구하지 않는다. 커밋 지연이 전투 감각을 해치면 DB 배치/인프라를 개선하며 내구성 보증을 몰래 낮추지 않는다.
+탄약 감소·내구도·shot event는 같은 critical 사건이다. 5ms 이하 WAL microbatch 커밋을 초기 목표로 두고 총구 FX는 예측한다. authoritative 피해·사망·loot의 durable 결과는 해당 shot event 뒤에 순서화한다. DB 장애 시 수락되지 않은 샷으로 피해를 확정하지 않는다. ammo 소비와 피해를 서로 다른 순서로 복구하지 않는다. 방장 PC의 로컬 저장 지연을 측정해 배치/저장 경로를 개선하며 내구성 보증을 몰래 낮추지 않는다.
 
 ### B.7 Server Rewind / Lag Compensation
 
 히스토리는 60Hz·500ms 보관한다. 실제 보상 구간은 **전송 지연+승인된 view interpolation delay 합계 200ms**다. 나머지는 worker 지연/복구 여유다. history에는 `entityGeneration, pose, colliderRev, protectionRev, aliveEpoch, existenceInterval`을 기록한다.
+
+방장 로컬 발사는 서버 시각으로 접수하고 네트워크 지연을 0으로 둔다. 실제 화면 보간 지연만 승인해 적용하며 원격 참가자용 RTT를 방장에게 더하지 않는다. 동일 발사 검증·event dedupe를 적용하지만 방장의 지연 이점을 없앤다고 보증하지 않는다.
 
 1. ping/clock sample에서 서버 시간 offset을 제한적으로 추정한다. client tick을 그대로 신뢰하지 않는다.
 2. 검증한 발생 시각을 t_fire, 서버 승인 보간 지연을 I라 두고 `now-t_fire+I≤200ms`를 강제한다. 미래·너무 오래된 발사·순서 역전을 거절한다.
@@ -950,7 +949,7 @@ Queued -> Reserved -> Running -> OutputReady -> Collected
 Reserved/Running/Paused -> Cancelled 또는 Destroyed
 ```
 
-Start는 입력 아이템과 도구 사용권을 검증하고 재료를 job escrow로 이동하며 job 행을 같은 거래로 만든다. 긴 작업 전체 동안 DB row lock을 유지하지 않는다. **escrow 소유권이 예약**이다. 도구는 장비 위치에 남길 수 있으나 activeJob lease가 있으면 거래·동시 사용을 막는다.
+Start는 입력 아이템과 도구 사용권을 검증하고 재료를 job escrow로 이동하며 job 행을 같은 거래로 만든다. 긴 작업 전체 동안 SQLite 쓰기 트랜잭션을 유지하지 않는다. **escrow 소유권이 예약**이다. 도구는 장비 위치에 남길 수 있으나 activeJob lease가 있으면 거래·동시 사용을 막는다.
 
 작업량은 `Δwork=dt×stationRate×toolConditionCurve×powerFraction`이다. 필요한 입력은 consumeStage에 따라 escrow에서 중간재로 바꾼다. 한 stage의 입력 감소·중간재 생성·도구 마모·에너지 소비·checkpoint는 같은 거래로 확정한다. 서버 메모리는 최대 1초의 진행량을 예측 표시할 수 있지만 그것만으로 output을 생성하지 않는다.
 
@@ -1016,13 +1015,15 @@ struct WorldStimulus {
 
 | 데이터 | 권위 / 저장 | 장애 허용 |
 |---|---|---|
-| 아이템 소유권·수량·탄약·장착·제작 출력·사망/loot | PostgreSQL critical 거래 + event/outbox | ACK된 결과 RPO 0을 요구; 지정 WAL/동기 replica 장애 모델 안에서 |
+| 아이템 소유권·수량·탄약·장착·제작 출력·사망/loot | 로컬 SQLite critical 거래 + event/요청 결과 | 정상 flush 가능한 저장장치의 crash 복구에서 ACK 결과 보존 |
 | 제작 stage 소비·연료 배분 | critical stage checkpoint | 완료 output과 소비량의 원자성 필수 |
 | 진행 animation·차량 pose·비치명 환경 누적 | async snapshot 5초 이하 | 최대 5초 rollback을 명시 |
 | static catalog/asset | 서명된 build artifact | 게임 세이브에 복제하지 않음 |
-| Redis cache | outbox projection | 전부 유실되어도 DB에서 재구성 |
+| 메모리 조회 캐시 | committed revision 기반 projection | 전부 유실되어도 로컬 DB에서 재구성 |
 
-RPO 0은 모든 복제본·백업의 동시 소실을 견딘다는 뜻이 아니다. 동기 standby를 포함한 배치 장애 모델, WAL flush, failover fencing을 운영 계약으로 고정한다. PostgreSQL 동기 복제 설정에 따라 응답 대기와 내구성 범위가 달라진다. [PostgreSQL Standby / Synchronous Replication](https://www.postgresql.org/docs/current/warm-standby.html)
+게임에 포함한 SQLite의 정확한 버전·빌드 옵션을 고정하고 `journal_mode=WAL`, `synchronous=FULL`, `foreign_keys=ON`의 적용 결과를 확인한다. writer 연결은 DB worker 한 곳이 소유하고 reader도 FK 설정을 적용한다. WAL/FULL은 커밋마다 WAL sync를 수행한다. [SQLite WAL](https://www.sqlite.org/wal.html), [SQLite synchronous](https://sqlite.org/pragma.html#pragma_synchronous)
+
+세이브는 방장 PC의 로컬 사용자 데이터 폴더(Windows 초기 경로 `%LOCALAPPDATA%/AstraGame/Saves/<worldId>/world.sqlite3`)에 둔다. 실행 중 DB를 OneDrive·네트워크 공유·동기화 폴더에서 열지 않는다. 클라이언트가 파일 경로를 지정하지 못하고 worldId는 검증된 ID로만 매핑한다. 디스크 고장·동기화 충돌·사용자 백업 복원·변조까지 ACK 결과 보존을 약속하지 않는다. 클라우드 동기화가 추가되면 닫힌 일관된 백업만 전달한다.
 
 critical inventory/ownership을 5초 dirty snapshot만으로 저장하지 않는다. 그렇지 않으면 드롭 후 crash에서 원본 가방과 월드 아이템이 모두 살아날 수 있다. 낮은 우선순위 pose 저장에 소유권·수량 필드를 섞어 오래된 snapshot이 거래 결과를 덮어쓰게 하지 않는다.
 
@@ -1039,7 +1040,7 @@ dirty set은 EntityId별로 합친다. game thread가 틱 경계에서 불변 �
 
 ```sql
 INSERT INTO entity_snapshot(world_id, entity_id, revision, event_seq, payload)
-VALUES ($1,$2,$3,$4,$5)
+VALUES (?1,?2,?3,?4,?5)
 ON CONFLICT(world_id,entity_id) DO UPDATE
 SET revision=EXCLUDED.revision, event_seq=EXCLUDED.event_seq, payload=EXCLUDED.payload
 WHERE entity_snapshot.revision < EXCLUDED.revision;
@@ -1047,45 +1048,46 @@ WHERE entity_snapshot.revision < EXCLUDED.revision;
 
 동일 revision에 다른 payload hash가 오면 silent overwrite하지 않고 invariant 오류를 낸다. 삭제 tombstone은 revision을 가지며 오래된 snapshot으로 부활하지 않는다. tombstone 정리는 모든 consumer watermark·백업 복구 범위·retention을 만족할 때만 수행한다.
 
-### E.7 PostgreSQL·Redis 처리 순서와 복구
+### E.7 로컬 SQLite 처리 순서와 복구
 
-DB 표: `world_owner`, `item`, `container`, `placement`, `occupied_cell`, `assembly`, `craft_job`, `job_escrow`, `structure`, `entity_snapshot`, `world_event`, `request_result`, `outbox`. 공간 인덱스는 worldId/cellId이며 JSON만으로 소유권/수량 제약을 대체하지 않는다. 확장 payload에만 versioned binary/JSON을 사용한다.
+DB 표: `world_owner`, `item`, `container`, `placement`, `occupied_cell`, `assembly`, `craft_job`, `job_escrow`, `structure`, `entity_snapshot`, `world_event`, `request_result`. 공간 인덱스는 worldId/cellId이며 JSON만으로 소유권/수량 제약을 대체하지 않는다. 확장 payload에만 versioned binary/JSON을 사용한다.
 
-`world_event`의 eventSeq는 world_owner 행을 잠근 커밋 batch에서 증가시킨다. SQL sequence의 할당 순서를 commit 순서라고 가정하지 않는다. `includedEventSeq`는 실제로 적용 완료된 prefix다. 이 world 단위 DB batch 직렬화는 20인 목표의 단순화이며 높은 처리량이 필요할 때 aggregate별 sequence와 barrier로 확장한다.
+`world_event`의 eventSeq는 단일 writer의 커밋 batch에서 `world_owner`를 갱신하며 증가시킨다. 준비 시 ID 할당 순서를 commit 순서라고 가정하지 않는다. `includedEventSeq`는 실제로 적용 완료된 prefix다. 월드 단위 DB batch 직렬화는 20인 목표의 단순화이며 실제 처리량이 부족할 때 batch 크기와 변경 행 저장 비용부터 개선한다.
 
 ```text
 Game immutable batch
-  -> PostgreSQL BEGIN
-     check worldEpoch / lease, revisions
-     write critical state + events + request results + outbox
+  -> SQLite BEGIN IMMEDIATE
+     check worldEpoch, revisions
+     write critical state + events + request results
      COMMIT durable
   -> game tick apply once
-Outbox worker
-  -> Redis compare-version projection
-  -> mark delivered (중복 재시도 허용)
+  -> update in-process read snapshots
+  -> host local UI / remote replication (중복 적용 방지)
 ```
 
-Redis는 `(world,entity)` 값에 epoch/revision/payload를 저장한다. Lua/원자 명령으로 새 revision이 더 클 때만 바꾼다. tombstone도 같은 규칙이다. 캐시 실패는 거래 rollback 이유가 아니며 재시도한다. Redis RDB/AOF 정책에는 유실 가능성이 있으므로 자산 소유권 원장이나 진짜 2PC participant로 쓰지 않는다. [Redis Persistence](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
+메모리 캐시는 `(world,entity,epoch,revision)`으로 관리한다. tombstone을 포함해 구버전이 신버전을 덮지 않게 한다. 캐시 재구축 실패로 이미 커밋한 거래를 반대로 실행하지 않는다. 미확정 캐시를 참가자에게 전송하지 않는다. 외부 cache 서비스와 outbox consumer는 초기 범위에 없다.
 
 기동 복구 순서:
 
-1. DB에서 world_owner lease를 원자 획득하고 epoch를 증가시킨다. 기존 owner가 같은 epoch로 쓰지 못하도록 fence한다.
-2. in-doubt 2PC가 있으면 A.7 resolver로 처리하고 관련 자산을 gate한다.
+1. 월드별 OS 배타 파일 잠금을 세션 수명 동안 확보한다. 이미 열려 있으면 두 번째 방 생성을 거절한다. 잠금 파일 존재 여부가 아니라 OS 잠금을 사용하며 프로세스 종료 시 OS가 해제한다.
+2. SQLite WAL 복구·schema/catalog 호환성을 확인한 뒤 `BEGIN IMMEDIATE`에서 worldEpoch와 idOrigin을 증가/예약하고 커밋한다. 이전 epoch 쓰기는 거절한다.
 3. critical 현재 테이블과 durable event high-watermark를 읽는다. 미완료 request는 최종 결과/미결정 상태로 복구한다.
 4. noncritical snapshot을 읽고 필요한 후속 event를 revision 조건으로 replay한다. 이미 materialize된 critical 이벤트를 다시 적용하지 않는다.
 5. 컨테이너 트리·수량·소켓·job escrow·tombstone 불변식을 검사한다. 불일치 자산은 격리하고 소유권을 추정해 두 곳에 생성하지 않는다.
 6. 열려 있던 stage는 durable checkpoint에서 시작한다. 완료 output은 unique key로 조회한다. 차량은 저장 pose의 안전 충돌 위치에 배치하고 penetration을 해결한다.
-7. 게임 상태 검증과 필요한 셀 로딩 후에만 클라이언트 입장을 연다. 새 epoch/baseline을 발행하고 Redis를 재구축한다.
+7. 게임 상태 검증·메모리 캐시 재구축·필요한 셀 로딩 후에만 클라이언트 입장을 연다. 새 sessionId/epoch/baseline과 저장된 계정별 actionSeq 기준을 발행한다.
 
-lease 갱신 초기값은 1초, 유효시간 5초다. DB writer는 매 거래에서 현재 epoch와 DB 시간 기준 만료를 검사한다. lease를 잃은 서버는 신규 critical 명령을 중단한다. Redis TTL lock만으로 leader를 정하지 않는다. 두 서버가 같은 월드를 동시에 수정하는 split-brain 시험을 출시 게이트에 넣는다.
+OS 잠금 획득 실패·DB epoch 불일치·I/O 오류 시 신규 critical 명령을 중단한다. 분산 leader election과 TTL lease는 사용하지 않는다. 동일 PC에서 같은 저장 월드의 중복 실행을 검사한다. 다른 경로로 복사한 세이브나 악성 방장이 잠금을 무시하는 경우는 전역 fencing 대상이 아니다.
 
 ### E.8 backpressure, offline 정책, AI 작업대/건축 규격
 
 DB queue age>250ms는 경고, >1초는 신규 제작/거래 admission 제한, >2초 또는 durability 미확인은 신규 critical 명령 중단이다. 진행 중 결과는 Resolving으로 표시한다. 큐 메모리 상한 64MiB에 도달하면 요청을 받아 놓고 버리지 말고 admission에서 명시적으로 거절한다. 이동/카메라는 계속 처리하되 저장 불가 상태에서 자산이 확정된 것처럼 표시하지 않는다.
 
-unloaded cell은 경제 상태를 유지한다. 서버가 살아 있을 때의 가동 작업대는 논리 서비스가 simulation을 계속한다. 서버 다운 시간에는 **제작·연료 소비·좀비 이동을 진행시키지 않는다.** 저장된 미완료 작업은 checkpoint에서 재개한다. 음식 부패처럼 offline 경과가 필요한 항목만 DB 시각으로 상한 24시간을 적분한다. 식품은 승인된 온도/시간 decay curve와 오염 성분을 보존하고 재접속으로 freshness를 초기화하지 않는다.
+unloaded cell은 경제 상태를 유지한다. 방장이 월드를 열어 둔 동안 가동 작업대의 논리 simulation을 계속한다. 방 종료·절전·다운 시간에는 **제작·연료 소비·좀비 이동·음식 부패를 진행시키지 않는다.** 초기 정책은 저장된 시뮬레이션 시간에서만 재개해 로컬 PC 시계 변경으로 경제가 진행되지 않게 한다. 재접속은 기존 freshness·오염·stage checkpoint를 유지한다. 이후 offline 진행이 필요하면 별도 시간 신뢰 정책을 설계한다.
 
-shutdown은 입장/admission 중단→pending resolve→critical flush→noncritical 최종 snapshot→lease 반환 순이다. 강제 종료 복구 목표 RTO≤120초는 부하 fixture에서 검증할 목표이며 현재 측정값이 아니다. 백업은 PITR 가능 WAL+일일 base backup을 초기안으로 하고 분기별 복원 시험을 한다. restore는 전체 world/계정/거래 lineage의 일관된 cut을 사용한다.
+shutdown은 입장/admission 중단→pending resolve→critical flush→noncritical 최종 snapshot→참가자 종료 통지→DB 닫기→OS 잠금 해제 순이다. 저장 실패/미확정 결과는 UI에 표시하고 성공 메시지를 내지 않는다. 강제 종료 복구 목표 RTO≤120초는 부하 fixture에서 검증할 목표이며 현재 측정값이 아니다.
+
+백업은 SQLite Backup API로 일관된 DB 사본을 임시 파일에 완성·검증한 뒤 게시한다. 실행 중 `.sqlite3` 파일만 복사하거나 WAL을 수동 삭제하지 않는다. 초기 정책은 정상 종료 시 최근 정상 백업 3개 순환 보관이며 새 백업 성공 전 이전 백업을 삭제하지 않는다. 복원은 닫힌 월드의 전체 DB 단위로 수행하고 현재 세이브를 보존한 뒤 적용한다. 이전 백업으로 복원하면 그 시점 이후 진행은 사라짐을 표시하고 별도 lineage로 연다. [SQLite Backup API](https://www.sqlite.org/backup.html)
 
 작업대 AI 에셋은 working bounds, operator pose, input/output anchors, tool clearance, moving part envelope, power/fuel ports, heat/noise origin을 갖는다. 건축 에셋은 grid module, support sockets, structural load profile, closed/open collision, ballistic thickness, navigation blocker를 갖는다. render mesh만 보고 tier·지지 강도·전력 출력·보관 용량을 생성하지 않는다. 부분 제작 0/25/50/75/100% 시각 상태는 같은 datum과 bounds를 공유한다.
 
@@ -1384,7 +1386,7 @@ view preset은 ortho 정면/측면/상면, 3/4 perspective, grazing-light, 조�
 
 ### F.10 런타임 보안·물리·배포 경계
 
-서버는 asset header의 gameplay profile·collision·socket만 필요하며 고해상도 texture를 로드하지 않는다. client는 cosmetic mesh/shader를 사용한다. 서버 전용 cook과 client cook은 같은 manifest/catalog hash를 공유한다. client mod가 plate mesh를 바꿔도 보호 zone이나 질량은 바뀌지 않는다.
+권위 시뮬레이션은 asset header의 gameplay profile·collision·socket을 읽고 렌더 상태에 의존하지 않는다. 방장 Game 패키지는 권위 데이터와 cosmetic mesh/shader를 함께 포함하며 고해상도 texture는 방장 화면의 스트리밍 범위에서 로드한다. 원격 참가자와 같은 manifest/catalog hash를 공유한다. 원격 client mod가 plate mesh를 바꿔도 방장이 판정하는 보호 zone이나 질량은 바뀌지 않는다. 방장 프로세스 변조의 한계는 0.2를 따른다.
 
 접속 handshake는 protocolVersion, catalogHash, collisionHash, socketProfileHash를 대조한다. gameplay hash 불일치 시 세션 참가를 막고 업데이트 경로를 제시한다. cosmetic-only patch도 서명과 파일 무결성을 검증하고 월드 상태 migration과 분리한다. 이미 발사된 탄환/진행 중 recipe는 시작 시 버전의 profile을 유지한다.
 
@@ -1422,9 +1424,11 @@ AI 파일의 parser/convert worker는 네트워크/실행 권한을 제한한 �
 | 사망/로그아웃 | pickup·장전·시체 생성 중 단절 | lifeEpoch당 시체 1개, item 위치 1개 |
 | 제작 완료 | output 생성/Collect ACK 직전에 kill | jobId/outputIndex당 출력 1개 |
 | 취소/정전 | 단계 경계마다 반복 start/pause/cancel | 사용 자원/도구 마모와 반환량 장부 일치 |
-| 서버 split-brain | old/new epoch 서버 동시 DB 쓰기 | 새 epoch만 허용 |
-| 2PC 복구 | PREPARE/decision/COMMIT PREPARED 사이 모든 지점 kill | durable decision 불변, in-doubt 임의 rollback 0 |
-| 캐시 장애 | Redis flush/restart/outbox 재정렬 | 소유권 변화 0, 버전 역행 0 |
+| 중복 방 실행 | 같은 월드를 두 프로세스가 열기, 이전 epoch 쓰기 | OS 잠금으로 두 번째 실행 거절, 구 epoch 거절 |
+| 로컬 DB 복구 | COMMIT 전/후 kill, WAL 복구, 디스크 가득 참 | 미커밋 효과 0, durable 결과 한 번, 허위 ACK 0 |
+| 캐시 장애 | 메모리 캐시 폐기/재구축/갱신 재정렬 | 소유권 변화 0, 버전 역행 0 |
+| 방장 종료 | 정상 나가기/강제 종료/절전/회선 상실 | 참가자에게 단절 표시, 재개 시 DB 기준, 자동 승계 없음 |
+| 방장 입력 | 로컬+원격 동시 loot/fire, 로컬 UI 재적용 | 같은 검증·예약 경로, 발사/거래 중복 효과 0 |
 | 오래된 snapshot | 삭제 후 이전 revision 저장 | tombstone 부활 0 |
 
 수량 보존은 모든 defId가 영구 고정된다는 뜻이 아니다. 허용된 source/sink/recipe 변환을 포함한 event ledger와 비교한다. 거래 집합에서 `전 상태 + 승인 생성 - 승인 소모 = 후 상태`가 성립해야 한다. 분해/제작의 자원 변환은 recipe yield와 lineage를 근거로 계산한다.
@@ -1465,17 +1469,19 @@ RK2의 정확도는 별도 고정밀 reference 적분과 비교한다. 승인 am
 
 네트워크 시험 행렬은 RTT 0/80/150/250ms × loss 0/1/5/10% × jitter 0/30/80ms이며 순서 뒤바뀜·중복·2초 blackout·재접속을 추가한다. 250ms 이상의 조건에서 보상 상한을 넘어선 입력은 명시적으로 제한되더라도 자산 불변식은 깨지면 안 된다.
 
+방장 1명+원격 19명으로 LAN/직접 인터넷/relay 경로와 CGNAT·공유기·방화벽 실패 안내를 검수한다. 방장의 실제 렌더링·차량 운전·백그라운드 전환·세이브 I/O를 동시에 부하에 포함한다. 방장 시야 밖 참가자의 셀도 작동해야 한다. 낮은 업로드 대역에서 snapshot 폭주가 거래 ACK를 막지 않는지 확인한다. 플랫폼 인증·초대·재접속과 21번째 입장 거절을 시험한다.
+
 | 계측 | 출시 판단 |
 |---|---|
-| tick wall time / job wait | 기준 조합에서 p95≤12ms, p99≤16.67ms |
+| tick wall time / job wait | 권위 경로 p95≤12ms, 호스트 전체 게임 스레드 p99≤16.67ms; GPU도 60fps 예산 검증 |
 | server transaction commit | 정상 환경 p95≤50ms, p99≤150ms; combat microbatch 별도 더 낮은 지연 목표 |
 | combat durable acceptance | 초기 p99≤20ms 목표; 실제 조준/피격 UX 시험과 함께 판단 |
-| DB queue age / prepared age | E.8/A.7 threshold 경보, 결과 오인 없음 |
+| DB queue age / pending age | E.8 threshold 경보, 로컬 디스크 정체 시 결과 오인 없음 |
 | item invariant violations | 0; 즉시 격리와 감사 event |
 | replication bytes | 2.3의 평균/p95 budget과 baseline burst 모두 충족 |
 | rewind query count / substep splits | budget 초과 원인별 histogram |
 | vehicle correction distance/angle | 네트워크 조건별 p50/p95/p99, 반복 snap 원인 분석 |
-| snapshot lag / outbox lag | stale overwrite 0, 허용 RPO 이내 |
+| snapshot lag / WAL size | stale overwrite 0, 허용 RPO 이내; checkpoint/장시간 reader로 WAL 무한 증가 방지 |
 | streaming stalls / nav queue | 플레이어 안전/충돌 유지, 지속 queue 성장 없음 |
 | memory / allocator | warmed-up hot loop 할당 0 목표, 8시간 soak에서 누수성 증가 없음 |
 | asset validation | MUST 위반 0, 승인된 exception만 포함 |
@@ -1484,7 +1490,7 @@ RK2의 정확도는 별도 고정밀 reference 적분과 비교한다. 승인 am
 
 ### G.6 구현 순서와 검증 산출물
 
-1. **기반 slice:** catalog/핸들/serializer, 20인 세션, A 거래+crash 복구. 산출물은 shared-container stress와 한 아이템의 전체 lineage다.
+1. **기반 slice:** catalog/핸들/serializer, 방장 PC 리슨 서버 1+19인 세션, 로컬 SQLite 저장, A 거래+crash 복구. 산출물은 방 만들기/참가/종료, shared-container stress와 한 아이템의 전체 lineage다.
 2. **전투 slice:** 한 receiver/총열/탄창/optic 계열, 한 plate carrier, SIMD/reference solver, 역사 proxy. 산출물은 에너지 장부와 ISA parity corpus다.
 3. **차량 slice:** 4휠 chassis, engine/gearbox/tire/armor, COM/관성, 서버 운전. 산출물은 충돌·탈락·network matrix 보고서다.
 4. **생존/제작 slice:** T1~4 capability, wound/metabolism, 전력/열/소음, escrow와 작업대 파괴. 산출물은 checkpoint/정전/취소 보존 시험이다.
@@ -1495,6 +1501,6 @@ RK2의 정확도는 별도 고정밀 reference 적분과 비교한다. 승인 am
 
 ### G.7 이 문서와 함께 제공한 실행 검사
 
-`verify_spec.py`는 표준 라이브러리만 사용한다. 문서의 제한된 POD 선언 문법을 읽어 지정된 지원 ABI 규칙으로 layout/offset/크기를 계산하고, 핵심 패킷 합계·sRGB 경계·float 정밀도·무항력 적분 기준을 검사한다. 실행 방법은 Python 3에서 `python verify_spec.py`다.
+`verify_spec.py`는 표준 라이브러리만 사용한다. 문서의 제한된 POD 선언 문법을 읽어 지정된 지원 ABI 규칙으로 layout/offset/크기를 계산하고, 핵심 패킷 합계·sRGB 경계·float 정밀도·무항력 적분 기준을 검사한다. A.6의 SQL 발췌는 메모리 SQLite에서 실행해 문법을 확인한다. 실행 방법은 Python 3에서 `python verify_spec.py`다. SQLite는 STRICT를 지원하는 3.37 이상이 필요하며 검사용 버전은 게임에 채택할 버전과 별개다.
 
-현재 수행한 검사 결과는 **25개 POD layout, 17개 sizeof 선언, 패킷 및 기준 산술 PASS**다. 이것은 C++ compiler·Unreal/Chaos·PostgreSQL/Redis·SIMD backend를 실제 실행한 결과가 아니다. native compiler ABI 검증, engine integration, shader cook, DB fault injection, 플랫폼 성능 시험은 G.2~5의 구현 단계 출시 게이트로 남는다. 본 작업의 산출물은 아키텍처/기술 명세와 문서 검증 도구다.
+문서 검사 기준 결과는 **25개 POD layout, 17개 sizeof 선언, 패킷 및 기준 산술 PASS**다. 이 검사는 C++ compiler·Unreal/Chaos·SQLite 영속 adapter·SIMD backend 실행을 대신하지 않는다. 현재 C++ 구현/검증 범위는 `IMPLEMENTATION_STATUS.md`에서 별도로 추적한다. v1.1 변경은 리슨 서버/로컬 저장 설계이며 UE 연결과 SQLite adapter가 이미 구현됐음을 뜻하지 않는다. engine integration, shader cook, DB fault injection, 플랫폼 성능 시험은 G.2~5의 출시 게이트다.

@@ -2,6 +2,7 @@
 from pathlib import Path
 import math
 import re
+import sqlite3
 
 doc = Path(__file__).with_name("SURVIVAL_TECHNICAL_SPECIFICATION.md").read_text(encoding="utf-8")
 cpp = "\n".join(re.findall(r"```cpp\n(.*?)```", doc, re.S))
@@ -64,3 +65,15 @@ com = sum(m * r for m, r in zip(masses, positions)) / sum(masses)
 inertia = 0.5 + sum(m * (r - com) ** 2 for m, r in zip(masses, positions))
 assert math.isclose(com, 1.2) and math.isclose(inertia, 5.3)
 print(f"PASS: {len(structs)} POD layouts, {len(checks)} sizes, packets and reference arithmetic")
+
+# Validate the documented schema excerpt, not persistence or crash recovery.
+schema = next(s for s in re.findall(r"```sql\n(.*?)```", doc, re.S)
+              if s.startswith("CREATE TABLE item"))
+db = sqlite3.connect(":memory:")
+try:
+    db.execute("PRAGMA foreign_keys=ON")
+    db.executescript(schema)
+    assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+finally:
+    db.close()
+print("PASS: documented SQLite schema")
