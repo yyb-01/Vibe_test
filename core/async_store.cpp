@@ -48,7 +48,7 @@ StoredWorld AsyncStore::acquire(const Checkpoint& seed) {
     return result;
 }
 SaveOutcome AsyncStore::save(std::uint64_t version, const Checkpoint& target, const SavedRequest& record) {
-    owner(); require(acquired_ && !closing_ && !running_ && !uncertain_, Error::Busy);
+    owner(); require(acquired_ && !closing_ && !running_ && !uncertain_ && !deltaPending_, Error::Busy);
     require(!target.requests.empty(), Error::InvalidState);
     const auto& last = target.requests.back();
     require(last.account == record.account && last.requestId == record.requestId &&

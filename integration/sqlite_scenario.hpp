@@ -22,3 +22,4 @@ void sqlite_backups(const std::filesystem::path&);
 void sqlite_shutdown(const std::filesystem::path&);
 void sqlite_backup_failures(const std::filesystem::path&);
 void sqlite_async(const std::filesystem::path&);
+void sqlite_restore(const std::filesystem::path&);

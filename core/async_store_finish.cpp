@@ -2,7 +2,7 @@
 
 namespace astra {
 StoredWorld AsyncStore::inspect() {
-    owner(); require(acquired_ && !closing_, Error::InvalidState);
+    owner(); require(acquired_ && !closing_ && !deltaPending_, Error::InvalidState);
     collect();
     if (running_) throw Violation{Error::Pending};
     if (!reply_ || reply_->failure) {
@@ -15,6 +15,7 @@ StoredWorld AsyncStore::inspect() {
 }
 void AsyncStore::close() {
     owner(); require(acquired_, Error::InvalidState);
+    require(!deltaPending_, Error::Pending);
     if (closed_) return;
     collect();
     require(!running_ || active_ == StoreCommand::Close, Error::Pending);

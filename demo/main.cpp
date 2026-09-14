@@ -2,30 +2,53 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef _WIN32
+int wmain(int argc, wchar_t** argv) {
+#else
 int main(int argc, char** argv) {
-    bool smoke = argc == 2 && std::string(argv[1]) == "--smoke";
-    Scenario scenario;
-    Request previous; bool hasPrevious = false;
-    std::istringstream script(
-        "show\ntake 100 4 0\nsplit 100 7 20 5 0\nreplay\nmerge 105 20 4 0\n"
-        "drop 100\ntake 100 4 0\nswap 102 104\nshow\nquit\n");
-    auto& input = smoke ? static_cast<std::istream&>(script) : std::cin;
-    std::cout << "ASTRA inventory sandbox (memory only; no game rendering or durable save)\n"
-              << "10=chest 20=player bag 30=ground 40=nested pouch\n"
-              << "show | take ITEM X Y | drop ITEM | move ITEM CONTAINER X Y\n"
-              << "split ITEM COUNT CONTAINER X Y | merge ITEM CONTAINER X Y\n"
-              << "swap ITEM ITEM | replay | quit\n";
-    std::string line;
-    for (;;) {
-        if (!smoke) std::cout << "> " << std::flush;
-        if (!std::getline(input, line) || line == "quit") break;
-        try {
-            if (!command(scenario, line, previous, hasPrevious) && smoke) return 1;
-        } catch (const Violation& e) {
-            std::cerr << name(e.code) << '\n'; if (smoke) return 1;
-        } catch (const std::exception& e) {
-            std::cerr << e.what() << '\n'; if (smoke) return 1;
-        }
+#endif
+    auto option = argc > 1 ? std::filesystem::path(argv[1]) : std::filesystem::path{};
+    bool smoke = argc == 2 && option == "--smoke";
+    std::filesystem::path save;
+    if (argc == 3 && option == "--save") save = argv[2];
+    else if (argc != 1 && !smoke && !(argc == 4 && option == "--restore")) {
+        std::cerr << "Usage: astra-demo [--smoke | --save PATH | --restore BACKUP NEW_PATH]\n"; return 1;
     }
-    return 0;
+    try {
+        if (argc == 4) { restore(argv[2], argv[3]); return 0; }
+        if (argc == 3 && save.empty()) throw std::runtime_error("Save path must not be empty.");
+        Session session(save);
+        Request previous; bool hasPrevious = false;
+        std::istringstream script(
+            "show\ntake 100 4 0\nsplit 100 7 20 5 0\nreplay\nmerge 105 20 4 0\n"
+            "drop 100\ntake 100 4 0\nswap 102 104\nshow\nquit\n");
+        auto& input = smoke ? static_cast<std::istream&>(script) : std::cin;
+        std::cout << "ASTRA inventory sandbox (" << (session.persistent() ? "SQLite async save" : "memory only") << ")\n"
+                  << "10=chest 20=player bag 30=ground 40=nested pouch; IDs accept HI:LO\n"
+                  << "show | take ITEM X Y | drop ITEM | move ITEM CONTAINER X Y\n"
+                  << "split ITEM COUNT CONTAINER X Y | merge ITEM CONTAINER X Y\n"
+                  << "swap ITEM ITEM | replay | resolve | quit\n";
+        std::string line;
+        int exitCode = 0;
+        for (;;) {
+            if (!smoke) std::cout << "> " << std::flush;
+            bool eof = !std::getline(input, line);
+            if (eof || line == "quit" || exitCode) {
+                auto closed = session.close();
+                if (closed.applied()) return exitCode;
+                std::cerr << "Shutdown incomplete: " << name(closed.code) << ". Retry quit.\n";
+                if (eof || smoke) return 1;
+                continue;
+            }
+            try {
+                if (!command(session, line, previous, hasPrevious) && smoke) exitCode = 1;
+            } catch (const Violation& e) {
+                std::cerr << name(e.code) << '\n'; if (smoke) exitCode = 1;
+            } catch (const std::exception& e) {
+                std::cerr << e.what() << '\n'; if (smoke) exitCode = 1;
+            }
+        }
+    } catch (const Violation& e) { std::cerr << name(e.code) << '\n'; }
+    catch (const std::exception& e) { std::cerr << e.what() << '\n'; }
+    return 1;
 }

@@ -2,19 +2,20 @@
 
 namespace astra {
 void validate_catalog(const Catalog&);
-void validate(const Catalog& catalog, World& world) {
+static void recalculate(const Catalog& catalog, const World& world, std::map<Id, Container>& containers) {
     validate_catalog(catalog);
     require(world.items.size() <= 65536 && world.containers.size() <= 4096, Error::LimitExceeded);
     std::map<Id, Grid> grids;
     std::map<Id, unsigned> counts;
-    for (auto& [id, c] : world.containers) {
+    std::map<Id, std::vector<Id>> chains;
+    for (auto& [id, c] : containers) {
         auto& s = c.state;
         require(bool(id) && id == s.id && s.revision <= revision_limit, Error::InvalidState);
         require(c.kind == PlaceKind::Grid || c.kind == PlaceKind::Slot || c.kind == PlaceKind::World,
                 Error::InvalidState);
         require(c.kind == PlaceKind::World || (s.width && s.width <= 32 && s.height && s.height <= 32),
                 Error::InvalidState);
-        auto chain = ancestry(world, id);
+        const auto& chain = chains.emplace(id, ancestry(world, id)).first->second;
         s.depth = static_cast<std::uint8_t>(chain.size() - 1);
         s.subtreeMassG = s.usedVolumeMl = s.entryCount = 0;
         if (s.ownerItem) {
@@ -36,8 +37,10 @@ void validate(const Catalog& catalog, World& world) {
         require(item.quantity && item.quantity <= d.maxStack, Error::InvalidQuantity);
         require(world.placements.contains(id), Error::InvalidState);
         const auto& p = world.placements.at(id);
-        auto chain = ancestry(world, p.container);
-        auto& c = world.containers.at(p.container);
+        auto path = chains.find(p.container);
+        require(path != chains.end(), Error::InvalidState);
+        const auto& chain = path->second;
+        auto& c = containers.at(p.container);
         require(p.item == id && (c.allowedClasses & (std::uint64_t{1} << d.classId)), Error::Incompatible);
         occupy(grids[p.container], c, d, p);
         require(++c.state.entryCount <= 256 && ++counts[chain.back()] <= 1024, Error::LimitExceeded);
@@ -46,11 +49,20 @@ void validate(const Catalog& catalog, World& world) {
         c.state.usedVolumeMl += static_cast<std::uint32_t>(volume);
         auto mass = std::uint64_t(d.massG) * item.quantity;
         for (auto ancestor : chain) {
-            auto& parent = world.containers.at(ancestor);
+            auto& parent = containers.at(ancestor);
             require(mass <= parent.maxMassG - parent.state.subtreeMassG, Error::CapacityExceeded);
             parent.state.subtreeMassG += mass;
         }
     }
     require(live == world.placements.size(), Error::InvalidState);
+}
+void validate(const Catalog& catalog, World& world) {
+    recalculate(catalog, world, world.containers);
+}
+void verify_world(const Catalog& catalog, const World& world) {
+    // ponytail: still scans all rows; incremental persistence needs delta validation.
+    auto containers = world.containers;
+    recalculate(catalog, world, containers);
+    require(containers == world.containers, Error::InvalidState);
 }
 }

@@ -18,6 +18,23 @@ v1.1의 목표는 **방장 PC 리슨 서버(방장 1명+참가자 최대 19명)*
 
 `build.ps1`은 실제 C++ 테스트를 실행합니다. `play.ps1`은 콘솔 데모를 빌드하고 실행합니다. 종료는 `quit`입니다.
 
+디스크에 저장하며 실행하려면 SQLite를 준비하고 저장 경로를 지정합니다. 같은 경로로 다시 실행하면 월드와 계정 요청 순번을 복구합니다.
+
+```powershell
+./scripts/setup-sqlite.ps1
+./scripts/play.ps1 -SavePath ./saves/world.db
+```
+
+`-SavePath` 모드는 `DurableInventory → AsyncStore → SQLiteStore`를 사용합니다. `Committed to SQLite`는 디스크 저장 확인 뒤 출력됩니다. 저장이 2초 안에 끝나지 않으면 `Pending`을 표시하며 `resolve` 또는 `replay`로 재확인합니다. 미확정 거래가 있는 동안 새 거래는 받지 않습니다. `quit`과 입력 종료(EOF)는 미확정 거래를 정리하고 정상 백업 3개를 유지한 뒤 닫습니다. 종료 오류는 표시하며, 콘솔이 열려 있으면 원인을 해결한 뒤 `quit`을 재시도합니다. EOF에서 종료가 미완료이면 종료 코드 1입니다.
+
+저장 모드에서 생성한 아이템은 `2:1`처럼 전체 ID로 표시합니다. 출력된 ID를 그대로 `move 2:1 20 5 0` 등에 사용하세요. 아래 예제의 `105`는 메모리 모드 초기 샘플에만 해당합니다. `-SavePath`를 생략하면 기존 메모리 모드입니다. 저장 연결 검증은 `./scripts/test-demo.ps1`로 실행합니다.
+
+이전 백업으로 새 월드를 열려면 `play.ps1 -RestoreBackup <백업 파일> -SavePath <새 저장 경로>`를 사용합니다. 복원은 백업 시점의 상태와 요청 기록을 가져오며, 기존 세이브는 보존합니다. 실제 경로를 고르는 방법은 [백업 복원 안내](storage/SQLITE_RESTORE.md)에 있습니다.
+
+저장 단계별 성능은 `./scripts/benchmark-sqlite.ps1`로 측정합니다. [측정 방법과 기준선](storage/PERFORMANCE.md)에 결과와 해석 범위를 기록했습니다.
+
+저장 모드는 변경 집합을 DB 스레드로 전달하고, 그곳에서 체크포인트 생성·저장·미확정 결과 비교를 처리합니다. `./scripts/benchmark-sqlite.ps1 -Async`로 호출 스레드 제출 시간과 저장 왕복을 따로 측정합니다. [비동기 결과](storage/ASYNC_PERFORMANCE.md)에서 남아 있는 전체 DB 쓰기 비용도 확인할 수 있습니다.
+
 ```text
 show
 take 100 4 0
@@ -49,7 +66,7 @@ quit
 
 ## 보증 경계
 
-`Inventory::apply`의 성공은 **메모리에 적용됨**입니다. 로컬 디스크 영속 커밋을 뜻하지 않습니다. 종료하면 데모 상태와 중복 요청 기록은 사라집니다. SQLite 재시작 복구는 별도 `DurableInventory`/`SQLiteStore` 경로로 검증했습니다. 콘솔 데모 연결, 네트워크 인증·거리/LOS 검사, 낙하 Actor, UI는 아직 구현하지 않았습니다.
+`Inventory::apply`의 성공은 **메모리에 적용됨**입니다. 로컬 디스크 영속 커밋을 뜻하지 않습니다. 메모리 모드 종료 시 데모 상태와 중복 요청 기록은 사라집니다. `-SavePath` 모드는 `DurableInventory`/`AsyncStore`/`SQLiteStore`를 통해 상태·요청 결과를 저장하고 재시작 시 복구합니다. 네트워크 인증·거리/LOS 검사, 낙하 Actor, UI는 아직 구현하지 않았습니다.
 
 `Access`는 방장 PC의 인증된 권위 실행 경로가 만들어야 합니다. 클라이언트가 권한 목록을 제출하는 API가 아닙니다. 방장 로컬 입력도 같은 검증을 거칩니다. 전체 `snapshot()`도 서버용이며 원격 사용자에게 그대로 송신하면 안 됩니다. 순서 있는 거래 채널 기준으로 actionSeq는 1씩 증가하며, 정상 형식의 거절 결과도 해당 순서를 소비합니다. 방장 자체의 메모리/세이브 변조를 막는 보증은 없습니다.
 

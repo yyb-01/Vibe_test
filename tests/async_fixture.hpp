@@ -9,6 +9,7 @@ struct StoreProbe {
     std::condition_variable wake;
     bool hold{};
     std::atomic<bool> entered{}, inspectFails{}, lost{}, aborted{}, closeFails{};
+    std::atomic<bool> fenced{}, changed{};
     std::atomic<unsigned> saves{}, closes{};
     void release() { std::lock_guard lock(mutex); hold = false; wake.notify_all(); }
 };
@@ -31,15 +32,20 @@ public:
         if (p_->lost) throw Violation{Error::StorageUnavailable};
         return SaveOutcome::Committed;
     }
-    StoredWorld inspect() override { worker(); require(!p_->inspectFails, Error::StorageUnavailable); return saved_; }
+    StoredWorld inspect() override {
+        worker(); require(!p_->inspectFails, Error::StorageUnavailable);
+        auto result = saved_;
+        if (p_->fenced) ++result.checkpoint.epoch;
+        if (p_->changed) ++result.checkpoint.world.items.at(id(104)).revision;
+        return result;
+    }
     void close() override { worker(); ++p_->closes; require(!p_->closeFails, Error::StorageUnavailable); }
 };
 struct AsyncScenario {
     std::shared_ptr<StoreProbe> probe = std::make_shared<StoreProbe>();
     AsyncStore* store{};
     std::unique_ptr<DurableInventory> inventory;
-    AsyncScenario() {
-        auto c = Inventory(catalog(), seed(), 1, 1).checkpoint();
+    explicit AsyncScenario(Checkpoint c = Inventory(catalog(), seed(), 1, 1).checkpoint()) {
         auto driver = std::make_unique<AsyncStore>([p = probe] { return std::make_unique<ProbeStore>(p); }, c);
         store = driver.get(); eventually([&] { return store->ready(); });
         inventory = std::make_unique<DurableInventory>(std::move(driver), c);

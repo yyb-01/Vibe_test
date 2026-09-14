@@ -10,14 +10,15 @@ inline constexpr std::size_t db_queue_limit = 64 * 1024 * 1024;
 // Reserve fixed mailbox/thread bookkeeping; decoded worlds are execution memory.
 inline constexpr std::size_t db_message_limit = db_queue_limit - 4096;
 using StoreFactory = std::function<std::unique_ptr<DurableStore>()>;
-enum class StoreCommand { Acquire, Save, Inspect, Close };
+enum class StoreCommand { Acquire, Save, Inspect, Close, SaveDelta, ResolveDelta };
 struct StoreMessage {
     StoreCommand command{};
     std::vector<std::uint8_t> bytes;
     std::uint64_t version{};
     std::exception_ptr failure;
+    SaveOutcome outcome{SaveOutcome::Unknown};
 };
-// ponytail: one in-flight checkpoint; expand the queue after row-delta persistence.
+// ponytail: one in-flight write; expand the queue after row-delta persistence.
 class StoreWorker {
 public:
     explicit StoreWorker(StoreFactory);

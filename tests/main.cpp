@@ -11,6 +11,9 @@ void root_snapshot_sharing(); void allocation_free_publication();
 void prepare_allocation_rollback(); void concurrent_root_snapshots();
 void checkpoint_recovery(); void checkpoint_corruption();
 void async_publication(); void async_resolution(); void async_limits(); void async_rollback();
+void account_sequence();
+void validation_paths();
+void checkpoint_deltas(); void async_deltas();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -28,7 +31,9 @@ int main() {
         {"prepare allocation rollback", prepare_allocation_rollback}, {"concurrent root snapshots", concurrent_root_snapshots},
         {"checkpoint recovery", checkpoint_recovery}, {"checkpoint corruption", checkpoint_corruption},
         {"async owner publication", async_publication}, {"async uncertain shutdown", async_resolution},
-        {"async queue limits", async_limits}, {"async rollback retry", async_rollback}
+        {"async queue limits", async_limits}, {"async rollback retry", async_rollback},
+        {"account sequence recovery", account_sequence}, {"validation paths", validation_paths},
+        {"checkpoint deltas", checkpoint_deltas}, {"async delta publication", async_deltas}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

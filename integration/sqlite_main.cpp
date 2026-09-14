@@ -18,6 +18,8 @@ int main(int argc, char** argv) {
             sqlite_shutdown(path / "shutdown.db");
             sqlite_backup_failures(path / "backup-failure.db");
             sqlite_async(path / "async.db");
+            sqlite_restore(path);
+            std::cout << "PASS SQLite restore: new save, replay, locks, no overwrite, corruption\n";
             std::cout << "PASS SQLite async commit, restart, shutdown backup\n";
             std::cout << "PASS SQLite backup rotation, shutdown, backup failure retry\n";
         } else if (mode == "hold") {

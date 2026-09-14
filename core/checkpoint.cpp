@@ -6,9 +6,8 @@ void validate_checkpoint(const Checkpoint& c) {
     require(c.epoch && c.epoch <= revision_limit && c.origin && c.origin <= revision_limit, Error::InvalidState);
     require(c.sequence <= revision_limit && c.nextId && c.nextId <= revision_limit &&
             c.nextEvent && c.nextEvent <= revision_limit + 1, Error::InvalidState);
-    auto checked = c.world;
-    validate(c.catalog, checked);
-    require(checked == c.world && c.requests.size() <= 65536, Error::InvalidState);
+    verify_world(c.catalog, c.world);
+    require(c.requests.size() <= 65536, Error::InvalidState);
     for (const auto& [id, item] : c.world.items) {
         if (id.hi == c.origin) require(id.lo < c.nextId && item.birthEvent < c.nextEvent, Error::InvalidState);
     }
