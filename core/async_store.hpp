@@ -24,6 +24,9 @@ public:
     QueueStatus status() const;
     StoredWorld acquire(const Checkpoint&) override;
     SaveOutcome save(std::uint64_t, const Checkpoint&, const SavedRequest&) override;
+    bool delta_writes() const override { return true; }
+    SaveOutcome save_delta(std::uint64_t, const CheckpointDelta&) override;
+    SaveOutcome resolve_delta() override;
     StoredWorld inspect() override;
     void close() override;
 private:
@@ -37,6 +40,6 @@ private:
     StoreCommand active_{StoreCommand::Acquire};
     std::chrono::steady_clock::time_point started_{};
     std::size_t bytes_{};
-    bool running_{}, acquired_{}, uncertain_{}, closing_{}, closed_{};
+    bool running_{}, acquired_{}, uncertain_{}, closing_{}, closed_{}, deltaPending_{};
 };
 }

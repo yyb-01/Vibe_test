@@ -12,7 +12,8 @@ try {
     $sourceDir = if ($Target -eq 'test') { 'tests' } else { 'demo' }
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot $sourceDir) -Filter '*.cpp' | ForEach-Object FullName)
     $exe = Join-Path $output "astra-$Target.exe"
-    & $compiler c++ -std=c++20 -O0 -g -Wall -Wextra -Werror -pthread -I (Join-Path $projectRoot 'core') @sources -o $exe
+    $flags = @(if ($Target -eq 'demo') { '-municode' })
+    & $compiler c++ -std=c++20 -O0 -g -Wall -Wextra -Werror -pthread @flags -I (Join-Path $projectRoot 'core') @sources -o $exe
     if ($LASTEXITCODE -ne 0) { throw 'C++ build failed.' }
     if ($Target -eq 'test') {
         & $exe

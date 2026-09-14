@@ -1,9 +1,19 @@
 #include "store_worker.hpp"
+#include "worker_delta.hpp"
 
 namespace astra {
 namespace {
-void execute(DurableStore& store, StoreMessage& message) {
+void execute(DurableStore& store, StoreMessage& message, WorkerDelta& delta) {
     if (message.command == StoreCommand::Close) { store.close(); return; }
+    if (message.command == StoreCommand::ResolveDelta) { message.outcome = delta.resolve(store); return; }
+    if (message.command == StoreCommand::SaveDelta) {
+        CheckpointDelta changes;
+        try { changes = decode_delta(message.bytes); }
+        catch (...) { message.outcome = SaveOutcome::Aborted; message.bytes.clear(); return; }
+        std::vector<std::uint8_t>().swap(message.bytes);
+        message.outcome = delta.save(store, message.version, changes);
+        return;
+    }
     StoredWorld loaded;
     if (message.command == StoreCommand::Acquire) {
         loaded = store.acquire(decode_checkpoint(message.bytes));
@@ -12,9 +22,12 @@ void execute(DurableStore& store, StoreMessage& message) {
         require(!target.requests.empty(), Error::InvalidState);
         SaveOutcome outcome = SaveOutcome::Unknown;
         try { outcome = store.save(message.version, target, target.requests.back()); } catch (...) {}
-        if (outcome == SaveOutcome::Committed) { ++message.version; return; }
+        if (outcome == SaveOutcome::Committed) {
+            ++message.version; delta.current = {std::move(target), message.version}; return;
+        }
         loaded = store.inspect(); // Settle aborted/unknown/fenced results using durable state.
     } else loaded = store.inspect();
+    delta.current = loaded;
     std::vector<std::uint8_t>().swap(message.bytes);
     message.version = loaded.version;
     message.bytes = encode_checkpoint(loaded.checkpoint);
@@ -43,6 +56,7 @@ std::optional<StoreMessage> StoreWorker::take() {
     return result;
 }
 void StoreWorker::run(StoreFactory factory) {
+    WorkerDelta delta;
     std::unique_ptr<DurableStore> store;
     std::exception_ptr startup;
     try { store = factory(); require(bool(store), Error::InvalidState); }
@@ -55,7 +69,7 @@ void StoreWorker::run(StoreFactory factory) {
             if (!job_) return;
             message = std::move(*job_); job_.reset();
         }
-        try { if (startup) std::rethrow_exception(startup); execute(*store, message); }
+        try { if (startup) std::rethrow_exception(startup); execute(*store, message, delta); }
         catch (...) { message.failure = std::current_exception(); std::vector<std::uint8_t>().swap(message.bytes); }
         { std::lock_guard lock(mutex_); reply_ = std::move(message); }
     }

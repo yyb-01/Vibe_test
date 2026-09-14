@@ -1,12 +1,14 @@
 #pragma once
 #include "write_set.hpp"
 #include "checkpoint.hpp"
+#include "checkpoint_delta.hpp"
 #include <map>
 #include <memory>
 #include <mutex>
 
 namespace astra {
 void validate(const Catalog&, World&);
+void verify_world(const Catalog&, const World&);
 std::vector<Id> ancestry(const World&, Id container);
 void check_request(const World&, const Request&, const Access&);
 void mutate(const Catalog&, World&, const Request&, Id created, std::uint64_t event);
@@ -22,6 +24,7 @@ public:
     Checkpoint checkpoint() const;
     // Host-only durable staging; requires exactly one owned pending transaction.
     Checkpoint checkpoint_after(const std::shared_ptr<const WriteSet>&) const;
+    CheckpointDelta checkpoint_delta(const std::shared_ptr<const WriteSet>&) const;
     Result apply(const Request&, const Access&);
     // Host-only lifecycle. One transaction per account; disjoint roots can wait together.
     Preparation prepare(const Request&, const Access&);
@@ -30,6 +33,8 @@ public:
     bool abort(const std::shared_ptr<const WriteSet>&);
     std::shared_ptr<const World> snapshot() const;
     RootSnapshot snapshot_roots(const std::set<Id>& roots) const;
+    // Host-only cursor; admission still checks the sequence under the same mutex.
+    std::uint64_t next_action_sequence(Id account) const;
 private:
     struct Record {
         std::vector<std::uint8_t> payload;

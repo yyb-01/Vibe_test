@@ -30,7 +30,9 @@ void copy_backup(Connection& source, const StoredWorld& current, const std::file
 #ifdef _WIN32
         require(MoveFileExW(temporary.c_str(), final.c_str(), MOVEFILE_WRITE_THROUGH), Error::StorageUnavailable);
 #else
-        std::filesystem::rename(temporary, final);
+        // Atomic no-replace publication, including an externally created target.
+        std::filesystem::create_hard_link(temporary, final);
+        std::filesystem::remove(temporary);
         int directory = open(final.parent_path().c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
         require(directory >= 0, Error::StorageUnavailable);
         auto synced = fsync(directory); close(directory);

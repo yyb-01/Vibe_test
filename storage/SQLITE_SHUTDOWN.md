@@ -21,4 +21,4 @@ SQLite는 일관된 읽기 스냅샷에서 [Backup API](https://www.sqlite.org/b
 
 검증: `./scripts/test-sqlite.ps1`. WAL에 남은 상태/요청 결과의 백업, 5회 종료 후 정상 3개 유지, 백업에서 중복 요청 복구, 손상·임시 파일 보존, 미확정 종료 보류, 백업/삭제 실패 후 재시도와 잠금 유지를 시험한다.
 
-직접 SQLiteStore 연결의 종료 호출은 동기식이며 [AsyncStore](ASYNC.md) 연결에서는 백업·닫기가 worker에서 진행된다. UE 참가자 통지, 비핵심 상태 최종 저장, 기존 월드를 보존하고 별도 lineage로 여는 복원 기능은 후속 항목이다. 실제 전원 차단과 Windows 외 플랫폼은 미검증이다.
+직접 SQLiteStore 연결의 종료 호출은 동기식이며 [AsyncStore](ASYNC.md) 연결에서는 백업·닫기가 worker에서 진행된다. 기존 월드를 보존하고 새 저장 파일로 여는 [백업 복원](SQLITE_RESTORE.md)을 제공한다. UE 참가자 통지와 비핵심 상태 최종 저장은 후속 항목이다. 실제 전원 차단과 Windows 외 플랫폼은 미검증이다.

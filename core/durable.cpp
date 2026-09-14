@@ -28,11 +28,15 @@ Result DurableInventory::apply(const Request& request, const Access& access) {
     try {
         auto waiting = std::make_unique<Waiting>();
         waiting->changes = prepared.changes;
-        waiting->target = inventory_->checkpoint_after(prepared.changes);
+        if (store_->delta_writes()) waiting->delta = inventory_->checkpoint_delta(prepared.changes);
+        else waiting->target = inventory_->checkpoint_after(prepared.changes);
         waiting_ = std::move(waiting);
     } catch (...) { inventory_->abort(prepared.changes); throw; }
     SaveOutcome outcome;
-    try { outcome = store_->save(version_, waiting_->target, waiting_->target.requests.back()); }
+    try {
+        outcome = waiting_->delta ? store_->save_delta(version_, *waiting_->delta)
+            : store_->save(version_, waiting_->target, waiting_->target.requests.back());
+    }
     catch (...) { outcome = SaveOutcome::Unknown; }
     return finish(outcome);
 }
@@ -45,7 +49,8 @@ Result DurableInventory::finish(SaveOutcome outcome) {
         return {outcome == SaveOutcome::Limited ? Error::LimitExceeded : Error::StorageUnavailable, sequence, {}};
     }
     auto result = inventory_->commit(waiting_->changes);
-    const auto& saved = waiting_->target.requests.back().result;
+    auto saved = waiting_->delta ? waiting_->delta->changes.outcome : waiting_->target.requests.back().result;
+    if (waiting_->delta) saved.sequence = waiting_->delta->sequence;
     // If this invariant fails after a DB commit, stop writing and recover from DB.
     if (result.code != saved.code || result.sequence != saved.sequence || result.created != saved.created) {
         fenced_ = true;
@@ -63,6 +68,7 @@ Result DurableInventory::resolve_locked() {
     if (fenced_) return {Error::EpochMismatch, sequence, {}};
     if (!waiting_) return {Error::InvalidRequest, sequence, {}};
     try {
+        if (waiting_->delta) return finish(store_->resolve_delta());
         auto loaded = store_->inspect();
         if (loaded.checkpoint.epoch != epoch_) return finish(SaveOutcome::Fenced);
         if (loaded.version == version_) return finish(SaveOutcome::Aborted);

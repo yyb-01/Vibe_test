@@ -1,5 +1,6 @@
 .tools/
 .build/
+/saves/
 __pycache__/
 *.user
 *.sln
