@@ -26,6 +26,7 @@ class DurableInventory {
 public:
     DurableInventory(std::unique_ptr<DurableStore>, const Checkpoint& seed);
     Result apply(const Request&, const Access&);
+    std::optional<Result> result_for(const Request&, Id account);
     Result resolve();
     // Stop admission, settle pending work, then close storage. Retry Pending/errors.
     // Ok describes shutdown, not the outcome of a previously pending request.

@@ -14,6 +14,15 @@ void async_publication(); void async_resolution(); void async_limits(); void asy
 void account_sequence();
 void validation_paths();
 void checkpoint_deltas(); void async_deltas();
+void packet_contract(); void packet_window();
+void session_admission(); void transaction_budget(); void session_commands();
+void session_rate_limits(); void session_shutdown();
+void session_leases(); void session_lease_expiry(); void session_lease_replay();
+void request_results();
+void receipt_contract(); void receipt_validation(); void receipt_reasons(); void session_receipts();
+void snapshot_wire(); void snapshot_pages_test(); void session_snapshots();
+void client_requests(); void client_snapshots();
+void client_publication();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -33,7 +42,18 @@ int main() {
         {"async owner publication", async_publication}, {"async uncertain shutdown", async_resolution},
         {"async queue limits", async_limits}, {"async rollback retry", async_rollback},
         {"account sequence recovery", account_sequence}, {"validation paths", validation_paths},
-        {"checkpoint deltas", checkpoint_deltas}, {"async delta publication", async_deltas}
+        {"checkpoint deltas", checkpoint_deltas}, {"async delta publication", async_deltas},
+        {"packet contract", packet_contract}, {"packet window", packet_window},
+        {"session admission", session_admission}, {"transaction budget", transaction_budget},
+        {"session commands", session_commands}, {"session rate limits", session_rate_limits},
+        {"session shutdown", session_shutdown}, {"session leases", session_leases},
+        {"session lease expiry", session_lease_expiry}, {"session lease replay", session_lease_replay},
+        {"request result lookup", request_results}, {"receipt contract", receipt_contract},
+        {"receipt validation", receipt_validation}, {"receipt reasons", receipt_reasons},
+        {"session receipts", session_receipts}, {"snapshot wire", snapshot_wire},
+        {"snapshot pages", snapshot_pages_test}, {"session snapshots", session_snapshots},
+        {"client requests", client_requests}, {"client snapshots", client_snapshots},
+        {"client atomic publication", client_publication}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

@@ -117,6 +117,14 @@ const astra::World& chest = *view.roots.at(astra::Id{1, 10});
 
 ## UE5 연결
 
+[ClientState](core/CLIENT.md)는 최대 8개 요청의 원본 재시도, timeout과 지연 응답 처리, 오래된 스냅샷 거절, 검증 완료 후 원자적 뷰 반영을 제공합니다. 실제 UI 위젯과 연결/권한 이벤트는 엔진에서 연결해야 합니다.
+
+[거래 상태 응답](core/RECEIPT.md)은 70B 패킷으로 영속 상태와 공개 오류만 전달합니다. 저장 미확정·요청 제한은 재확인 상태로 처리합니다. [권한 범위 스냅샷](core/SNAPSHOT.md)은 64KiB 이하 페이지와 2MiB 이하 재조립을 지원합니다. 실제 transport와 클라이언트 UI는 아직 연결하지 않았습니다.
+
+네트워크 연결의 첫 단계로 [32B 공통 헤더와 거래 packet codec](core/NETWORK.md)을 제공합니다. 버전·epoch·길이·MTU 검사와 uint32 래핑 ACK 윈도를 구현했습니다. 실제 transport·인증·방 생성/참가는 아직 연결하지 않았습니다.
+
+[HostSession](core/SESSION.md)은 복구 후 방장 포함 20명 admission, 계정/Pawn 중복 방지, 계정별 거래 10회/초·burst 20, 재접속 한도 유지, 로컬/원격 공통 영속 거래와 종료 재시도를 처리합니다. [열람 lease](core/INTERACTION.md)를 발급·폐기하고 서버 관측값의 거리·LOS·생존 상태를 검사해 승인된 루트만 조회합니다. 엔진 없이 실행하는 코어이며 플랫폼 인증과 실제 UE 관측값은 별도로 연결해야 합니다.
+
 `core` 소스를 Unreal Game 타깃의 모듈에서 다시 컴파일해 리슨 서버의 권위 경로에서 호출합니다. 권위 코드를 `UE_SERVER` 전용 분기로 감싸지 않습니다. Zig/MinGW 바이너리를 MSVC 엔진에 직접 링크하지 않습니다. 현재 코어는 예외를 사용하므로 해당 모듈의 `bEnableExceptions = true`가 필요합니다. 엔진 연결은 아직 검증하지 않았습니다.
 
 CMake 3.20+와 C++20 컴파일러가 있으면 `cmake -S . -B .build/cmake`, `cmake --build .build/cmake`, `ctest --test-dir .build/cmake -C Debug --output-on-failure`도 사용할 수 있습니다. 실제 검증한 경로는 Windows Zig 빌드입니다.

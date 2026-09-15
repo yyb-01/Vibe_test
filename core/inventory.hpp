@@ -26,6 +26,8 @@ public:
     Checkpoint checkpoint_after(const std::shared_ptr<const WriteSet>&) const;
     CheckpointDelta checkpoint_delta(const std::shared_ptr<const WriteSet>&) const;
     Result apply(const Request&, const Access&);
+    // Host-only account binding. Unknown requests never enter prepare().
+    std::optional<Result> result_for(const Request&, Id account) const;
     // Host-only lifecycle. One transaction per account; disjoint roots can wait together.
     Preparation prepare(const Request&, const Access&);
     Result commit(const std::shared_ptr<const WriteSet>&);
