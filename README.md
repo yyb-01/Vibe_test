@@ -6,6 +6,8 @@ v1.1의 목표는 **방장 PC 리슨 서버(방장 1명+참가자 최대 19명)*
 
 ## 실행
 
+새 [클라이언트 프로토콜 데모](demo/CLIENT_MODE.md)는 `./scripts/play.ps1 -SavePath ./saves/client-world.db -ClientMode`로 실행합니다. 세션·SQLite·응답·스냅샷·ClientState를 한 프로세스에서 연결하며 실제 네트워크 접속은 아닙니다.
+
 프로젝트 폴더의 PowerShell에서:
 
 ```powershell
@@ -117,7 +119,7 @@ const astra::World& chest = *view.roots.at(astra::Id{1, 10});
 
 ## UE5 연결
 
-[ClientState](core/CLIENT.md)는 최대 8개 요청의 원본 재시도, timeout과 지연 응답 처리, 오래된 스냅샷 거절, 검증 완료 후 원자적 뷰 반영을 제공합니다. 실제 UI 위젯과 연결/권한 이벤트는 엔진에서 연결해야 합니다.
+[ClientState](core/CLIENT.md)는 최대 8개 요청의 원본 재시도, timeout과 지연 응답 처리, 오래된 스냅샷 거절, 검증 완료 후 원자적 뷰 반영을 제공합니다. 인증된 재접속 정보로 계정·월드·catalog와 순번을 검사하고 연결 해제 전 요청을 보존합니다. 실제 UI 위젯과 연결/권한 이벤트는 엔진에서 연결해야 합니다.
 
 [거래 상태 응답](core/RECEIPT.md)은 70B 패킷으로 영속 상태와 공개 오류만 전달합니다. 저장 미확정·요청 제한은 재확인 상태로 처리합니다. [권한 범위 스냅샷](core/SNAPSHOT.md)은 64KiB 이하 페이지와 2MiB 이하 재조립을 지원합니다. 실제 transport와 클라이언트 UI는 아직 연결하지 않았습니다.
 

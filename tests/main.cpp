@@ -23,6 +23,9 @@ void receipt_contract(); void receipt_validation(); void receipt_reasons(); void
 void snapshot_wire(); void snapshot_pages_test(); void session_snapshots();
 void client_requests(); void client_snapshots();
 void client_publication();
+void client_reconnect(); void client_restart();
+void reconnect_codec();
+void console_shutdown();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -53,7 +56,9 @@ int main() {
         {"session receipts", session_receipts}, {"snapshot wire", snapshot_wire},
         {"snapshot pages", snapshot_pages_test}, {"session snapshots", session_snapshots},
         {"client requests", client_requests}, {"client snapshots", client_snapshots},
-        {"client atomic publication", client_publication}
+        {"client atomic publication", client_publication},
+        {"client reconnect", client_reconnect}, {"client restart", client_restart},
+        {"reconnect codec", reconnect_codec}, {"console shutdown retry", console_shutdown}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

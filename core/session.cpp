@@ -37,6 +37,10 @@ void HostSession::disconnect(std::uint64_t connection) {
     owner(); require(connection != host_connection, Error::NotAccessible);
     for (auto& p : peers_) if (p.connection == connection) { p = {}; return; }
 }
+Result HostSession::prepare_close() {
+    owner(); closing_ = true;
+    return inventory_.prepare_close();
+}
 Result HostSession::close() {
     owner(); closing_ = true;
     auto result = inventory_.close();

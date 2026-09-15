@@ -38,3 +38,9 @@ codec은 인증 여부나 실제 거리·LOS를 판단하지 않는다. 클라�
 `observe`의 false는 중복 또는 윈도 밖이라는 뜻이다. 거래를 버리는 근거로 사용하지 않는다. 거래 재전송은 기존 requestId/actionSeq의 영속 idempotency를 거쳐 같은 결과를 재전달해야 한다. ACK 필드만으로 디스크 커밋을 인정하지 않는다.
 
 검증: `./scripts/build.ps1`의 packet contract/window 그룹에서 헤더 offset, round trip, 모든 길이의 절단, 오염/추가 바이트, epoch/MTU 거절, 거래 replay, 순번 래핑과 32/33 간격을 검사한다.
+
+## 재접속 정보
+
+messageType=3(SessionResume)은 공통 헤더 32B와 payload 80B로 구성된다. payload는 worldId 16B, accountId 16B, catalogHash 32B, 확정 sequence 8B, nextActionSequence 8B 순서다. epoch는 공통 헤더에만 담는다. 정수는 little-endian이며 ID는 hi/lo 각 8B다.
+
+서버의 resume_state 결과를 encode_resume으로 직렬화한다. decode_resume의 expectedEpoch는 인증된 handshake에서 제공하며 패킷에서 추출해 신뢰하지 않는다. 길이·메시지·epoch·비어 있는 ID·순번 범위를 검사하고, 계정/월드/catalog 일치와 순번 후퇴는 ClientState가 검사한다. codec 자체는 인증이나 암호화를 제공하지 않는다. 콘솔 ClientMode의 초기 재개 정보도 이 왕복을 사용한다.

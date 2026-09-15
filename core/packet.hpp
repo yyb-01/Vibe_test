@@ -4,7 +4,7 @@
 namespace astra {
 inline constexpr std::uint16_t protocol_version = 1;
 inline constexpr std::size_t packet_header_bytes = 32, datagram_limit = 1200;
-enum class MessageType : std::uint16_t { InventoryRequest = 1, InventoryReceipt = 2 };
+enum class MessageType : std::uint16_t { InventoryRequest = 1, InventoryReceipt = 2, SessionResume = 3 };
 struct PacketHeader {
     std::uint16_t protocolVersion{protocol_version};
     MessageType messageType{MessageType::InventoryRequest};

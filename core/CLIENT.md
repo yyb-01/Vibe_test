@@ -2,6 +2,8 @@
 
 `ClientState`는 UI 스레드에서 사용하는 C++ 상태 모델이다. 실제 위젯, 드래그 UI, 소켓, 인증 SDK는 구현하지 않았다. 인증된 서버의 같은 계정/월드 세션에만 연결하고, catalog/epoch는 검증된 handshake에서 가져온다.
 
+[콘솔 ClientMode](../demo/CLIENT_MODE.md)에서 요청·영속 응답·페이지 재조립·표시를 함께 실행할 수 있다. 고정 관측값을 사용하는 한 프로세스 데모이며 엔진 UI나 실제 transport를 대체하지 않는다.
+
 ## 요청과 응답
 
 송신 전에 `track(request)`로 원래 payload를 보관한다. 추적 항목은 최대 8개이며, 같은 ID·같은 payload의 재등록은 상태를 초기화하지 않는다. 같은 ID에 다른 payload는 IdempotencyMismatch다. 재시도는 `retry_payload(id)`를 사용해 lease 값까지 원본을 유지한다.
@@ -27,8 +29,12 @@
 
 ## 엔진 연결 시 남은 일
 
-lease 폐기·열람 종료·disconnect 이벤트에는 `set_roots({})`를 호출하고 UI가 따로 보관한 이전 뷰 참조도 표시에서 제거해야 한다. 모델만으로 엔진의 연결 상실이나 권한 철회를 감지하지는 않는다.
+lease 폐기·열람 종료에는 `set_roots({})`, 연결 해제에는 `disconnect()`를 호출하고 UI가 따로 보관한 이전 뷰 참조도 표시에서 제거해야 한다. 모델만으로 엔진의 연결 상실이나 권한 철회를 감지하지는 않는다.
 
-새 epoch는 패킷 한 개를 보고 수용하지 않는다. 인증된 재접속 절차에서 새 ClientState를 만들고, 같은 계정/월드임을 확인한 뒤 미확정 요청의 원래 payload를 이전해 결과를 재확인한다. 자동 재접속·타이머·송신 스케줄링·위젯 연결은 후속 작업이다.
+재접속을 지원하려면 인증 후 `HostSession::resume_state(connection)`에서 받은 `ResumeState`로 모델을 생성한다. 기존 epoch 전용 생성자는 재접속을 지원하지 않는다. 실제 catalog와 승인된 hash의 일치 검사는 호출자가 수행한다.
+
+`disconnect()`는 표시·재조립을 비우고 미확정 요청을 Resolving으로 바꾸며 원본 payload와 최종 결과는 보존한다. 인증된 새 연결의 `reconnect(state)`는 같은 계정·월드·catalog와 뒤로 가지 않는 epoch·저장 순번·요청 순번을 요구한다. 새 epoch에서는 snapshotId 기준을 초기화하고 이전 epoch의 패킷을 거절한다. 복원된 별도 월드는 새 모델로 시작한다.
+
+재접속 뒤 원본 payload를 새 epoch의 패킷에 넣어 기존 결과를 재확인한다. 미확정 요청 정리 후 서버의 요청 순번을 다시 조회하고 새 거래용 lease를 발급한다. `resume_action_sequence()`는 재접속 시 받은 값이며 자동 증가하지 않는다. ResumeState는 `encode_resume`/`decode_resume`로 전송하며 expectedEpoch는 인증된 handshake에서 가져온다. 실제 transport·인증·자동 재접속·타이머·위젯 연결은 후속 작업이다.
 
 검증: 요청 상한과 원본 재시도, timeout/지연/상충 응답, 다른 epoch, 오래된 descriptor, 여러 페이지의 원자적 게시, 잘못된 수량/권한 범위, ACK 도착 중 재조립 취소, 실제 HostSession 영속 응답 연동을 검사한다.

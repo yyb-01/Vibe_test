@@ -4,6 +4,7 @@
 #include "transaction_budget.hpp"
 #include "interaction.hpp"
 #include "snapshot.hpp"
+#include "reconnect.hpp"
 #include <array>
 #include <thread>
 
@@ -32,6 +33,7 @@ public:
     std::size_t players() const;
     std::uint64_t admit_authenticated(const AuthenticatedPeer&, const SessionInfo& handshake);
     void disconnect(std::uint64_t connection);
+    ResumeState resume_state(std::uint64_t connection);
     std::uint64_t grant_lease(std::uint64_t connection, const InteractionState&);
     void revoke_lease(std::uint64_t connection);
     RootSnapshot view(std::uint64_t connection, std::uint64_t lease, const InteractionState&);
@@ -41,6 +43,7 @@ public:
                    const InteractionState&, std::size_t pathBudget = datagram_limit);
     Result apply_local(const Request&, const InteractionState&);
     Result close();
+    Result prepare_close(); // On Ok, notify participants before calling close().
 private:
     struct Peer {
         std::uint64_t connection{}; Id account, pawn; InteractionLease lease;

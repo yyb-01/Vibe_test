@@ -31,6 +31,8 @@ public:
     // Stop admission, settle pending work, then close storage. Retry Pending/errors.
     // Ok describes shutdown, not the outcome of a previously pending request.
     Result close();
+    // Settle writes and stop admission, keeping storage open for shutdown notification.
+    Result prepare_close();
     std::uint64_t epoch() const { return epoch_; }
     std::uint64_t next_action_sequence(Id account) const { return inventory_->next_action_sequence(account); }
     std::shared_ptr<const World> snapshot() const { return inventory_->snapshot(); }
@@ -43,6 +45,7 @@ private:
     };
     Result finish(SaveOutcome);
     Result resolve_locked();
+    Result prepare_close_locked();
     std::unique_ptr<DurableStore> store_;
     std::unique_ptr<Inventory> inventory_;
     std::unique_ptr<Waiting> waiting_;

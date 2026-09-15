@@ -17,6 +17,7 @@ ClientState::Tracked& ClientState::tracked(Id id) {
     auto it = requests_.find(id); require(it != requests_.end(), Error::InvalidRequest); return it->second;
 }
 void ClientState::track(const Request& request) {
+    require(connected_, Error::NotAccessible);
     require(bool(request.id) && request.actionSeq && request.actionSeq <= revision_limit &&
             request.interactionLease, Error::InvalidRequest);
     auto payload = encode(request);
@@ -37,6 +38,7 @@ void ClientState::timeout(Id id) {
     if (!final(r.status)) { r.status = TransactionStatus::Resolving; r.reason = ClientReason::PersistenceUnavailable; }
 }
 bool ClientState::receive_receipt(const std::vector<std::uint8_t>& bytes) {
+    require(connected_, Error::NotAccessible);
     auto incoming = decode_receipt(bytes, epoch_).receipt;
     auto it = requests_.find(incoming.requestId);
     if (it == requests_.end()) return false;

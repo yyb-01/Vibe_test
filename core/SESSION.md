@@ -13,6 +13,8 @@
 
 ## 거래
 
+인증된 연결의 `resume_state(connection)`은 서버에 묶인 계정·월드·catalogHash, 현재 epoch·확정 순번·계정의 다음 요청 순번을 반환한다. 클라이언트가 계정을 지정하지 않는다. 이 조회도 계정 요청 예산과 종료 admission을 적용한다. [클라이언트 재접속](CLIENT.md)에 사용하는 신뢰된 제어 정보이며 실제 인증·wire 전송은 호출자가 연결해야 한다.
+
 원격 입력은 `receive(connection, bytes, state, pathBudget)`, 방장은 `apply_local(request, state)`로 처리한다. 둘 다 계정별 10회/초·burst 20과 동일한 영속 거래 경로를 거친다. 서버의 steady clock만 사용하며 패킷의 senderTick을 제한 계산에 사용하지 않는다.
 
 손상 패킷·거절·replay도 요청 예산을 소비한다. 재접속해도 계정 예산은 유지한다. 기록은 기존 Inventory 원장과 같은 64개 계정 상한으로 제한한다. 새 계정 admission이 상한에 닿으면 `LimitExceeded`이며 기존 계정 재접속은 가능하다.
@@ -27,6 +29,6 @@
 
 `close`는 신규 입장과 모든 신규 명령을 먼저 중단한다. 기존 `DurableInventory::close`가 Pending 정리와 저장소 정상 종료/백업을 수행한다. Pending 또는 저장 실패 시 참가자 목록을 유지하며 `close`를 재시도한다. 성공하면 목록을 비우고 이후 입장을 거절한다.
 
-실제 UE 참가자 종료 통지는 구현하지 않았다. E.8의 DB 닫기 전 통지 순서를 연결하려면 엔진 종료 단계와 저장소 close 단계를 분리하는 후속 작업이 필요하다. 현재는 코어의 종료 admission·재시도 보존을 검증한 상태다.
+`prepare_close()`는 신규 입장/명령을 막고 기존 저장을 확정하지만 DB와 참가자 목록을 유지한다. Pending/실패이면 재시도하며 Ok 이후 외부 참가자 통지를 수행하고 `close()`로 백업·DB 닫기를 진행한다. 준비 성공은 DB 종료 성공이 아니다. 두 단계 모두 반복 호출할 수 있다. 기존 `close()` 단독 경로도 유지한다. 현재 저장 모델은 모든 변경이 critical 거래이며 별도 noncritical snapshot은 없다. 콘솔은 준비 성공 후 내부 ClientState를 연결 해제하고 DB를 닫는다. 실제 UE/transport 종료 통지와 전달 확인은 남아 있다.
 
 검증: `./scripts/build.ps1`에서 1+19명 슬롯, handshake 불일치, 중복 계정/Pawn, 연결 번호 폐기, 다른 스레드 호출 거절, 제한 보충 경계, 재접속 제한 유지, 로컬/원격 거래, Pending 보존과 종료 실패 재시도를 검사한다.

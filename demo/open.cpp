@@ -5,7 +5,8 @@
 #include <thread>
 #endif
 
-Session::Session(const std::filesystem::path& save) {
+Session::Session(const std::filesystem::path& save, bool clientMode) {
+    require(!clientMode || !save.empty(), Error::InvalidRequest);
     if (save.empty()) {
         memory = std::make_unique<Inventory>(catalog(), seed(), 1, 1);
         return;
@@ -22,6 +23,7 @@ Session::Session(const std::filesystem::path& save) {
     }
     durable = std::make_unique<DurableInventory>(std::move(driver), initial);
     access.epoch = durable->epoch();
+    if (clientMode) client = std::make_unique<ConsoleClient>(*durable);
 #else
     throw std::runtime_error("SQLite support is unavailable. Run scripts/play.ps1 -SavePath PATH.");
 #endif

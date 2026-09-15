@@ -51,5 +51,7 @@ if(ASTRA_SQLITE)
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/test-sqlite.ps1" -Executable $<TARGET_FILE:astra_sqlite_tests>)
         add_test(NAME astra_saved_demo COMMAND "${POWERSHELL}" -NoProfile -File
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/test-demo.ps1" -Executable $<TARGET_FILE:astra_saved_demo>)
+        add_test(NAME astra_client_demo COMMAND "${POWERSHELL}" -NoProfile -File
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/test-demo.ps1" -Executable $<TARGET_FILE:astra_saved_demo> -ClientMode)
     endif()
 endif()

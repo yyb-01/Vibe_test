@@ -2,10 +2,12 @@
 
 namespace astra {
 void ClientState::set_roots(std::set<Id> roots) {
+    require(connected_ || roots.empty(), Error::NotAccessible);
     require(roots.size() <= 16 && !roots.contains(Id{}), Error::InvalidRequest);
     roots_ = std::move(roots); view_.reset(); assembly_.reset();
 }
 void ClientState::begin_snapshot(const SnapshotDescriptor& d) {
+    require(connected_, Error::NotAccessible);
     require(!roots_.empty(), Error::NotAccessible);
     (void)snapshot_pages(d);
     require(d.epoch == epoch_, Error::EpochMismatch);
@@ -21,6 +23,7 @@ void ClientState::begin_snapshot(const SnapshotDescriptor& d) {
     latest_ = d; assembly_ = std::move(next);
 }
 bool ClientState::receive_page(const std::vector<std::uint8_t>& frame) {
+    require(connected_, Error::NotAccessible);
     require(bool(assembly_), Error::InvalidState);
     assembly_->receive(frame);
     if (!assembly_->complete()) return false;

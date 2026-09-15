@@ -1,6 +1,7 @@
 #pragma once
 #include "receipt.hpp"
 #include "snapshot.hpp"
+#include "reconnect.hpp"
 #include <optional>
 #include <set>
 
@@ -9,6 +10,11 @@ namespace astra {
 class ClientState {
 public:
     ClientState(std::uint64_t epoch, Catalog);
+    ClientState(const ResumeState&, Catalog);
+    void disconnect();
+    void reconnect(const ResumeState& authenticated);
+    bool connected() const { return connected_; }
+    std::uint64_t resume_action_sequence() const { return resumeSequence_; }
     void track(const Request&);
     void forget(Id request); // Only final requests can leave the bounded tracking table.
     const TransactionReceipt& status(Id request) const;
@@ -26,7 +32,7 @@ private:
     struct Tracked { std::vector<std::uint8_t> payload; TransactionReceipt receipt; };
     Tracked& tracked(Id);
     const Tracked& tracked(Id) const;
-    const std::uint64_t epoch_;
+    std::uint64_t epoch_;
     const Catalog catalog_;
     std::map<Id, Tracked> requests_;
     std::set<Id> roots_;
@@ -34,5 +40,8 @@ private:
     std::unique_ptr<SnapshotAssembly> assembly_;
     std::shared_ptr<const World> view_;
     std::uint64_t published_{}, confirmed_{};
+    std::optional<ClientIdentity> identity_;
+    std::uint64_t resumeSequence_{};
+    bool connected_{true};
 };
 }
