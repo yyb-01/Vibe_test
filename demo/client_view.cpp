@@ -1,4 +1,5 @@
 #include "client.hpp"
+#include "../core/shutdown.hpp"
 #include <thread>
 
 namespace {
@@ -41,8 +42,8 @@ void ConsoleClient::disconnect() {
 Result ConsoleClient::close() {
     auto ready = host_.prepare_close();
     if (!ready.applied()) return ready;
-    // In-process shutdown notification: clear client state before closing the DB.
-    client_.disconnect(); lease_ = 0;
+    PacketHeader h; h.worldEpoch = host_.info().epoch; h.messageType = MessageType::SessionClosing;
+    client_.receive_shutdown(encode_shutdown(h, ready.sequence)); lease_ = 0;
     return host_.close();
 }
 void ConsoleClient::reconnect() {

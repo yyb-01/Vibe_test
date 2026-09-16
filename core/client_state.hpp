@@ -12,6 +12,8 @@ public:
     ClientState(std::uint64_t epoch, Catalog);
     ClientState(const ResumeState&, Catalog);
     void disconnect();
+    // Authenticated current connection only; closing is not a transaction receipt.
+    void receive_shutdown(const std::vector<std::uint8_t>&);
     void reconnect(const ResumeState& authenticated);
     bool connected() const { return connected_; }
     std::uint64_t resume_action_sequence() const { return resumeSequence_; }

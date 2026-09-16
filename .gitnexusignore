@@ -1,0 +1,5 @@
+# This workspace is the analysis target; exclude the pre-existing upload copy.
+.upload-repo/
+.tools/
+.build/
+saves/

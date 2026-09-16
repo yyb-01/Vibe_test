@@ -26,6 +26,8 @@ void client_publication();
 void client_reconnect(); void client_restart();
 void reconnect_codec();
 void console_shutdown();
+void shutdown_codec(); void client_shutdown();
+void stream_frames(); void stream_session();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -58,7 +60,9 @@ int main() {
         {"client requests", client_requests}, {"client snapshots", client_snapshots},
         {"client atomic publication", client_publication},
         {"client reconnect", client_reconnect}, {"client restart", client_restart},
-        {"reconnect codec", reconnect_codec}, {"console shutdown retry", console_shutdown}
+        {"reconnect codec", reconnect_codec}, {"console shutdown retry", console_shutdown},
+        {"shutdown codec", shutdown_codec}, {"client shutdown notification", client_shutdown},
+        {"stream frames", stream_frames}, {"stream session", stream_session}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

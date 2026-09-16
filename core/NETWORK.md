@@ -1,5 +1,28 @@
 # 거래 네트워크 경계 — 명세 2.2 기반
 
+바이트 스트림 분할/결합 수신은 [STREAM.md](STREAM.md)의 길이 prefix와 StreamDecoder를
+사용할 수 있다. 실제 소켓 연결은 없으며 기존 패킷 wire 포맷과 독립적인 외부 프레임이다.
+
+## 정상 종료 통지
+
+`shutdown.hpp`의 SessionClosing(messageType=4)은 공통 헤더 32B와 마지막 확정
+world sequence 8B(little-endian), 총 40B다. 길이·버전·flags·epoch·MTU와
+sequence 상한을 기존 envelope/codec 규칙으로 검사한다. sequence=0도 허용한다.
+
+호스트는 `prepare_close()`가 Ok일 때만 `encode_shutdown`으로 통지하고 그 후
+`close()`로 백업과 DB 닫기를 수행한다. 통지는 critical 거래 정리 완료를 뜻하며
+백업/DB 종료 성공이나 개별 요청의 Committed를 보증하지 않는다.
+
+인증된 **현재 연결**에서만 `ClientState::receive_shutdown`을 호출한다. 클라이언트는
+게시·확정 순번 후퇴를 거절한 뒤 `disconnect()`로 뷰/재조립을 비우고 미확정 요청을
+Resolving으로 유지한다. 원본 payload와 최종 receipt는 보존한다. 같은 통지 재전달은
+안전하며 재접속 baseline은 통지의 순번보다 후퇴할 수 없다. 이전 연결의 지연 메시지를
+폐기하는 책임은 transport에 있다. epoch만으로 연결 인증이나 replay 방지를 제공하지 않는다.
+
+콘솔 ClientMode 종료는 이 codec 왕복을 사용한다. 실제 원격 전달·전달 확인·재전송·
+메뉴 전환은 미구현이다. `tests/shutdown_codec.cpp`와 `tests/client_shutdown.cpp`가
+손상 입력 무변경, Pending→통지→DB 종료, 중복 통지, 저장 종료 실패 재시도를 검사한다.
+
 `packet.hpp`는 엔진 없이 실행하는 애플리케이션 codec이다. 실제 소켓·방 생성·인증·암호화 transport는 아직 연결하지 않았다.
 
 ## wire v1
