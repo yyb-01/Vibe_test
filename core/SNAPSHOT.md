@@ -10,7 +10,9 @@ view payload는 little-endian이다. magic `0x31575641`, rootCount(u32), rootId[
 
 ## 페이지 형식
 
-이 프레임은 **reliable stream용**이다. 1,200B 데이터그램에 넣지 않는다. transport 프레이밍·인증·암호화와 실제 소켓 연결은 아직 구현하지 않았다.
+이 프레임은 **reliable stream용**이다. 1,200B 데이터그램에 넣지 않는다.
+[공통 transport](SNAPSHOT_TRANSPORT.md)에 요청·lease/descriptor·페이지 스트림을 연결했다.
+실제 소켓·인증·암호화 구현은 아직 없다.
 
 | offset | 필드 | 바이트 |
 |---|---|---|

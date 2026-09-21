@@ -1,5 +1,42 @@
 # Project Overview
 
+## 2026-09-21 스냅샷 전용 채널
+
+`core/snapshot_control.*`가 SnapshotRequest(5)/SnapshotOffer(6)의 lease·루트·descriptor를
+검증한다. HostTransport::receive → start_snapshot → snapshot_output/snapshot_sent가
+전용 ordered stream으로 offer와 페이지를 보내며 ClientTransport::receive_snapshot이
+ClientState의 승인 루트·재조립·원자적 게시를 재사용한다.
+`core/session_snapshot.cpp`의 validate_snapshot은 매 송신 직전 현재 권한을 재검사하며
+계정 예산을 소모하지 않는다. snapshot_page의 생성 예산은 유지한다. Busy만 재시도하고
+철회/만료/손상/미완료 EOF는 연결을 해제한다. 자동 tick과 네트워크 I/O는 플랫폼 책임이다.
+`tests/snapshot_control.cpp`, `transport_snapshots.cpp`, `transport_snapshot_failures.cpp`,
+`transport_snapshot_pages.cpp`가 codec·부분 I/O·조회 후 거래/새 뷰·권한 철회·다중 페이지를 보호한다.
+코어 71그룹과 기존 콘솔 ClientMode 저장·백업 복원 검증을 통과했다.
+[스냅샷 transport 계약](../core/SNAPSHOT_TRANSPORT.md).
+
+## 2026-09-21 클라이언트 I/O와 종료 전달
+
+`core/client_transport.hpp`, `client_transport.cpp`, `client_transport_receive.cpp`가
+ClientState를 소유하고 인증 후 SessionResume → 요청 부분 송신 → receipt 검증을 연결한다.
+새 연결마다 토큰/decoder를 갱신하며 이전 callback이 새 연결에 영향을 주지 않는다.
+`core/transport_shutdown.cpp`는 prepare_close 성공 이후만 종료 통지를 만들고,
+HostTransport::sent가 마지막 바이트 송신 시 peer를 해제한다. DB close는 외부 관리자 책임이다.
+`tests/client_transport*.cpp`, `tests/transport_shutdown.cpp`가 양방향 1바이트 I/O,
+응답 유실·재접속, 오래된 callback, 손상/절단 입력, 종료 순서를 검증한다. 코어 67그룹 통과.
+스냅샷 채널은 위 후속 항목에 추가했다. 인증/소켓·시간 제한·종료 ACK·실제 다중 참가자·UE 통합은 미구현이다.
+[클라이언트 계약](../core/CLIENT_TRANSPORT.md), [호스트 계약](../core/TRANSPORT.md).
+
+## 2026-09-18 공통 transport 어댑터
+
+`core/transport.hpp`/`transport.cpp`의 HostTransport가 신뢰된 인증 결과를
+HostSession의 새 연결에 묶는다. SessionResume → 분할 요청 수신 → HostSession::receive
+→ receipt 부분 송신을 연결하고, 송신 대기는 한 프레임으로 제한한다.
+EOF/오류/소멸에서 peer를 해제하며 재접속은 새 객체·연결 ID를 사용한다.
+`tests/transport.cpp`와 `transport_failures.cpp`가 응답 유실 후 재접속·중복 저장 방지,
+부분/결합 I/O, 손상 입력, admission 실패, 슬롯 정리와 소유 스레드 검사를 보호한다.
+클라이언트 I/O·종료 전달은 위 2026-09-21 항목에 추가했다. 실제 소켓/인증과 스냅샷 채널은 남아 있다.
+[공통 어댑터 계약](../core/TRANSPORT.md)을 참고한다.
+
 ## 2026-09-16 후속 구현
 
 이 지도는 최초 분석 이후 코드 변경 시 함께 갱신한다. 아래 Git SHA/초기 분석 수치는

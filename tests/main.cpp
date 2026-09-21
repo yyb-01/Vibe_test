@@ -28,6 +28,9 @@ void reconnect_codec();
 void console_shutdown();
 void shutdown_codec(); void client_shutdown();
 void stream_frames(); void stream_session();
+void transport_session(); void transport_failures();
+void client_transport_session(); void client_transport_failures(); void transport_shutdown();
+void snapshot_control(); void transport_snapshots(); void transport_snapshot_failures(); void transport_snapshot_pages();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -62,7 +65,12 @@ int main() {
         {"client reconnect", client_reconnect}, {"client restart", client_restart},
         {"reconnect codec", reconnect_codec}, {"console shutdown retry", console_shutdown},
         {"shutdown codec", shutdown_codec}, {"client shutdown notification", client_shutdown},
-        {"stream frames", stream_frames}, {"stream session", stream_session}
+        {"stream frames", stream_frames}, {"stream session", stream_session},
+        {"transport session", transport_session}, {"transport failures", transport_failures},
+        {"client transport session", client_transport_session},
+        {"client transport failures", client_transport_failures}, {"transport shutdown", transport_shutdown},
+        {"snapshot control", snapshot_control}, {"transport snapshots", transport_snapshots},
+        {"transport snapshot failures", transport_snapshot_failures}, {"transport snapshot pages", transport_snapshot_pages}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

@@ -1,5 +1,8 @@
 # 거래 네트워크 경계 — 명세 2.2 기반
 
+messageType=5 SnapshotRequest와 6 SnapshotOffer는 [스냅샷 transport](SNAPSHOT_TRANSPORT.md)에
+정의한다. 요청은 명령 스트림, lease·승인 루트·descriptor와 페이지는 별도 ordered stream을 쓴다.
+
 바이트 스트림 분할/결합 수신은 [STREAM.md](STREAM.md)의 길이 prefix와 StreamDecoder를
 사용할 수 있다. 실제 소켓 연결은 없으며 기존 패킷 wire 포맷과 독립적인 외부 프레임이다.
 

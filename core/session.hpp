@@ -39,6 +39,7 @@ public:
     RootSnapshot view(std::uint64_t connection, std::uint64_t lease, const InteractionState&);
     SnapshotDescriptor start_snapshot(std::uint64_t, std::uint64_t lease, const InteractionState&);
     std::vector<std::uint8_t> snapshot_page(std::uint64_t, Id snapshot, std::size_t page, const InteractionState&);
+    void validate_snapshot(std::uint64_t, Id snapshot, const InteractionState&); // No rate budget; before each write.
     Result receive(std::uint64_t connection, const std::vector<std::uint8_t>&,
                    const InteractionState&, std::size_t pathBudget = datagram_limit);
     Result apply_local(const Request&, const InteractionState&);

@@ -16,9 +16,13 @@ SnapshotDescriptor HostSession::start_snapshot(std::uint64_t connection, std::ui
 std::vector<std::uint8_t> HostSession::snapshot_page(std::uint64_t connection, Id id,
                                                    std::size_t page, const InteractionState& state) {
     owner(); auto& p = admit_command(connection);
+    validate_snapshot(connection, id, state);
+    return encode_snapshot_page(*p.snapshot, page);
+}
+void HostSession::validate_snapshot(std::uint64_t connection, Id id, const InteractionState& state) {
+    owner(); auto& p = peer(connection);
     try { (void)authorize(p, p.lease.token, state); }
     catch (...) { p.snapshot.reset(); throw; }
     require(p.snapshot && p.snapshot->descriptor.id == id, Error::NotAccessible);
-    return encode_snapshot_page(*p.snapshot, page);
 }
 }

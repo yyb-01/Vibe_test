@@ -3,6 +3,7 @@
 `stream.hpp`는 연결에서 받은 바이트를 기존 codec에 넘길 완전한 프레임으로 복원한다.
 소켓·TLS·인증·송신 대기열·재전송을 구현하지 않는다. 현재 콘솔은 직접 codec 왕복이며,
 스트림 경로는 `tests/stream_session.cpp`에서 HostSession/ClientState와 통합 검증한다.
+인증 완료 연결의 호스트 요청/응답 어댑터는 [TRANSPORT.md](TRANSPORT.md)를 참고한다.
 
 ## 포맷과 한도
 
@@ -10,7 +11,8 @@
 길이는 1 이상이다. 기본 한도는 packet의 1,200B, snapshot 전용 논리 스트림은
 `snapshot_page_limit`(65,536B)을 명시한다. 길이 prefix 4B는 이 한도 밖이다.
 채널 종류와 한도는 인증된 연결 설정으로 정하며 클라이언트 payload에서 선택하지 않는다.
-같은 스트림에 packet/page를 섞는 다중화는 제공하지 않는다.
+StreamDecoder 자체는 메시지를 분류하지 않는다. [스냅샷 어댑터](SNAPSHOT_TRANSPORT.md)는
+전용 스트림에서 offer 한 프레임을 받은 뒤 page 수신 단계로 전환한다.
 
 `encode_stream`은 기존 payload의 의미를 검사하지 않는다. 수신 완료 후에도
 decode_packet/receipt/resume/shutdown 또는 SnapshotAssembly의 검증을 반드시 수행한다.
