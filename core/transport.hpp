@@ -1,6 +1,7 @@
 #pragma once
 #include "session.hpp"
 #include "stream.hpp"
+#include "transport_deadlines.hpp"
 #include <optional>
 
 namespace astra {
@@ -8,11 +9,14 @@ namespace astra {
 // Host must outlive this object. All operations/destruction use its owner thread.
 class HostTransport {
 public:
-    HostTransport(HostSession&, const AuthenticatedPeer&, const SessionInfo&);
+    HostTransport(HostSession&, const AuthenticatedPeer&, const SessionInfo&,
+                  TransportDeadlines::Clock::duration = std::chrono::seconds(30),
+                  TransportDeadlines::Now = TransportDeadlines::Clock::now);
     ~HostTransport();
     HostTransport(const HostTransport&) = delete;
     HostTransport& operator=(const HostTransport&) = delete;
     std::uint64_t connection() const;
+    bool poll(); // Tick before I/O; false means disconnected (including deadline expiry).
     // At most one request; caller retains suffix. Returns 0 while output is pending.
     std::size_t receive(std::span<const std::uint8_t>, const InteractionState&);
     std::span<const std::uint8_t> output() const;
@@ -26,7 +30,8 @@ public:
 private:
     void start_snapshot(const InteractionState&);
     HostSession& host_;
-    StreamDecoder input_;
+    TransportDeadlines deadlines_;
+    std::optional<StreamDecoder> input_{std::in_place};
     std::uint64_t connection_{};
     std::vector<std::uint8_t> output_;
     std::size_t sent_{};

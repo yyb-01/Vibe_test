@@ -19,7 +19,7 @@ HostSession이 먼저 생성되고 나중에 파괴되어야 하며 모든 호�
    InventoryReceipt다. 같은 Pending 응답은 ClientState에서 상태 변화가 없을 수 있다.
 
 수신은 최대 1,200B 프레임 하나, 출력은 재개 정보 또는 응답 하나만 보관한다.
-호출자는 미소비 입력·소켓 버퍼에도 한도를 적용하고 프레임 완성 및 송신 시간 제한을 둔다.
+호출자는 미소비 입력·소켓 버퍼에도 한도를 적용한다. 어댑터의 시간 제한은 아래 계약을 따른다.
 전체 송신 성공은 OS/플랫폼이 바이트를 받았다는 의미이며 원격 수신 확인이 아니다.
 ACK/packet sequence 기반 재전송은 사용하지 않고 requestId/actionSeq의 기존 중복 처리를 쓴다.
 
@@ -44,6 +44,20 @@ Ok일 때만 SessionClosing을 대기시킨다. 마지막 바이트의 `sent`에
 
 클라이언트 I/O는 [CLIENT_TRANSPORT.md](CLIENT_TRANSPORT.md)에 구현되어 있다.
 스냅샷 별도 채널은 [SNAPSHOT_TRANSPORT.md](SNAPSHOT_TRANSPORT.md)에 구현했다.
-실제 인증·소켓·시간 제한·다중 참가자 네트워크 시험은 후속 범위다.
-콘솔은 기존 직접 codec 경로를 유지한다.
+실제 인증·소켓·tick 스케줄링·다중 참가자 네트워크 시험은 후속 범위다.
+콘솔 ClientMode는 [실행 루프](../demo/CLIENT_MODE.md)로 이 어댑터를 사용한다.
 검증: `./scripts/build.ps1`의 transport session / transport failures / transport shutdown.
+
+## 전송 시간 제한
+
+생성자의 선택 인자는 작업당 제한 시간(기본 30초)과 steady_clock 함수다.
+양수 제한과 단조 시계를 검증한다. 초기 resume 송신, 미완성 명령 수신, 명령 응답·종료 통지
+송신, 스냅샷 전체 송신에 각각 고정 마감 시간을 둔다. 부분 진행으로 연장하지 않는다.
+작업이 없는 유휴 연결은 만료시키지 않는다. lease의 5초 만료 검사는 별도로 유지한다.
+
+플랫폼은 소유 스레드의 매 tick 및 `output()`을 얻어 실제 쓰기 직전에 `poll()`을 호출한다.
+false면 소켓과 두 스트림을 닫는다. 마감 시각 이상이면 peer·디코더·출력을 정리한다.
+시계 역행/범위 오류는 같은 정리 후 InvalidState를 던진다. receive/sent/snapshot I/O/shutdown도
+처리 전에 poll하므로 늦은 바이트가 만료를 취소할 수 없다. 반환 span은 poll 호출 뒤 새로 얻는다.
+별도 타이머 스레드는 없으며 호출하지 않는 동안 자동 실행되지 않는다.
+검증: `transport deadlines`, `client transport deadlines`, `snapshot transport deadlines`.

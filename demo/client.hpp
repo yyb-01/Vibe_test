@@ -1,6 +1,6 @@
 #pragma once
 #include "../core/session.hpp"
-#include "client_state.hpp"
+#include "transport_loop.hpp"
 #include "../samples/scenario.hpp"
 
 // In-process protocol exercise with fixed trusted observations, not network authentication.
@@ -14,17 +14,19 @@ public:
     Result retry();
     void disconnect();
     void reconnect();
-    bool connected() const { return client_.connected(); }
+    bool connected() const { return client_.state().connected(); }
     Result close();
 private:
     InteractionState observation() const;
     ResumeState read_resume();
+    void exchange(bool snapshot = false, bool closing = false);
+    Result result();
+    DurableInventory& inventory_; // Host diagnostics only; never the client view.
     HostSession host_;
-    std::uint64_t connection_{};
+    std::unique_ptr<HostTransport> transport_;
+    std::uint64_t token_{};
     ResumeState resume_;
-    ClientState client_;
+    ClientTransport client_;
     std::optional<Request> request_;
-    Result final_;
     std::uint64_t lease_{};
-    std::uint32_t sequence_{};
 };

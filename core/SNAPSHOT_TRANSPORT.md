@@ -42,7 +42,11 @@
 lease 만료·권한 변화를 검사한다. 별도 revoke 메시지 대신 연결을 끊는 보수적 동작이다.
 권한 실패 시 큐를 비우고 peer를 해제한다. 플랫폼은 양쪽 스트림을 닫고 클라이언트의
 disconnect를 호출해야 한다. 새 lease/스냅샷을 갱신하지 않으면 5초 만료 시 연결이 끊긴다.
-실제 관측값 제공과 tick/시간 제한 스케줄러는 아직 플랫폼에서 연결해야 한다.
+실제 관측값 제공과 tick 스케줄러는 플랫폼에서 연결해야 한다.
+전송 제한은 클라이언트 request_snapshot부터 전체 게시까지, 호스트 start_snapshot부터
+마지막 페이지 송신까지 적용한다(기본 30초, 생성자에서 조정). offer·부분 페이지·Busy 대기는
+기존 마감을 연장하지 않는다. 프레임 사이의 대기도 포함하며 완료 시 전송 제한을 해제한다.
+매 tick poll/poll(token)을 호출하며 만료 시 양쪽 스트림을 닫는 계약은 TRANSPORT.md를 따른다.
 
 클라이언트의 snapshot EOF는 `finish_snapshot(token)`으로 전달한다.
 프레임 중간뿐 아니라 offer 뒤나 페이지 사이의 미완료 EOF도 오류이며 뷰를 비운다.
@@ -51,4 +55,5 @@ disconnect를 호출해야 한다. 새 lease/스냅샷을 갱신하지 않으면
 완료 직전의 늦은 페이지도 클라이언트 종료 후에는 거절한다.
 
 검증: `./scripts/build.ps1`의 snapshot control / transport snapshots / failures / pages.
-인증·소켓·자동 시간 제한·종료 ACK·실제 다중 참가자·UE/콘솔 통합은 후속 범위다.
+인증·소켓·지속 tick 스케줄링·종료 ACK·실제 다중 참가자·UE 통합은 후속 범위다.
+콘솔 ClientMode는 [실행 루프](../demo/CLIENT_MODE.md)로 이 채널을 사용한다.

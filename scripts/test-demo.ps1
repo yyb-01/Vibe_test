@@ -85,5 +85,10 @@ if ($ClientMode) {
     if ([regex]::Matches($burst, 'Committed to SQLite sequence=1').Count -ne 26) {
         throw 'A rate-limited replay regressed the confirmed result.'
     }
+    $save = Join-Path $fixture 'client-view-burst.db'
+    $views = Run ((@('show') * 24) + @('quit'))
+    if ([regex]::Matches($views, 'item 100 def=1 qty=20').Count -ne 24) {
+        throw 'Repeated snapshots did not recover from admission backpressure.'
+    }
 }
 Write-Output "PASS saved demo and backup restore (ClientMode=$ClientMode)"

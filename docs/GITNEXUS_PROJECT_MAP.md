@@ -1,5 +1,25 @@
 # Project Overview
 
+## 2026-09-21 콘솔 실행 루프
+
+`demo/transport_loop.hpp`의 transport_tick을 ConsoleClient와 코어 테스트가 공유한다.
+한 tick에 명령 양방향과 스냅샷 채널당 지정한 바이트만 전달하며 poll·부분 송신 확인·양쪽 실패 정리를 한다.
+페이지 Busy는 연결을 유지한다. `demo/client_loop.cpp`의 exchange가 콘솔에서 제한된 시간만 반복한다.
+ClientMode의 거래·스냅샷·재접속·종료가 실제 HostTransport/ClientTransport를 사용한다.
+`tests/transport_loop.cpp`가 전송량 제한·영속 거래·정체 만료·stale callback·예산/권한 실패를 검증한다.
+실제 소켓/인증 및 입력 대기 중의 지속 tick은 후속 범위다. [계약](../demo/CLIENT_MODE.md).
+코어 76그룹과 ClientMode 저장·재접속·백업 복원·24회 연속 조회 검증을 통과했다.
+
+## 2026-09-21 전송 시간 제한
+
+`core/transport_deadlines.hpp`의 고정 마감 3개(명령 수신/송신, 스냅샷)를 양쪽 어댑터가 사용한다.
+`core/transport_poll.cpp`에서 만료 시 기존 disconnect로 peer·버퍼를 정리하며 ClientState의
+원본 거래 보존을 재사용한다. 초기 resume 대기도 포함하고 부분 진행은 마감을 연장하지 않는다.
+`tests/transport_deadlines.cpp`, `client_transport_deadlines.cpp`, `snapshot_transport_deadlines.cpp`가
+경계 시각·부분 진행·원본 보존·오래된 연결 토큰·시계 역행·유휴 연결을 검증한다.
+플랫폼은 매 tick과 송신 직전에 poll을 호출해야 한다. [계약](../core/TRANSPORT.md#전송-시간-제한).
+코어 74그룹과 콘솔 ClientMode 저장·백업 복원 검증을 통과했다.
+
 ## 2026-09-21 스냅샷 전용 채널
 
 `core/snapshot_control.*`가 SnapshotRequest(5)/SnapshotOffer(6)의 lease·루트·descriptor를

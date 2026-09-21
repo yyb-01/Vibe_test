@@ -9,9 +9,10 @@ void HostTransport::start_snapshot(const InteractionState& observation) {
     SnapshotOffer offer{lease, descriptor, interaction_roots(observation, observation.pawn)};
     snapshot_output_ = encode_stream(encode_snapshot_offer(offer));
     snapshot_ = descriptor; snapshot_page_ = snapshot_sent_ = 0; snapshot_offer_ = true;
+    deadlines_.begin(TransportDeadlines::Snapshot);
 }
 std::span<const std::uint8_t> HostTransport::snapshot_output(const InteractionState& observation) {
-    host_.info(); require(connection_ != 0, Error::InvalidState);
+    require(poll(), Error::InvalidState);
     if (!snapshot_ || closing_) return {};
     try {
         host_.validate_snapshot(connection_, snapshot_->id, observation);
@@ -25,13 +26,14 @@ std::span<const std::uint8_t> HostTransport::snapshot_output(const InteractionSt
     } catch (...) { disconnect(); throw; }
 }
 void HostTransport::snapshot_sent(std::size_t count) {
-    host_.info(); require(connection_ != 0, Error::InvalidState);
+    require(poll(), Error::InvalidState);
     require(count <= snapshot_output_.size() - snapshot_sent_, Error::InvalidRequest);
     snapshot_sent_ += count;
     if (!snapshot_output_.empty() && snapshot_sent_ == snapshot_output_.size()) {
         snapshot_output_.clear(); snapshot_sent_ = 0;
         if (snapshot_offer_) snapshot_offer_ = false;
         else ++snapshot_page_;
+        if (snapshot_page_ == snapshot_pages(*snapshot_)) deadlines_.end(TransportDeadlines::Snapshot);
     }
 }
 }

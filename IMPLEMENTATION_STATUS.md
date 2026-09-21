@@ -1,10 +1,24 @@
 # 구현 현황
 
+2026-09-21 실행 루프: 콘솔 ClientMode를 HostTransport/ClientTransport의 부분 송수신 경로에 연결했다.
+명령 양방향·스냅샷 채널마다 tick당 256B를 전달하고 시간 제한·페이지 Busy·실패 정리를 처리한다.
+재접속 resume와 정상 종료 통지도 같은 스트림을 사용한다. 소켓·인증·표준 입력 대기 중의 tick은
+구현하지 않았으며 다음 actionSeq 조회는 기존 신뢰된 프로세스 내부 resume codec 경로를 유지한다.
+[실행 계약](demo/CLIENT_MODE.md).
+코어 76개 테스트 그룹과 ClientMode 저장·재접속·백업 복원·24회 연속 조회 검증을 통과했다.
+
+2026-09-21 시간 제한: HostTransport/ClientTransport에 poll 기반 고정 작업 마감을 추가했다.
+초기 resume·미완성 명령·미송신 명령·스냅샷 전체 전송을 제한하며 느린 부분 진행으로 연장하지 않는다.
+만료 시 연결·버퍼·뷰를 정리하고 미확정 거래 원본은 Resolving으로 보존한다.
+기본 30초이며 유휴 연결은 유지한다. 플랫폼의 tick/소켓 연결과 별도 거래 응답 대기 정책은 남아 있다.
+코어 74개 테스트 그룹과 콘솔 ClientMode 저장·백업 복원 검증을 통과했다.
+[시간 제한 계약](core/TRANSPORT.md#전송-시간-제한).
+
 2026-09-21 후속: SnapshotRequest/Offer codec으로 lease·승인 루트·descriptor를 전달하고
 전용 스트림의 부분 송수신과 기존 페이지 재조립을 연결했다. 대기 페이지도 매 송신 직전
 현재 권한을 재검사하며 실패 시 연결을 해제한다. 페이지 생성 Busy는 진행 상태를 유지한다.
 코어 71개 테스트 그룹과 콘솔 ClientMode 저장·백업 복원 회귀 검증을 통과했다.
-실제 관측값·tick/소켓·인증·자동 시간 제한·종료 ACK·UE 통합은 남아 있다.
+실제 관측값·tick/소켓·인증·종료 ACK·UE 통합은 남아 있다. 전송 시간 제한은 위 항목에 추가했다.
 [스냅샷 transport 계약](core/SNAPSHOT_TRANSPORT.md).
 
 2026-09-21 추가: ClientTransport가 인증된 연결의 SessionResume/receipt/종료 통지를

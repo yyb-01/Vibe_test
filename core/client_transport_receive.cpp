@@ -3,10 +3,12 @@
 
 namespace astra {
 std::size_t ClientTransport::receive(std::uint64_t token, std::span<const std::uint8_t> bytes) {
-    check(token); // Reject stale callbacks before the failure handler can disconnect us.
+    require(poll(token), Error::InvalidState); // Stale callbacks cannot disconnect a new connection.
     try {
+        if (!bytes.empty()) deadlines_.begin(TransportDeadlines::Read);
         auto consumed = input_->receive(bytes);
         if (!input_->complete()) return consumed;
+        deadlines_.end(TransportDeadlines::Read);
         auto payload = input_->take();
         if (!state_.connected()) {
             state_.reconnect(decode_resume(payload, epoch_));

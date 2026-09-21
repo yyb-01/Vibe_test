@@ -1,8 +1,9 @@
 #include "client_transport.hpp"
 
 namespace astra {
-ClientTransport::ClientTransport(const ResumeState& baseline, Catalog catalog)
-    : state_(baseline, std::move(catalog)), epoch_(baseline.epoch) {
+ClientTransport::ClientTransport(const ResumeState& baseline, Catalog catalog,
+    TransportDeadlines::Clock::duration limit, TransportDeadlines::Now now)
+    : state_(baseline, std::move(catalog)), deadlines_(limit, now), epoch_(baseline.epoch) {
     state_.disconnect();
 }
 void ClientTransport::owner() const {
@@ -15,6 +16,7 @@ const ClientState& ClientTransport::state() const { owner(); return state_; }
 std::uint64_t ClientTransport::open_authenticated(std::uint64_t epoch) {
     owner(); require(!active_ && generation_ < UINT64_MAX, Error::InvalidState);
     require(epoch >= epoch_ && epoch <= revision_limit, Error::EpochMismatch);
+    deadlines_.expired(); deadlines_.begin(TransportDeadlines::Read);
     input_.emplace(); epoch_ = epoch; active_ = true;
     return ++generation_;
 }
@@ -24,6 +26,7 @@ void ClientTransport::disconnect(std::uint64_t token) {
     active_ = false; state_.disconnect(); input_.reset();
     output_.clear(); sent_ = 0;
     snapshot_input_.reset(); lease_ = 0; snapshot_requested_ = snapshot_offer_ = false;
+    deadlines_.reset();
 }
 void ClientTransport::finish(std::uint64_t token) {
     check(token);
@@ -32,11 +35,12 @@ void ClientTransport::finish(std::uint64_t token) {
     disconnect(token);
 }
 void ClientTransport::submit(std::uint64_t token, const Request& request) {
-    check(token); require(state_.connected(), Error::NotAccessible);
+    require(poll(token), Error::InvalidState); require(state_.connected(), Error::NotAccessible);
     require(output_.empty(), Error::Busy);
     PacketHeader h; h.worldEpoch = epoch_;
     auto wire = encode_stream(encode_packet(h, request));
     state_.track(request); output_ = std::move(wire);
+    deadlines_.begin(TransportDeadlines::Write);
 }
 void ClientTransport::retry(std::uint64_t token, Id id) {
     check(token); submit(token, decode(state_.retry_payload(id)));
@@ -47,8 +51,11 @@ std::span<const std::uint8_t> ClientTransport::output(std::uint64_t token) const
     check(token); return std::span(output_).subspan(sent_);
 }
 void ClientTransport::sent(std::uint64_t token, std::size_t count) {
+    require(poll(token), Error::InvalidState);
     require(count <= output(token).size(), Error::InvalidRequest);
     sent_ += count;
-    if (sent_ == output_.size()) { output_.clear(); sent_ = 0; }
+    if (sent_ == output_.size()) {
+        output_.clear(); sent_ = 0; deadlines_.end(TransportDeadlines::Write);
+    }
 }
 }

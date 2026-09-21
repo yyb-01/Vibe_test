@@ -1,6 +1,7 @@
 #pragma once
 #include "client_state.hpp"
 #include "stream.hpp"
+#include "transport_deadlines.hpp"
 #include <thread>
 
 namespace astra {
@@ -8,12 +9,15 @@ namespace astra {
 class ClientTransport {
 public:
     // Trusted identity/baseline, never inferred from incoming bytes.
-    ClientTransport(const ResumeState&, Catalog);
+    ClientTransport(const ResumeState&, Catalog,
+                    TransportDeadlines::Clock::duration = std::chrono::seconds(30),
+                    TransportDeadlines::Now = TransportDeadlines::Clock::now);
     ClientTransport(const ClientTransport&) = delete;
     ClientTransport& operator=(const ClientTransport&) = delete;
     // Call only after platform authentication; first frame must be SessionResume.
     std::uint64_t open_authenticated(std::uint64_t epoch);
     const ClientState& state() const;
+    bool poll(std::uint64_t token); // Tick before I/O; stale tokens return false.
     void submit(std::uint64_t token, const Request&);
     void retry(std::uint64_t token, Id);
     void forget(Id);
@@ -31,6 +35,7 @@ private:
     void owner() const;
     void check(std::uint64_t token) const;
     ClientState state_;
+    TransportDeadlines deadlines_;
     std::optional<StreamDecoder> input_;
     std::vector<std::uint8_t> output_;
     std::size_t sent_{};

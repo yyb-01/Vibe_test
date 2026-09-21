@@ -1,5 +1,4 @@
 #include "client.hpp"
-#include "../core/shutdown.hpp"
 #include <thread>
 
 namespace {
@@ -11,59 +10,58 @@ template<class F> auto admitted(F operation) {
         catch (const Violation& e) {
             if (e.code != Error::Busy || std::chrono::steady_clock::now() >= deadline) throw;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // Resume and snapshot admission need two tokens after reconnect.
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 }
 }
 ResumeState ConsoleClient::read_resume() {
-    auto state = admitted([&] { return host_.resume_state(connection_); });
+    auto state = admitted([&] { return host_.resume_state(transport_->connection()); });
     PacketHeader h; h.worldEpoch = host_.info().epoch; h.messageType = MessageType::SessionResume;
     return decode_resume(encode_resume(h, state), h.worldEpoch);
 }
 std::uint64_t ConsoleClient::next_action_sequence() {
-    require(client_.connected(), Error::NotAccessible);
+    require(connected(), Error::NotAccessible);
     if (request_) {
-        auto status = client_.status(request_->id).status;
+        auto status = client_.state().status(request_->id).status;
         require(status == TransactionStatus::Committed || status == TransactionStatus::Rejected, Error::Busy);
     }
     auto state = read_resume();
     require(state.identity == resume_.identity, Error::NotAccessible);
     require(state.epoch == resume_.epoch, Error::EpochMismatch);
-    require(state.sequence >= resume_.sequence && state.sequence >= client_.sequence() &&
+    require(state.sequence >= resume_.sequence && state.sequence >= client_.state().sequence() &&
             state.nextActionSequence >= resume_.nextActionSequence, Error::RevisionConflict);
     resume_ = state;
     return state.nextActionSequence;
 }
 void ConsoleClient::disconnect() {
-    require(client_.connected(), Error::NotAccessible);
-    host_.disconnect(connection_); connection_ = 0;
-    client_.disconnect(); lease_ = 0;
+    require(connected(), Error::NotAccessible);
+    transport_.reset(); client_.disconnect(token_); lease_ = 0;
 }
 Result ConsoleClient::close() {
-    auto ready = host_.prepare_close();
-    if (!ready.applied()) return ready;
-    PacketHeader h; h.worldEpoch = host_.info().epoch; h.messageType = MessageType::SessionClosing;
-    client_.receive_shutdown(encode_shutdown(h, ready.sequence)); lease_ = 0;
+    if (transport_ && transport_->connection()) {
+        auto ready = transport_->shutdown();
+        if (!ready.applied()) return ready;
+        exchange(false, true); lease_ = 0;
+    }
     return host_.close();
 }
 void ConsoleClient::reconnect() {
-    require(!client_.connected(), Error::InvalidState);
-    if (!connection_) connection_ = host_.admit_authenticated(
-        {{77, 1}, {14, 1}, IdentityKind::LocalLan}, host_.info());
-    auto state = read_resume();
-    client_.reconnect(state); resume_ = state;
+    require(!connected(), Error::InvalidState);
+    transport_.reset();
+    admitted([&] {
+        transport_ = std::make_unique<HostTransport>(host_,
+            AuthenticatedPeer{{77, 1}, {14, 1}, IdentityKind::LocalLan}, host_.info());
+    });
+    token_ = client_.open_authenticated(host_.info().epoch);
+    exchange();
 }
 std::shared_ptr<const World> ConsoleClient::snapshot() {
-    require(client_.connected(), Error::NotAccessible);
-    auto state = observation();
-    lease_ = host_.grant_lease(connection_, state);
-    client_.set_roots({id(10), id(20), id(30)});
-    auto descriptor = admitted([&] { return host_.start_snapshot(connection_, lease_, state); });
-    client_.begin_snapshot(descriptor);
-    for (std::size_t page = 0; page < snapshot_pages(descriptor); ++page) {
-        auto bytes = admitted([&] { return host_.snapshot_page(connection_, descriptor.id, page, state); });
-        client_.receive_page(bytes);
-    }
-    require(!client_.needs_refresh() && bool(client_.view()), Error::InvalidState);
-    return client_.view();
+    require(connected(), Error::NotAccessible);
+    admitted([&] {
+        if (!connected()) reconnect();
+        client_.request_snapshot(token_); exchange(true);
+    });
+    lease_ = client_.snapshot_lease(token_);
+    return client_.state().view();
 }

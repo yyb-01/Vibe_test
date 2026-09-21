@@ -31,6 +31,8 @@ void stream_frames(); void stream_session();
 void transport_session(); void transport_failures();
 void client_transport_session(); void client_transport_failures(); void transport_shutdown();
 void snapshot_control(); void transport_snapshots(); void transport_snapshot_failures(); void transport_snapshot_pages();
+void transport_deadlines(); void client_transport_deadlines(); void snapshot_transport_deadlines();
+void transport_loop(); void transport_loop_failures();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -70,7 +72,10 @@ int main() {
         {"client transport session", client_transport_session},
         {"client transport failures", client_transport_failures}, {"transport shutdown", transport_shutdown},
         {"snapshot control", snapshot_control}, {"transport snapshots", transport_snapshots},
-        {"transport snapshot failures", transport_snapshot_failures}, {"transport snapshot pages", transport_snapshot_pages}
+        {"transport snapshot failures", transport_snapshot_failures}, {"transport snapshot pages", transport_snapshot_pages},
+        {"transport deadlines", transport_deadlines}, {"client transport deadlines", client_transport_deadlines},
+        {"snapshot transport deadlines", snapshot_transport_deadlines},
+        {"transport loop", transport_loop}, {"transport loop failures", transport_loop_failures}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }
