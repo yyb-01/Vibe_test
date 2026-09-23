@@ -33,6 +33,8 @@ void client_transport_session(); void client_transport_failures(); void transpor
 void snapshot_control(); void transport_snapshots(); void transport_snapshot_failures(); void transport_snapshot_pages();
 void transport_deadlines(); void client_transport_deadlines(); void snapshot_transport_deadlines();
 void transport_loop(); void transport_loop_failures();
+void multiplayer_lifecycle(); void multiplayer_transactions();
+void console_input();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -75,7 +77,10 @@ int main() {
         {"transport snapshot failures", transport_snapshot_failures}, {"transport snapshot pages", transport_snapshot_pages},
         {"transport deadlines", transport_deadlines}, {"client transport deadlines", client_transport_deadlines},
         {"snapshot transport deadlines", snapshot_transport_deadlines},
-        {"transport loop", transport_loop}, {"transport loop failures", transport_loop_failures}
+        {"transport loop", transport_loop}, {"transport loop failures", transport_loop_failures},
+        {"20-player transport lifecycle", multiplayer_lifecycle},
+        {"20-player transport transactions", multiplayer_transactions},
+        {"console input tick", console_input}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

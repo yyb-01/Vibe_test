@@ -1,6 +1,14 @@
 #include "client.hpp"
 #include <thread>
 
+void ConsoleClient::tick() {
+    if (!transport_ || !transport_->connection()) return;
+    try {
+        transport_tick(*transport_, client_, token_, observation());
+        require(connected(), Error::NotAccessible);
+    } catch (...) { lease_ = 0; throw; }
+}
+
 void ConsoleClient::exchange(bool snapshot, bool closing) {
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     try {

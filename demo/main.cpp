@@ -1,5 +1,6 @@
 #include "console.hpp"
 #include "shutdown.hpp"
+#include "read_line.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -36,7 +37,11 @@ int main(int argc, char** argv) {
         int exitCode = 0;
         for (;;) {
             if (!smoke) std::cout << "> " << std::flush;
-            bool eof = !std::getline(input, line);
+            bool eof = !read_line(input, line, [&]() noexcept {
+                try { session.tick(); }
+                catch (const Violation& e) { std::cerr << "Idle transport: " << name(e.code) << ". Use reconnect.\n"; }
+                catch (...) { std::cerr << "Idle transport failed. Use reconnect.\n"; }
+            });
             if (eof || line == "quit" || exitCode) {
                 if (try_shutdown([&] { return session.close(); }, std::cerr)) return exitCode;
                 if (eof || smoke) return 1;

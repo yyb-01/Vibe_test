@@ -13,6 +13,7 @@ struct Session {
     void reconnect();
     Result resolve();
     Result close();
+    void tick() { if (client && !closing) client->tick(); }
     bool persistent() const { return bool(durable); }
 private:
     std::unique_ptr<Inventory> memory;

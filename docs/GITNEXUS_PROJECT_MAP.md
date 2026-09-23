@@ -1,5 +1,22 @@
 # Project Overview
 
+## 2026-09-23 입력 대기 중 tick
+
+`demo/read_line.hpp`는 std::async로 한 줄만 읽고 입력이 대기하는 동안 호출자에서 tick을 실행한다.
+`demo/main.cpp` → Session::tick → ConsoleClient::tick → transport_tick으로 소유 스레드를 유지한다.
+입력 중 오류로 async future 소멸 대기에 빠지지 않도록 tick 콜백은 noexcept이며 오류를 출력하고 입력을 계속 기다린다.
+스냅샷 권한 만료 시 기존 정책대로 연결·뷰를 정리하며 reconnect로 복구한다.
+`tests/console_input.cpp`와 `scripts/test-demo-idle.ps1`이 입력 지연·부분 명령·EOF·열린 stdin에서 quit을 보호한다.
+코어 79그룹, 기본/ClientMode SQLite 저장·복원, 메모리 smoke 통과. 입력 취소와 실제 엔진 tick은 별도다.
+
+## 2026-09-23 다중 참가자 전송 검증
+
+`tests/multiplayer_fixture.hpp`가 하나의 HostSession에 HostTransport/ClientTransport 19쌍을
+연결하고 기존 transport_tick으로 채널당 7B씩 전달한다. `multiplayer_lifecycle.cpp`는 호스트 포함
+20명 정원·정체 격리·재접속·종료 통지 후 DB 닫기를 검증한다. `multiplayer_transactions.cpp`는
+두 계정의 동일 아이템 경쟁·Busy 재시도·RevisionConflict·응답 유실 후 중복 저장 방지·전체 뷰를
+검증한다. 코어 78그룹 통과. 실제 소켓/인증 및 다중 PC 시험은 별도이며 production 코드는 변경하지 않았다.
+
 ## 2026-09-21 콘솔 실행 루프
 
 `demo/transport_loop.hpp`의 transport_tick을 ConsoleClient와 코어 테스트가 공유한다.

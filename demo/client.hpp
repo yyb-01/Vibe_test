@@ -12,6 +12,7 @@ public:
     std::uint64_t next_action_sequence();
     Result apply(const Request&);
     Result retry();
+    void tick();
     void disconnect();
     void reconnect();
     bool connected() const { return client_.state().connected(); }
