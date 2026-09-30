@@ -29,6 +29,11 @@ checkpoint는 일반 저장 v1, 탄약 컨테이너 없이 발사 기록만 있�
 
 검증은 재시작·중복/변조·거절 결과·ID 비재사용, SQL 실패 롤백, 응답 유실의 Pending/resolve, schema/catalog/손상/overflow 거절, 커밋 전후 프로세스 강제 종료, 다른 프로세스의 월드 잠금 및 강제 종료 후 해제를 포함한다. fixture는 매번 `.build/sqlite-tests-<GUID>`에 새로 생성한다.
 
+HostSession 결합 시험은 SQL rollback에서 탄환/탄약 무변경, 확정 후 탄환 생성·정적 충돌,
+DB 재시작 뒤 원본 발사 재전달의 중복 방지를 확인한다. Windows에서는 실제 TCP+SQLite로
+응답 유실·연결 해제 중 저장 확정 조회·재접속 재전송도 검증한다.
+[탄환 처리](../core/COMBAT.md)의 비행 상태·접촉 출력은 영속 피해 사건으로 저장하지 않는다.
+
 현재는 기존 binary checkpoint 전체를 `world`의 한 행에 저장한다. 요청 결과도 그 안에 들어 있다. 정상 종료 API와 백업 3개 순환은 [종료·백업 안내](SQLITE_SHUTDOWN.md)에 구현했다. 명세 A.6/E.7의 정규화된 item/container/placement/event 테이블, 변경 행 저장과 손상 자산 격리는 후속 구현이다. 백업을 새 세이브로 여는 [복원 경로](SQLITE_RESTORE.md)는 제공한다. 비동기 worker·한 슬롯/64MiB 메시지 제한은 [AsyncStore](ASYNC.md)로 연결했다. 매 거래 전체 상태 직렬화 비용과 65,536 아이템·64 계정·65,536 요청 기록의 기존 코어 한도가 남는다. 실제 디스크 고장·전원 차단·대규모 성능 및 Windows 외 실행은 미검증이다.
 
 콘솔은 `scripts/play.ps1 -SavePath ./saves/world.db`로 비동기 SQLite 저장을 사용한다. 경로를 생략하면 메모리 데모다. CMake의 `-DASTRA_SQLITE=ON`은 `astra_saved_demo`와 Windows CTest의 복구·콘솔 저장 시험을 활성화한다. 여기서 실제 검증한 경로는 Zig/PowerShell이다.

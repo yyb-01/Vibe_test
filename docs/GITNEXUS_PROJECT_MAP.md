@@ -12,31 +12,45 @@
 | 거래·조회 | `inventory/prepare/commit`, `session/interaction`, `client_state` | 6종 거래·권한·lease·불변 뷰; 실제 인증/UE 관측/UI는 남음 |
 | 영속 저장 | `durable` → `storage/async` → `storage/sqlite_*` → 메모리 확정 | 상태+요청 결과 공동 저장·복구·백업; 전체 checkpoint/단일 worker |
 | 양쪽 전송 | `client_transport*` ↔ `transport*` ↔ `HostSession` | framing·부분 I/O·재접속·종료; `net/tcp_*`는 Windows loopback까지 |
-| 발사 | `client_fire` → `session_fire/clock` → `fire_commit/mutate` → 동일 저장 경로 | 원본 재시도·시계·탄약/내구도/ShotData 원자 커밋·FireReceipt |
+| 발사 | `client_fire` → `session_fire/clock` → `fire_commit/mutate` → 동일 저장 경로 → `publish_fire` | 원본 재시도·원자 커밋·FireReceipt·확정 후 점 탄환 1회 생성 |
 | 장전·급탄 | `chamber/magazine` → 기존 Move/Split와 실제 아이템 행 | 1발 장전실·32발 혼합탄 순서·checkpoint v3; profile/소켓/FSM은 남음 |
-| 정수 탄도 | `ballistics` → `projectile/barrier_scene/reflection_loop` | 자유비행·정적 AABB·반사; 별도 `volume_*`는 관통 진행/출구 재개 |
+| 정수 탄도 | `advance_combat` → `shot_simulation` → `ballistics/projectile/barrier_scene/reflection_loop` | 240Hz 배치·정적 AABB·승인 반사·접촉 정렬; 별도 `volume_*`는 관통 진행/출구 재개 |
 | layer | `layer_paths/layer_energy` | 정적 구간 합집합·에너지 계획; 시간 진행/보호 zone/wound는 남음 |
 
-`HostSession::dispatch_fire`는 저장 결과와 ShotData/시각 효과 응답을 반환한다.
-여기서 Projectile을 생성하거나 전투 tick·피해를 실행하는 호출은 없다.
+`HostSession::dispatch_fire`와 저장 결과 조회는 durable 성공 뒤 `publish_fire`로
+Projectile을 한 번 생성한다. `advance_combat`은 연결과 무관하게 Pending을 조회하고
+최대 512개 점 탄환을 정적 장면에서 진행한다. [처리 계약](../core/COMBAT.md)을 참고한다.
+비행 상태는 재시작 복구하지 않으며 피해 저장·탄약별 profile·실제 게임 호출 루프는 남아 있다.
 `resume_volume`은 명시적으로 시작한 관통의 출구에서 비행/반사를 재개하며,
 공중 충돌의 관통 진입 선택과 겹친 layer 시간 진행은 미연결이다.
 C 생체·D 차량·E 제작/전력/하우징·월드/좀비·F 에셋 검증은 게임 구현으로 남아 있다.
 
-실행 근거: 코어 99그룹, Windows TCP 6그룹, SQLite 전체 회귀/커밋 전후 강제 종료,
+실행 근거: 코어 103그룹, Windows TCP 6그룹, SQLite 전체 회귀/커밋 전후 강제 종료,
 현재 저장 데모 기본/ClientMode·idle tick·메모리 smoke, `verify_spec.py` 통과.
-TCP 저장소는 ProbeStore다. TCP+실제 SQLite, 20대 PC/LAN/인터넷, 게임 부하와 UE는 미검증이다.
+TCP 6그룹은 ProbeStore다. SQLite 시험에서 실제 TCP+SQLite의 단일 발사·응답 유실·재접속과
+디스크 재시작도 검증했다. 20대 PC/LAN/인터넷, 게임 부하와 UE는 미검증이다.
 
 GitNexus `list_repos`의 `Vibe_test`가 현재 루트임을 확인했다. `.upload-repo/`는 제외했다.
 MCP 재조회와 설치된 CLI의 `analyze --pdg --index-only` 갱신이 동작한다.
-수정 영역 context·100개 함수/메서드 upstream impact·taint/PDG를 실제 소스와 대조했다.
+초기 전체 감사에서 context·100개 함수/메서드 upstream impact·taint/PDG를 소스와 대조했다.
 HIGH/CRITICAL은 codec/validator 등 공유 경로에 있으며 UNKNOWN 24건은 호출 누락 여부를 검색했다.
 C++ 헤더/가상·멤버 호출 누락, 지역 변수 오탐·execution flow 100개 상한을 고려한다.
-taint 0건이나 빈 caller는 안전의 증거가 아니다. 신규 파일까지 stage한 detect_changes(all)은
+taint 0건이나 빈 caller는 안전의 증거가 아니다. 초기 전체 감사의 detect_changes(all)은
 148개 파일·817개 symbol·31개 흐름·CRITICAL이며 partial/truncated 없이 완료했다.
+이번 전투 후속 수정 전체 29개 파일은 90개 symbol·7개 흐름·HIGH이며 partial/truncated가 없었다.
+publish_fire의 direct caller는 dispatch_fire/settle_fire/advance_combat이다. advance_combat은
+receiver typing 누락으로 UNKNOWN이어서 실제 tests/integration 호출을 소스에서 확인했다.
+탄도·저장·TCP 검토와 실행 시험을 대조했고 재시작 시험은 성공 상태와 원본 데이터까지 검사한다.
 다음 편집은 repository context의 freshness 확인부터 시작한다.
 
 ## 과거 지도·구현 이력 — 각 날짜 당시 기준
+
+## 2026-09-30 확정 발사의 서버 탄환 처리
+
+`session_projectiles.*`는 durable 성공의 단일 공개와 연결 유실 중 조회를,
+`shot_simulation.*`는 240Hz 정적 비행/반사 배치와 접촉 정렬을 제공한다.
+코어 103그룹·TCP 6그룹·실제 TCP+SQLite를 포함한 전체 SQLite 시험 통과.
+피해 저장·관통 자동 진입·탄약별 profile·역사 rewind·게임 호출 루프·UE는 남아 있다.
 
 ## 2026-09-30 장전실·혼합탄 탄창
 

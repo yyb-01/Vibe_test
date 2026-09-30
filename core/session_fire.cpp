@@ -43,12 +43,12 @@ FireResult HostSession::dispatch_fire(Peer& peer, const FireIntent& intent, cons
         observed.ammoDef, observed.visualSeed, observed.durabilityCost};
     Access access{peer.account, info_.epoch, info_.epoch, {observed.inventoryRoot}};
     auto approved = approve_fire(request, authority, std::move(access));
+    require(flights_.size() < max_active_shots, Error::LimitExceeded);
     require(weaponClocks_.contains(observed.weapon) || weaponClocks_.size() < 65536, Error::LimitExceeded);
     fireCursors_.try_emplace(peer.account); weaponClocks_.try_emplace(observed.weapon);
     waitingFire_.emplace(WaitingFire{peer.account, request, now_()}); // Allocate before durable submission.
     auto result = inventory_.apply(request, approved);
-    if (result.applied())
-        remember_fire({peer.account, observed.weapon, *request.shot, result.sequence}, waitingFire_->admitted, true);
+    publish_fire(result);
     if (result.code != Error::Pending) waitingFire_.reset();
     return {result, result.applied() ? request.shot : std::nullopt};
 }

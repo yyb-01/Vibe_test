@@ -11,9 +11,9 @@
 | A 인벤토리 | POD·그리드/슬롯·중첩·질량/부피, 6종 거래, 예약·확정/취소, 권한·버전·중복 방지·불변 뷰 | 조립 Socket/Escrow, 확장 상태 스택, 유연 가방, 낙하 Actor·실제 UI |
 | A/E 저장 | SQLite WAL/FULL, 상태+요청 결과 원자 저장, 비동기 worker, 재시작·epoch 복구, 정상 종료·백업 3개·새 파일 복원 | 전체 checkpoint BLOB 쓰기와 단일 in-flight 작업; 행별 DB delta·게임 부하 |
 | 세션·네트워크 | 방장 포함 20슬롯 정책, lease·페이지·재접속·종료 통지, 양쪽 transport·마감, Windows TCP byte adapter와 loopback | 실제 인증·방 검색/참가·채널 결합·암호화·NAT/relay·LAN/인터넷·다중 PC·종료 수신 ACK |
-| B 발사 | FireIntent 34B/패킷 66B, 권위 후보 검증, 탄약·내구도·ShotData 공동 저장, 세션 시계/sequence 복구, 40/98B 응답·64개 클라이언트 원본 추적 | 실제 net ID↔item/profile/pose/FSM/clock 공급자, 자동 사격·열/고장, 승인 shot의 탄도·피해 소비 |
+| B 발사 | FireIntent 34B/패킷 66B, 권위 후보 검증, 탄약·내구도·ShotData 공동 저장, 세션 시계/sequence 복구, 40/98B 응답·64개 클라이언트 원본 추적, 확정 후 탄환 1회 생성 | 실제 net ID↔item/profile/pose/FSM/clock 공급자, 자동 사격·열/고장, 충돌의 영속 피해 처리 |
 | B 장전·탄창 | 실제 1발 장전실, Move/Split 장전, socketId 순서의 혼합탄 급탄·상태 보존, 최대 32발, checkpoint v1/v2/v3 호환 검사 | 탄약 family/profile·조립 소켓 호환·전체 장전 FSM |
-| B 탄도 | 정수 scalar 자유비행·AABB 연속 교차, 수명/사거리·보수적 정지, 도탄 gate/에너지 표·반사, 관통 시간·진행·출구 재개 | 접촉→관통 자동 선택, 겹친 layer의 시간 진행, 움직이는 history/rewind·BVH/triangle·Mach LUT·SIMD parity·실제 전투 tick |
+| B 탄도 | 정수 scalar 자유비행·AABB 연속 교차, 수명/사거리·보수적 정지, 도탄 gate/에너지 표·반사, 관통 시간·진행·출구 재개, 세션 점 탄환의 240Hz 배치·접촉 정렬 | 접촉→관통 자동 선택, 겹친 layer의 시간 진행, 탄약별 profile·history/rewind·BVH/triangle·Mach LUT·SIMD parity·실제 게임 호출 루프 |
 | C 방어구·생체 | 정적 AABB layer 조회·같은 body 구간 합집합·에너지 계획 | 보호 zone·국소 손상·wound·출혈·사망·대사·섭취·환경 시뮬레이션 |
 | D 차량 | 명세와 기준 산술만 | 부품 조립·COM/관성·휠/동력계·주행/충돌·예측/복제·Chaos |
 | E 제작·전력·하우징 | 저장 기반만 | recipe/job/stage/escrow·원자적 완료/취소·전력/열/소음·구조/설치물 |
@@ -24,7 +24,7 @@
 코드 근거: [거래](core/inventory.cpp), [저장](storage/sqlite_save.cpp),
 [세션 발사](core/session_fire.cpp), [장전실](core/chamber.cpp), [탄창](core/magazine.cpp),
 [발사체](core/projectile.cpp), [반사](core/reflection_loop.cpp), [관통 출구](core/volume_resume.cpp),
-[layer 계획](core/layer_energy.cpp), [TCP](net/tcp_stream.cpp).
+[layer 계획](core/layer_energy.cpp), [서버 탄환 처리](core/COMBAT.md), [TCP](net/tcp_stream.cpp).
 
 ## 이번 실행 검증
 
@@ -32,27 +32,37 @@
 
 | 명령 | 결과·범위 |
 |---|---|
-| `./scripts/build.ps1` | 코어 99그룹 PASS |
+| `./scripts/build.ps1` | 코어 103그룹 PASS |
 | `./scripts/test-tcp.ps1` | Windows loopback TCP 6그룹 PASS |
-| `./scripts/test-sqlite.ps1` | rollback·lost ACK·혼합탄 순서·재시작·커밋 전후 강제 종료·프로세스 잠금·백업/복원 PASS |
+| `./scripts/test-sqlite.ps1` | rollback·lost ACK·혼합탄 순서·재시작·커밋 전후 강제 종료·잠금·백업/복원, 세션 탄환·실제 TCP+SQLite 발사 PASS |
 | `./scripts/test-demo.ps1` / `-ClientMode` | 현재 저장 데모 재빌드 후 기본/ClientMode 저장·재접속·백업 복원 PASS |
 | `./scripts/test-demo-idle.ps1` / 데모 `--smoke` | 부분 입력 중 tick·reconnect·열린 stdin의 quit·메모리 모드 PASS |
 | `verify_spec.py` | 25 POD layout·17 sizeof·기준 산술·문서 SQL PASS; 기능 구현 시험과 구분 |
 
-TCP 시험의 저장소는 ProbeStore이며 **TCP+실제 SQLite 결합 시험은 없다**. 20명 시험은 한 프로세스의
-호스트와 19개 어댑터다. 실제 20대 PC·게임 프레임/메모리 예산·물리적 전원 차단·UE/다른 OS는 미검증이다.
+TCP 6그룹은 ProbeStore를 사용한다. 별도 SQLite 시험에서 실제 loopback TCP+SQLite의 단일 발사,
+응답 유실·재접속·디스크 재시작 중복 방지를 검증했다. 20명 시험은 한 프로세스의 호스트와
+19개 어댑터다. 실제 20대 PC·게임 프레임/메모리 예산·물리적 전원 차단·UE/다른 OS는 미검증이다.
 CMake 타깃은 제공하며 이번 실제 빌드 경로는 Windows Zig다.
 
 GitNexus `Vibe_test`의 등록 경로를 현재 루트와 대조하고 `analyze --pdg --index-only`로 갱신했다.
-변경 영역의 context·100개 함수/메서드 upstream impact·taint/PDG를 소스와 대조했다.
+초기 전체 감사에서 context·100개 함수/메서드 upstream impact·taint/PDG를 소스와 대조했다.
 저장 codec/validator의 HIGH/CRITICAL, 24개 UNKNOWN을 안전 판정으로 해석하지 않았다.
-신규 파일까지 stage한 `detect_changes(scope: all)`은 148개 파일·817개 symbol·31개 흐름,
+초기 전체 감사의 `detect_changes(scope: all)`은 148개 파일·817개 symbol·31개 흐름,
 위험도 CRITICAL을 보고했으며 partial/truncated는 없었다. 위 소스 검토와 실행 검증으로 보완했다.
 C++ 헤더/가상·멤버 호출 누락, 지역 변수 오탐과 100 execution flow 상한이 있다.
 taint 0건은 결함 부재의 증명이 아니다. [프로젝트 지도](docs/GITNEXUS_PROJECT_MAP.md),
 [남은 작업](docs/IMPLEMENTATION_QUEUE.md)을 다음 작업의 시작점으로 사용한다.
+이번 전투 후속 수정 전체 29개 파일의 커밋 전 검사는 90개 symbol·7개 흐름·HIGH를 보고했고
+partial/truncated는 없었다. publish_fire의 로컬/원격/저장 조회 경로와 UNKNOWN인
+advance_combat의 실제 호출 위치를 대조했다. 탄도·저장·TCP 검토에서 재시작 시험의
+성공 상태/원본 데이터 검사를 보강했다. 비행 상태는 세션 메모리이며 피해 사건 저장은 남았다.
 
 ## 이전 구현 기록 — 각 날짜 당시의 상태와 수치
+
+2026-09-30 후속: durable 확정 발사를 세션의 점 탄환과 240Hz 정적 충돌/도탄 처리에 연결했다.
+Pending/실패는 발사하지 않으며 응답 유실·재접속 뒤에도 한 번만 생성한다. 코어 103그룹,
+TCP 6그룹과 실제 TCP+SQLite 결합·SQLite 전체 회귀 통과. 저장 데모 ClientMode/idle도 재검증했다.
+탄약별 profile·관통 자동 진입·역사 rewind·영속 피해/사망·실제 게임 호출 루프·UE는 남아 있다.
 
 2026-09-30 후속: 장전실의 실제 1발 위치와 혼합탄 탄창을 기존 Slot·아이템 스택에 연결했다.
 장전/급탄은 Move 또는 Split이며 발사 확정 직전에도 장전실을 재검사한다.

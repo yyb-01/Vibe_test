@@ -17,7 +17,12 @@ try {
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'storage') -Filter 'sqlite*.cpp' | ForEach-Object FullName)
     $sourceDir = if ($Target -eq 'test') { 'integration' } else { $Target }
     $sources += @(Get-ChildItem -LiteralPath (Join-Path $projectRoot $sourceDir) -Filter '*.cpp' | ForEach-Object FullName)
+    if ($Target -eq 'test') {
+        $sources += Join-Path $projectRoot 'net/tcp_stream.cpp'
+        $sources += Join-Path $projectRoot 'network_tests/loopback.cpp'
+    }
     $flags = @(if ($Target -ne 'test') { '-municode' }; if ($Target -eq 'demo') { '-DASTRA_DEMO_SQLITE' })
+    if ($Target -eq 'test') { $flags += '-lws2_32' }
     $name = if ($Target -eq 'test') { 'astra-sqlite.exe' } else { "astra-sqlite-$Target.exe" }
     $optimization = if ($Target -eq 'benchmark') { '-O2' } else { '-O0' }
     $exe = Join-Path $output $name

@@ -1,4 +1,5 @@
 #include "session.hpp"
+#include <algorithm>
 
 namespace astra {
 void HostSession::remember_fire(const RecordedFire& record, TransactionBudget::Clock::time_point admitted,
@@ -14,6 +15,7 @@ void HostSession::remember_fire(const RecordedFire& record, TransactionBudget::C
 void HostSession::restore_fire_history() {
     auto started = now_();
     for (const auto& record : inventory_.recorded_fires()) {
+        latestShot_ = std::max(latestShot_, record.sequence); // Historical shots never respawn on session startup.
         fireCursors_.try_emplace(record.account); weaponClocks_.try_emplace(record.weapon);
         // New epochs reset effective ticks; all recovered weapons wait one interval.
         remember_fire(record, started, record.epoch == info_.epoch);
@@ -24,11 +26,10 @@ std::optional<FireResult> HostSession::settle_fire(Id account, const FireIntent&
     auto& w = *waitingFire_;
     bool same = w.account == account && w.request.shot->intent.fireSeq == intent.fireSeq;
     if (same) require(w.request.shot->intent == intent, Error::IdempotencyMismatch);
-    auto result = inventory_.result_for(w.request, w.account);
+    auto result = w.resolved ? w.resolved : inventory_.result_for(w.request, w.account);
     if (result && result->code == Error::Pending)
         return same ? std::optional(FireResult{*result, {}}) : std::nullopt;
-    if (result && result->applied())
-        remember_fire({w.account, w.request.moves[1].item, *w.request.shot, result->sequence}, w.admitted, true);
+    if (result) publish_fire(*result);
     if (result) require(result->code != Error::EpochMismatch && result->code != Error::InvalidState, result->code);
     auto reply = result && same ? std::optional(FireResult{*result, result->applied() ? w.request.shot : std::nullopt}) : std::nullopt;
     waitingFire_.reset(); // Missing means submission never reached prepare; definite abort also releases it.

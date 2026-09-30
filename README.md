@@ -3,7 +3,8 @@
 [기술 명세서](SURVIVAL_TECHNICAL_SPECIFICATION.md)의 A 영역부터 구현했습니다. C++20 표준 라이브러리만 사용하며 Unreal 없이 컴파일·테스트할 수 있습니다. 현재 실행물은 인벤토리를 조작하는 콘솔 샌드박스입니다.
 
 2026-09-30 기준 인벤토리·SQLite 저장·세션/transport와 발사 승인·장전·정수 탄도 일부를 작성했습니다.
-UE를 제외해도 전체 게임은 미완성입니다. 승인된 발사를 실제 탄도·피해로 소비하는 경로,
+저장 확정 발사를 서버의 240Hz 탄환 처리와 정적 충돌 출력까지 연결했습니다.
+UE를 제외해도 전체 게임은 미완성입니다. 충돌 결과의 영속 피해 처리,
 생체·차량·제작·월드·에셋 검증은 남아 있습니다. 구현/미구현과 실행 검증 범위는
 [현재 구현 현황](IMPLEMENTATION_STATUS.md#2026-09-30-현재-코드-기준)에 정리했습니다.
 
@@ -14,6 +15,7 @@ v1.1의 목표는 **방장 PC 리슨 서버(방장 1명+참가자 최대 19명)*
 Windows 실제 TCP 왕복 검증은 `./scripts/test-tcp.ps1`로 실행합니다.
 [TCP 계약과 검증 범위](net/TCP.md), [정수 탄도 reference](core/BALLISTICS.md),
 [발사 입력과 후보 검증](core/FIRE.md),
+[서버 탄환 처리와 한계](core/COMBAT.md),
 [전체 구현 작업 큐](docs/IMPLEMENTATION_QUEUE.md)를 참고하세요. UE5는 현재 미설치입니다.
 
 새 [클라이언트 프로토콜 데모](demo/CLIENT_MODE.md)는 `./scripts/play.ps1 -SavePath ./saves/client-world.db -ClientMode`로 실행합니다. 세션·SQLite·응답·스냅샷·ClientState를 한 프로세스에서 연결하며 실제 네트워크 접속은 아닙니다.

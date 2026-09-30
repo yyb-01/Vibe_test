@@ -56,6 +56,8 @@ if(ASTRA_SQLITE)
     add_executable(astra_sqlite_tests ${SQLITE_TEST_SOURCES})
     target_link_libraries(astra_sqlite_tests PRIVATE astra_sqlite)
     if(WIN32)
+        target_sources(astra_sqlite_tests PRIVATE network_tests/loopback.cpp)
+        target_link_libraries(astra_sqlite_tests PRIVATE astra_tcp)
         find_program(POWERSHELL NAMES pwsh powershell REQUIRED)
         add_test(NAME astra_sqlite COMMAND "${POWERSHELL}" -NoProfile -File
             "${CMAKE_CURRENT_SOURCE_DIR}/scripts/test-sqlite.ps1" -Executable $<TARGET_FILE:astra_sqlite_tests>)

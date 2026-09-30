@@ -1,4 +1,4 @@
-#include "loopback.hpp"
+#include "fire_exchange.hpp"
 #include "../tests/session_fixture.hpp"
 #include "../tests/fire_scenario.hpp"
 #include "transport.hpp"
@@ -24,24 +24,7 @@ void tcp_fire() {
     observation.launch = shot.launch; observation.massMg = shot.massMg;
     observation.ammoDef = shot.ammoDef; observation.visualSeed = shot.visualSeed;
     observation.durabilityCost = shot.durabilityCost;
-    auto exchange = [&] {
-        StreamDecoder receive;
-        eventually([&] {
-            auto output = client.output(token);
-            if (!output.empty()) client.sent(token, socket->client.write(output.first(1)));
-            auto in = socket->server->read(1);
-            if (!in.empty()) socket->server->consume(host->receive(in, {}, observation));
-            if (!host->output().empty()) host->sent(socket->server->write(host->output().first(1)));
-            in = socket->client.read(1);
-            if (!in.empty()) {
-                auto consumed = client.receive(token, in);
-                CHECK(receive.receive(in.first(consumed)) == consumed);
-                socket->client.consume(consumed);
-            }
-            return receive.complete();
-        });
-        CHECK(client.output(token).empty()); return receive.take();
-    };
+    auto exchange = [&] { return exchange_fire(*host, client, *socket, token, observation); };
     decode_resume(exchange(), session.info().epoch);
     PacketHeader h; h.worldEpoch = session.info().epoch; h.messageType = MessageType::FireIntent;
     s.probe->hold = true;

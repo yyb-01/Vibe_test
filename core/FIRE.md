@@ -54,8 +54,8 @@ Fire 요청 ID는 `{fire_request_namespace, fireSeq}`로 고정하여 동일 계
 허용한다. 기존 reader는 v3를 거절하므로 새 탄약 위치를 일반 슬롯으로 해석해 덮어쓰지 않는다.
 
 실행 검증: 코어 `atomic fire commit`, `./scripts/test-sqlite.ps1`의 발사 rollback/lost ACK/
-재시작 및 fire-crash-before/fire-crash-after/fire-recover. 커밋 뒤 탄도·피해 event 소비와
-사망/loot 순서화, 승인 상태 예약·복구는 다음 단계다.
+재시작 및 fire-crash-before/fire-crash-after/fire-recover. 커밋 뒤 [서버 탄환 처리](COMBAT.md)는
+정적 충돌 출력까지 연결했다. 영속 피해 event·사망/loot 순서화와 비행 상태 복구는 남아 있다.
 
 ## 사격 세션 진입점
 
@@ -78,7 +78,8 @@ Fire 요청 ID는 `{fire_request_namespace, fireSeq}`로 고정하여 동일 계
 서버 내부 `FireResult.accepted`는 durable Ok에서만 존재한다. Pending/실패에서는 비어 있다.
 동일 결과를 재전달하므로 효과 소비자는 월드와 result.sequence로 중복을 제거해야 한다.
 HostTransport가 아래 wire 응답으로 변환하고 ClientTransport가 추적/재전송한다.
-효과 소비와 자동화기 서버 타이머는 아직 없으며 현재 입력은 기존 공통 예산
+확정 결과는 서버 탄환 처리에서 한 번 소비한다. 시각 효과와 자동화기 서버 타이머는 남았으며
+현재 입력은 기존 공통 예산
 (초당 10회, burst 20)을 공유한다.
 
 검증: `fire session admission`은 비동기 대기·재접속·변조·계정/Pawn 격리·로컬 rollback을

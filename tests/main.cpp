@@ -50,6 +50,7 @@ void fire_clock_checks(); void fire_clock_recovery();
 void chamber_validation_checks(); void chamber_transactions();
 void magazine_validation(); void magazine_feed();
 void ammunition_checkpoint_versions();
+void combat_publication(); void combat_failure(); void combat_recovery(); void shot_simulation();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -106,7 +107,9 @@ int main() {
         {"server fire clock", fire_clock_checks}, {"server fire clock recovery", fire_clock_recovery},
         {"chamber ledger validation", chamber_validation_checks}, {"chamber load/fire/recovery", chamber_transactions},
         {"magazine ledger validation", magazine_validation}, {"mixed magazine feed/fire/recovery", magazine_feed},
-        {"ammunition checkpoint versions", ammunition_checkpoint_versions}
+        {"ammunition checkpoint versions", ammunition_checkpoint_versions},
+        {"durable shot publication", combat_publication}, {"shot publication rollback", combat_failure},
+        {"shot publication recovery", combat_recovery}, {"shot batch simulation", shot_simulation}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

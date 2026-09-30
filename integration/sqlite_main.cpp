@@ -8,6 +8,10 @@
 
 void sqlite_fire(const std::filesystem::path&);
 void sqlite_magazine(const std::filesystem::path&);
+void sqlite_combat(const std::filesystem::path&);
+#ifdef _WIN32
+void sqlite_tcp(const std::filesystem::path&);
+#endif
 
 int main(int argc, char** argv) {
     if (argc < 3) return 2;
@@ -27,6 +31,12 @@ int main(int argc, char** argv) {
             sqlite_restore(path);
             sqlite_fire(path / "fire.db");
             sqlite_magazine(path / "magazine.db");
+            sqlite_combat(path / "combat.db");
+            std::cout << "PASS SQLite combat: rollback, shot publication, collision, restart dedupe\n";
+#ifdef _WIN32
+            sqlite_tcp(path / "tcp-combat.db");
+            std::cout << "PASS TCP + SQLite: durable fire, lost ACK, reconnect, restart dedupe\n";
+#endif
             std::cout << "PASS SQLite magazine: rollback, lost ACK, ordered feed, restart\n";
             std::cout << "PASS SQLite fire: ammo, durability, event, rollback, lost ACK, replay\n";
             std::cout << "PASS SQLite restore: new save, replay, locks, no overwrite, corruption\n";
