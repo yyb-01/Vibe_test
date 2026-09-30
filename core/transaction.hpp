@@ -1,11 +1,13 @@
 #pragma once
 #include "types.hpp"
 #include "error.hpp"
+#include "shot.hpp"
+#include <optional>
 #include <set>
 #include <vector>
 
 namespace astra {
-enum class Operation : std::uint8_t { Move, Swap, Split, Merge, Drop, Pickup };
+enum class Operation : std::uint8_t { Move, Swap, Split, Merge, Drop, Pickup, Fire };
 struct MoveEntry {
     Id item, source, target;
     std::uint64_t itemRev{}, sourceRev{}, targetRev{};
@@ -19,12 +21,14 @@ struct Request {
     Operation operation{};
     std::vector<MoveEntry> moves;
     std::uint64_t baseline{}, interactionLease{};
+    std::optional<ShotData> shot{}; // Host-only Fire: ammo move first, weapon move second.
 };
 // Supplied by the authoritative host, never decoded from a client's packet.
 struct Access {
     Id account;
     std::uint64_t epoch{}, interactionLease{};
     std::set<Id> roots;
+    std::vector<std::uint8_t> approvedFire{}; // Exact host-approved request bytes; never from a packet.
 };
 struct Result {
     Error code{Error::Ok};

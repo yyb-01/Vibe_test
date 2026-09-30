@@ -2,9 +2,19 @@
 
 [기술 명세서](SURVIVAL_TECHNICAL_SPECIFICATION.md)의 A 영역부터 구현했습니다. C++20 표준 라이브러리만 사용하며 Unreal 없이 컴파일·테스트할 수 있습니다. 현재 실행물은 인벤토리를 조작하는 콘솔 샌드박스입니다.
 
+2026-09-30 기준 인벤토리·SQLite 저장·세션/transport와 발사 승인·장전·정수 탄도 일부를 작성했습니다.
+UE를 제외해도 전체 게임은 미완성입니다. 승인된 발사를 실제 탄도·피해로 소비하는 경로,
+생체·차량·제작·월드·에셋 검증은 남아 있습니다. 구현/미구현과 실행 검증 범위는
+[현재 구현 현황](IMPLEMENTATION_STATUS.md#2026-09-30-현재-코드-기준)에 정리했습니다.
+
 v1.1의 목표는 **방장 PC 리슨 서버(방장 1명+참가자 최대 19명)**입니다. 방장이 판정·저장·자기 화면을 함께 실행하고, 로컬 SQLite를 게임에 포함해 별도 DB 서비스 설치를 없앱니다. 방장이 종료하면 세션도 종료되며 자동 방장 이전은 초기 범위에 없습니다. 실제 UE 방 생성/참가는 아직 미구현입니다. SQLite 체크포인트 저장·재시작 복구와 [정상 종료·백업 3개 순환](storage/SQLITE_SHUTDOWN.md)을 구현했으며 [실행과 한계](storage/SQLITE.md)를 별도로 기록했습니다.
 
 ## 실행
+
+Windows 실제 TCP 왕복 검증은 `./scripts/test-tcp.ps1`로 실행합니다.
+[TCP 계약과 검증 범위](net/TCP.md), [정수 탄도 reference](core/BALLISTICS.md),
+[발사 입력과 후보 검증](core/FIRE.md),
+[전체 구현 작업 큐](docs/IMPLEMENTATION_QUEUE.md)를 참고하세요. UE5는 현재 미설치입니다.
 
 새 [클라이언트 프로토콜 데모](demo/CLIENT_MODE.md)는 `./scripts/play.ps1 -SavePath ./saves/client-world.db -ClientMode`로 실행합니다. 세션·SQLite·응답·스냅샷·ClientState를 한 프로세스에서 연결하며 실제 네트워크 접속은 아닙니다.
 
@@ -68,7 +78,7 @@ quit
 
 ## 보증 경계
 
-`Inventory::apply`의 성공은 **메모리에 적용됨**입니다. 로컬 디스크 영속 커밋을 뜻하지 않습니다. 메모리 모드 종료 시 데모 상태와 중복 요청 기록은 사라집니다. `-SavePath` 모드는 `DurableInventory`/`AsyncStore`/`SQLiteStore`를 통해 상태·요청 결과를 저장하고 재시작 시 복구합니다. 네트워크 인증·거리/LOS 검사, 낙하 Actor, UI는 아직 구현하지 않았습니다.
+`Inventory::apply`의 성공은 **메모리에 적용됨**입니다. 로컬 디스크 영속 커밋을 뜻하지 않습니다. 메모리 모드 종료 시 데모 상태와 중복 요청 기록은 사라집니다. `-SavePath` 모드는 `DurableInventory`/`AsyncStore`/`SQLiteStore`를 통해 상태·요청 결과를 저장하고 재시작 시 복구합니다. HostSession의 거리/LOS 검사는 외부 서버 관측값을 사용합니다. 실제 인증·UE 관측 공급자, 낙하 Actor, UI는 남아 있습니다.
 
 `Access`는 방장 PC의 인증된 권위 실행 경로가 만들어야 합니다. 클라이언트가 권한 목록을 제출하는 API가 아닙니다. 방장 로컬 입력도 같은 검증을 거칩니다. 전체 `snapshot()`도 서버용이며 원격 사용자에게 그대로 송신하면 안 됩니다. 순서 있는 거래 채널 기준으로 actionSeq는 1씩 증가하며, 정상 형식의 거절 결과도 해당 순서를 소비합니다. 방장 자체의 메모리/세이브 변조를 막는 보증은 없습니다.
 
@@ -121,9 +131,9 @@ const astra::World& chest = *view.roots.at(astra::Id{1, 10});
 
 [ClientState](core/CLIENT.md)는 최대 8개 요청의 원본 재시도, timeout과 지연 응답 처리, 오래된 스냅샷 거절, 검증 완료 후 원자적 뷰 반영을 제공합니다. 인증된 재접속 정보로 계정·월드·catalog와 순번을 검사하고 연결 해제 전 요청을 보존합니다. 실제 UI 위젯과 연결/권한 이벤트는 엔진에서 연결해야 합니다.
 
-[거래 상태 응답](core/RECEIPT.md)은 70B 패킷으로 영속 상태와 공개 오류만 전달합니다. 저장 미확정·요청 제한은 재확인 상태로 처리합니다. [권한 범위 스냅샷](core/SNAPSHOT.md)은 64KiB 이하 페이지와 2MiB 이하 재조립을 지원합니다. 실제 transport와 클라이언트 UI는 아직 연결하지 않았습니다.
+[거래 상태 응답](core/RECEIPT.md)은 70B 패킷으로 영속 상태와 공개 오류만 전달합니다. 저장 미확정·요청 제한은 재확인 상태로 처리합니다. [권한 범위 스냅샷](core/SNAPSHOT.md)은 64KiB 이하 페이지와 2MiB 이하 재조립을 지원합니다. HostTransport/ClientTransport의 응답·페이지·재접속 경로를 연결했고, 실제 UI 위젯은 남아 있습니다.
 
-네트워크 연결의 첫 단계로 [32B 공통 헤더와 거래 packet codec](core/NETWORK.md)을 제공합니다. 버전·epoch·길이·MTU 검사와 uint32 래핑 ACK 윈도를 구현했습니다. 실제 transport·인증·방 생성/참가는 아직 연결하지 않았습니다.
+네트워크 연결의 기반인 [32B 공통 헤더와 거래 packet codec](core/NETWORK.md)은 버전·epoch·길이·MTU 검사와 uint32 래핑 ACK 윈도를 제공합니다. [Windows TCP byte adapter](net/TCP.md)의 실제 loopback 왕복을 검증했습니다. 실제 인증·방 생성/참가·LAN/인터넷·다중 PC 연결은 남아 있습니다.
 
 [HostSession](core/SESSION.md)은 복구 후 방장 포함 20명 admission, 계정/Pawn 중복 방지, 계정별 거래 10회/초·burst 20, 재접속 한도 유지, 로컬/원격 공통 영속 거래와 종료 재시도를 처리합니다. [열람 lease](core/INTERACTION.md)를 발급·폐기하고 서버 관측값의 거리·LOS·생존 상태를 검사해 승인된 루트만 조회합니다. 엔진 없이 실행하는 코어이며 플랫폼 인증과 실제 UE 관측값은 별도로 연결해야 합니다.
 

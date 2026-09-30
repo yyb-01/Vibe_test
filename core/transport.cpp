@@ -1,5 +1,6 @@
 #include "transport.hpp"
 #include "receipt.hpp"
+#include "fire_receipt.hpp"
 #include "snapshot_control.hpp"
 #include "wire.hpp"
 
@@ -34,7 +35,7 @@ void HostTransport::sent(std::size_t count) {
     }
 }
 std::size_t HostTransport::receive(std::span<const std::uint8_t> bytes,
-                                   const InteractionState& observation) {
+                                   const InteractionState& observation, const FireObservation& fire) {
     require(poll(), Error::InvalidState);
     if (!output().empty()) return 0;
     try {
@@ -44,16 +45,25 @@ std::size_t HostTransport::receive(std::span<const std::uint8_t> bytes,
             deadlines_.end(TransportDeadlines::Read);
             auto payload = input_->take();
             Reader type{payload}; type.get(2);
-            if (type.get(2) == static_cast<unsigned>(MessageType::SnapshotRequest)) {
+            auto message = static_cast<MessageType>(type.get(2));
+            if (message == MessageType::SnapshotRequest) {
                 decode_snapshot_request(payload, host_.info().epoch);
                 start_snapshot(observation); return consumed;
             }
-            auto result = host_.receive(connection_, payload, observation);
-            auto packet = decode_packet(payload, host_.info().epoch);
             PacketHeader h; h.worldEpoch = host_.info().epoch;
-            h.messageType = MessageType::InventoryReceipt;
-            output_ = encode_stream(encode_receipt(h,
-                make_receipt(packet.request.id, result, h.worldEpoch)));
+            if (message == MessageType::FireIntent) {
+                auto packet = decode_fire_packet(payload, h.worldEpoch);
+                auto result = host_.receive_fire(connection_, payload, fire);
+                h.messageType = MessageType::FireReceipt;
+                output_ = encode_stream(encode_fire_receipt(h,
+                    make_fire_receipt(packet.intent.fireSeq, result, h.worldEpoch)));
+            } else {
+                auto result = host_.receive(connection_, payload, observation);
+                auto packet = decode_packet(payload, h.worldEpoch);
+                h.messageType = MessageType::InventoryReceipt;
+                output_ = encode_stream(encode_receipt(h,
+                    make_receipt(packet.request.id, result, h.worldEpoch)));
+            }
             deadlines_.begin(TransportDeadlines::Write);
         }
         return consumed;

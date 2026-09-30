@@ -5,6 +5,7 @@
 #include "interaction.hpp"
 #include "snapshot.hpp"
 #include "reconnect.hpp"
+#include "fire_session.hpp"
 #include <array>
 #include <thread>
 
@@ -43,6 +44,9 @@ public:
     Result receive(std::uint64_t connection, const std::vector<std::uint8_t>&,
                    const InteractionState&, std::size_t pathBudget = datagram_limit);
     Result apply_local(const Request&, const InteractionState&);
+    FireResult receive_fire(std::uint64_t connection, const std::vector<std::uint8_t>&,
+        const FireObservation&, std::size_t pathBudget = datagram_limit);
+    FireResult fire_local(const FireIntent&, const FireObservation&);
     Result close();
     Result prepare_close(); // On Ok, notify participants before calling close().
 private:
@@ -55,12 +59,23 @@ private:
     Peer& admit_command(std::uint64_t);
     Access authorize(Peer&, std::uint64_t, const InteractionState&) const;
     Result dispatch(Peer&, const Request&, const InteractionState&);
+    FireResult dispatch_fire(Peer&, const FireIntent&, const FireObservation&);
+    void restore_fire_history();
+    void remember_fire(const RecordedFire&, TransactionBudget::Clock::time_point, bool currentClock);
+    std::optional<FireResult> settle_fire(Id account, const FireIntent&);
+    void check_fire_clock(Id account, Id weapon, const FireIntent&, const FireAuthority&, std::uint64_t effective);
     Result failure(Error) const;
     DurableInventory& inventory_;
     Now now_;
     SessionInfo info_;
     std::array<Peer, max_players> peers_{};
     std::map<Id, TransactionBudget> budgets_;
+    struct FireCursor { std::uint64_t shotId{}; FireIntent intent; std::optional<std::uint64_t> effective; };
+    struct WeaponClock { std::uint64_t shotId{}; TransactionBudget::Clock::time_point admitted; };
+    struct WaitingFire { Id account; Request request; TransactionBudget::Clock::time_point admitted; };
+    std::map<Id, FireCursor> fireCursors_;
+    std::map<Id, WeaponClock> weaponClocks_;
+    std::optional<WaitingFire> waitingFire_;
     std::uint64_t nextConnection_{2};
     std::uint64_t nextLease_{1};
     std::uint64_t nextSnapshot_{1};

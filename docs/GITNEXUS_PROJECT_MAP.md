@@ -1,5 +1,210 @@
 # Project Overview
 
+## 2026-09-30 현재 루트 감사 결과
+
+현재 제품은 C++20 인벤토리 콘솔이다. **UE를 제외해도 전체 게임은 미완성**이다.
+소스·호출 위치·실행 시험을 명세 G.1/G.6과 대조한 상세 결과는
+[현재 구현 현황](../IMPLEMENTATION_STATUS.md#2026-09-30-현재-코드-기준), 남은 작업은
+[전체 구현 작업 큐](IMPLEMENTATION_QUEUE.md)에 있다. 아래 날짜별 기록은 작성 당시 상태다.
+
+| 작성된 경로 | 실제 연결과 주요 소스 | 검증/남은 경계 |
+|---|---|---|
+| 거래·조회 | `inventory/prepare/commit`, `session/interaction`, `client_state` | 6종 거래·권한·lease·불변 뷰; 실제 인증/UE 관측/UI는 남음 |
+| 영속 저장 | `durable` → `storage/async` → `storage/sqlite_*` → 메모리 확정 | 상태+요청 결과 공동 저장·복구·백업; 전체 checkpoint/단일 worker |
+| 양쪽 전송 | `client_transport*` ↔ `transport*` ↔ `HostSession` | framing·부분 I/O·재접속·종료; `net/tcp_*`는 Windows loopback까지 |
+| 발사 | `client_fire` → `session_fire/clock` → `fire_commit/mutate` → 동일 저장 경로 | 원본 재시도·시계·탄약/내구도/ShotData 원자 커밋·FireReceipt |
+| 장전·급탄 | `chamber/magazine` → 기존 Move/Split와 실제 아이템 행 | 1발 장전실·32발 혼합탄 순서·checkpoint v3; profile/소켓/FSM은 남음 |
+| 정수 탄도 | `ballistics` → `projectile/barrier_scene/reflection_loop` | 자유비행·정적 AABB·반사; 별도 `volume_*`는 관통 진행/출구 재개 |
+| layer | `layer_paths/layer_energy` | 정적 구간 합집합·에너지 계획; 시간 진행/보호 zone/wound는 남음 |
+
+`HostSession::dispatch_fire`는 저장 결과와 ShotData/시각 효과 응답을 반환한다.
+여기서 Projectile을 생성하거나 전투 tick·피해를 실행하는 호출은 없다.
+`resume_volume`은 명시적으로 시작한 관통의 출구에서 비행/반사를 재개하며,
+공중 충돌의 관통 진입 선택과 겹친 layer 시간 진행은 미연결이다.
+C 생체·D 차량·E 제작/전력/하우징·월드/좀비·F 에셋 검증은 게임 구현으로 남아 있다.
+
+실행 근거: 코어 99그룹, Windows TCP 6그룹, SQLite 전체 회귀/커밋 전후 강제 종료,
+현재 저장 데모 기본/ClientMode·idle tick·메모리 smoke, `verify_spec.py` 통과.
+TCP 저장소는 ProbeStore다. TCP+실제 SQLite, 20대 PC/LAN/인터넷, 게임 부하와 UE는 미검증이다.
+
+GitNexus `list_repos`의 `Vibe_test`가 현재 루트임을 확인했다. `.upload-repo/`는 제외했다.
+MCP 재조회와 설치된 CLI의 `analyze --pdg --index-only` 갱신이 동작한다.
+수정 영역 context·100개 함수/메서드 upstream impact·taint/PDG를 실제 소스와 대조했다.
+HIGH/CRITICAL은 codec/validator 등 공유 경로에 있으며 UNKNOWN 24건은 호출 누락 여부를 검색했다.
+C++ 헤더/가상·멤버 호출 누락, 지역 변수 오탐·execution flow 100개 상한을 고려한다.
+taint 0건이나 빈 caller는 안전의 증거가 아니다. 신규 파일까지 stage한 detect_changes(all)은
+148개 파일·817개 symbol·31개 흐름·CRITICAL이며 partial/truncated 없이 완료했다.
+다음 편집은 repository context의 freshness 확인부터 시작한다.
+
+## 과거 지도·구현 이력 — 각 날짜 당시 기준
+
+## 2026-09-30 장전실·혼합탄 탄창
+
+`chamber.*`가 실제 1발 원장 조회와 Move/Split 장전을 제공하며 `consume_shot`가
+확정 전에 같은 위치를 재검사한다. `magazine.*`는 Slot.socketId 순서의 동종 스택을
+조회하고 장착된 탄창의 첫 run에서 급탄한다. 상태값은 기존 아이템 행에 유지한다.
+코어 99그룹, TCP 6그룹, SQLite rollback/lost ACK/급탄 순서/재시작/crash 복구 통과.
+새 탄약 위치 저장은 checkpoint v3이며 기존 v1/v2 읽기와 버전 변조 거절도 검증했다.
+최대 32발·32 run이며 family/profile·소켓 호환·장전 FSM·자동 발사·피해·UE는 남아 있다.
+GitNexus MCP 연결이 종료되어 CLI로 분석했다. 현재 인덱스는 v3 보완 전 상태이므로
+다음 편집 전 갱신한다.
+
+## 2026-09-30 서버 발사 시계·복구
+
+`fire_history.cpp`가 applied 발사 데이터를 반환하고 `session_fire_clock.cpp`가 세션 시작의
+sequence 복구·무기별 steady cooldown·미확정 예약의 정리를 제공한다. 재접속으로 이력을
+초기화하지 않는다. 코어 94그룹 통과. 새 편집 전 인덱스 갱신이 필요하다.
+장전실/조립/FSM·trigger 타이머·열/고장·피해·UE 연결은 남아 있다.
+
+## 2026-09-30 클라이언트 발사 추적
+
+`client_fire.cpp`는 64개 원본 입력/응답의 재접속 수명과 최종 결과 일관성을 유지한다.
+`client_transport_fire.cpp`는 같은 stream/deadline/connection token으로 발사 전송을 제공한다.
+승인 shotId는 인벤토리 refresh sequence에도 반영한다. 코어 92그룹, TCP 6그룹 통과.
+다음 편집 전 인덱스 갱신이 필요하다. 실제 무기/FSM·효과·피해·UE 연결은 남아 있다.
+
+## 2026-09-30 발사 승인 wire·TCP
+
+`fire_receipt.*`와 `shot_visual.cpp`는 durable 결과를 40/98B 응답으로 변환한다.
+HostTransport가 FireIntent를 라우팅하며 TCP 6그룹에서 재접속 시 같은 shotId와
+탄약 1회 차감을 확인했다. ClientTransport 발사 추적과 실제 FSM/피해 연결은 남아 있다.
+현재 GitNexus 인덱스는 이 추가 전 상태이며 다음 수정 전 갱신이 필요하다.
+
+## 2026-09-30 발사 세션·원본 조회
+
+`fire_record.cpp`가 account/fireSeq로 영속·대기 원본을 조회한다. `fire_packet.cpp`는
+66B FireIntent 패킷, `session_fire.cpp`는 인증 연결/로컬 입력에서 현재 root snapshot으로
+서버 요청을 구성하고 durable 결과를 반환한다. Pending에는 발사 데이터를 공개하지 않는다.
+코어 90그룹 통과. 실제 관측/FSM 공급·TCP 분기·ShotAccepted wire·피해 소비는 아직 남아 있다.
+
+## 2026-09-30 발사 원자적 저장
+
+`Operation::Fire`, `shot.*`, `fire_commit.*`가 권위 후보를 기존 준비/확정 경로에 연결한다.
+탄약·내구도와 요청 안의 발사 데이터가 같은 checkpoint/SQLite 커밋에 저장된다.
+일반 인벤토리 패킷은 Fire를 거절하고, 기존 v1 저장은 유지하며 발사 기록은 v2로 표시한다.
+코어 89그룹, TCP 5그룹, SQLite rollback/응답 유실/재시작/발사 커밋 전후 강제 종료 통과.
+실제 무기 FSM·세션 FireIntent 라우팅·커밋 이후 피해 소비는 아직 남아 있다.
+
+## 2026-09-29 발사 입력·후보 검증
+
+`fire_intent.*`가 B.6의 34바이트 wire 계약, `fire_validation.*`가 서버 snapshot 기반
+소유권·revision·FSM gate·조준·clock/보간·발사 간격 검증을 제공한다.
+후보 검사만 수행하며 탄약·피해·영속 사건은 아직 변경하지 않는다. `core/FIRE.md` 참고.
+새 2개 그룹을 포함해 코어 88그룹 통과. 실제 authority 공급자·원자적 발사 커밋은 남아 있다.
+
+## 2026-09-29 겹친 layer 경로·에너지
+
+`layer_paths.*`는 정적 AABB layer를 TOI/layerId/SurfaceKey 순서로 반환한다.
+같은 bodyId의 겹치거나 맞닿은 hitbox 구간을 정확한 비율로 합쳐 조직 경로 중복을 막는다.
+`layer_energy.*`가 이 경로에 기존 관통 장부를 적용한다. 부분 경로는 결정을 보류하며,
+장갑과 다른 몸은 별도 계산한다. `tests/layer_paths.cpp`의 얇은 간격·역방향·보존 검증을
+포함해 코어 86그룹 통과. 시간 진행·공중 접촉 선택·피해 적용과의 통합은 아직 남아 있다.
+
+## 2026-09-29 관통 출구 재개
+
+`volume_resume.*`가 관통 완료 상태를 검사하고 출구 이탈·잔여 시간의 반사 루프로
+연결한다. `tests/volume_resume.cpp`가 얇은 출구 장애물·후속 충돌·에너지 보존·공유 접촉
+한도를 검증했고 코어 86그룹 통과. 관통 진입 선택과 겹친 layer 처리는 남아 있다.
+
+## 2026-09-29 관통 수명·사거리
+
+`volume_projectile.*`가 점 탄환의 관통 경과 상태와 Projectile의 시간·거리 장부를
+연결한다. 벽 내부에서 수명/사거리로 중단하고 진행한 만큼의 흡수량만 반환한다.
+`tests/volume_projectile.cpp`의 분할 호출·한도·terminal 재호출 검증을 포함해 86그룹 통과.
+접촉 진입 선택, 겹친 layer와 출구 장애물 처리는 남아 있다.
+
+## 2026-09-29 관통 상태 재개
+
+`volume_entry.cpp`가 진입 Flight와 확인된 volume 경로에서 상태를 생성하고,
+`volume_step.cpp`가 위치·속도·흡수 증가분·잔여 시간을 반환한다.
+`tests/volume_transit.cpp`의 120 substep 재개/이탈 후 자유비행을 포함해 코어 86그룹 통과.
+실제 projectile 접촉 선택과 수명·거리·겹친 layer·출구 이탈 통합은 남아 있다.
+
+## 2026-09-29 관통 경과 상태
+
+`transit_progress.*`가 성공한 관통 계획의 절대 경과 시각에서 속도·거리·누적 흡수를
+조회한다. `tests/transit_progress.cpp`의 120개 시점 단조성·보존·입력 검증을 포함해
+코어 86그룹 통과. 실제 발사체의 벽 내부 상태 보관과 출구 후 비행 연결은 남아 있다.
+
+## 2026-09-29 관통 시간 계획
+
+`penetration_transit.*`가 기존 관통 에너지·속도 제한을 재사용해 진입 손실 후
+속도와 이탈 속도, 상수 저항의 통과 시간을 계산한다. 관통 불가는 출구 시간 없음이다.
+`tests/penetration_transit.cpp`를 포함해 코어 86그룹 통과. 벽 내부 상태의 시간 진행과
+실제 충돌 루프 연결은 남아 있으며 출구로 즉시 이동시키지 않는다.
+
+## 2026-09-29 에너지별 도탄 응답
+
+`ricochet_curve.*`가 승인된 에너지/확률/유지율 표의 검증과 정수 보간을 제공한다.
+reflection_loop가 매 접촉의 입력 에너지로 조회하고 범위 밖 도탄을 거절한다.
+`tests/ricochet_curve.cpp`를 포함해 코어 86그룹 통과. 국소 손상·거칠기·관통은 남아 있다.
+
+## 2026-09-29 도탄 승인 조건
+
+`ricochet_gate.*`는 탄약 허용·정수 입사각 임계값·서버 seed와 접촉 키의 재현 가능한
+확률 검사를 수행한다. reflection_loop의 선택적 gate로 접촉마다 연결했고
+`tests/ricochet_gate.cpp`를 포함해 코어 86그룹 통과. 상태별 확률 곡선·거칠기는 미구현이다.
+
+## 2026-09-29 반복 반사 실행
+
+`reflection_loop.*`가 advance_barriers의 부분 시간 질의, 속도 응답, 검사된 표면
+이탈을 연결한다. `reflection_departure.cpp`는 offset 중 다른 장애물에서 정지한다.
+substep 8회/수명 16회 접촉 한도와 에너지 장부를 `tests/reflection_loop.cpp`에서
+검증했고 전체 코어 86그룹 통과. 실제 도탄 승인 정책·관통·UE는 미연결이다.
+
+## 2026-09-29 표면 이탈 질의
+
+`first_barrier`는 선택적 departing 키로 정확한 면 경계에서 바깥으로 향하는
+선분의 직전 표면 접촉만 억제한다. 다른 표면·내부·접선·재진입은 검사한다.
+`tests/surface_departure.cpp`를 projectile_bounds 그룹에 연결했고 86그룹 통과.
+영향 분석은 advance_barriers에 대한 LOW이며 헤더/테스트 UNKNOWN은 소스로 대조했다.
+
+## 2026-09-29 도탄 속도 응답
+
+`velocity_response.*`가 벡터 운동에너지·예산 이하 속도 조정·축 법선 반사를 제공한다.
+`advance_barriers`의 정지 장부도 벡터 제곱합을 사용해 sqrt 이중 반올림을 제거했다.
+`tests/velocity_response.cpp`는 에너지 그룹에 연결됐고 전체 86그룹 통과.
+도탄 승인 정책, 표면 이탈, 반복 접촉 실행 루프 연결은 남아 있다.
+이전 사용량 제한으로 실패한 자동 승인 검토는 재확인 시 정상화됐다.
+
+## 2026-09-28 잔여 시간 적분
+
+`free_flight`의 네 번째 인수는 기존 분할 시간에 대한 Q0.24 비율이다.
+기본 전체 시간 경로를 유지하며 충돌 후 남은 시간의 midpoint 적분을 지원한다.
+`tests/ballistics.cpp`가 무항력 위치, 중력/항력의 절반 시간 동일성, 잘못된 시간과
+0시간 입력 검증을 검사한다. 도탄 방향·속력 응답과 반복 접촉 루프는 후속 작업이다.
+
+## 2026-09-28 닫힌 AABB 관통 경로
+
+`sweep_box`가 진입/이탈의 정확한 비율과 실제 이탈 여부를 반환한다.
+`box_penetration.*`는 완전한 직선 volume 경로를 μm로 양자화하여 기존 `penetrate`로
+연결한다. 출구 미확인은 미결정이며 시간 진행/도탄/피해 연결은 아직 남아 있다.
+`tests/box_penetration.cpp`는 기존 에너지 그룹에서 실행되며 코어 86그룹 통과.
+수정 전 그래프는 sweep_box의 first_barrier/advance_barriers 영향을 LOW로 보고했다.
+BoxHit와 테스트의 UNKNOWN은 실제 선언·호출·테스트 등록을 대조해 보완했다.
+
+## 2026-09-28 발사체 실행 후속
+
+`projectile.*`, `projectile_budget.cpp`, `projectile_segment.hpp`, `barrier_scene.*`가
+정수 비행·곡률 분할·정적 불투과 장애물·반경·동률 순서·수명/사거리 제한을 연결한다.
+`tests/projectile*.cpp`의 3그룹을 포함해 코어 86그룹 통과. 피해/발사 영속 사건은 미연결이다.
+`fixed_math.cpp`의 64bit 빠른 나눗셈·wide 64회 나눗셈·`std::gcd` 약분은 동일성 검증을 통과했다.
+`free_flight`는 잘못된 입력과 결과 범위 초과를 구분하며 실행 루프는 후자를 `Limit` 정지로 처리한다.
+[루프 계약](../core/PROJECTILES.md), [합성 측정](BALLISTICS_PERFORMANCE.md)을 참고한다.
+승인 검토의 일시적인 사용량 한도는 해소됐으며 후속 코드 작업을 재개했다.
+
+## 2026-09-28 TCP 검증과 탄도 기준 연산
+
+`net/tcp_stream.*`는 Windows nonblocking byte transport다. `network_tests/`가
+실제 loopback 명령/스냅샷 소켓으로 거래·재접속·종료와 오류를 검증한다.
+`scripts/test-tcp.ps1`의 5그룹 통과. 고정 identity는 테스트에만 있으며 실제 인증은 없다.
+`core/fixed_math.*`는 portable wide 곱/nearest-even 나눗셈·정수 제곱근,
+`core/ballistics.*`는 균일 대기 240Hz scalar 자유비행이다. `ballistic_collision.*`는
+정적 AABB 연속 교차, `ballistic_energy.*`는 관통/도탄 에너지 장부다. 코어 83그룹 통과.
+비행/충돌 루프·피해·SIMD·UE는 미구현이다. 사용자 범위는 UE 포함 전체 게임이며 엔진은 미설치다.
+[전체 작업 큐](IMPLEMENTATION_QUEUE.md), [TCP 계약](../net/TCP.md),
+[탄도 계약](../core/BALLISTICS.md)에 현재 한계와 다음 작업을 기록한다.
+
 ## 2026-09-23 입력 대기 중 tick
 
 `demo/read_line.hpp`는 std::async로 한 줄만 읽고 입력이 대기하는 동안 호출자에서 tick을 실행한다.

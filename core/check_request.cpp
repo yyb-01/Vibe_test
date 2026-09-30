@@ -4,6 +4,7 @@ namespace astra {
 void check_request(const World& w, const Request& r, const Access& access) {
     require(bool(r.id) && r.actionSeq && r.actionSeq <= revision_limit, Error::InvalidRequest);
     require(r.interactionLease && r.interactionLease == access.interactionLease, Error::NotAccessible);
+    if (r.operation == Operation::Fire) require(access.approvedFire == encode(r), Error::NotAccessible);
     require(r.operation != Operation::Swap || r.moves.size() == 2, Error::InvalidRequest);
     require((r.operation != Operation::Split && r.operation != Operation::Merge) || r.moves.size() == 1,
             Error::InvalidRequest);

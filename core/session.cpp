@@ -11,6 +11,7 @@ HostSession::HostSession(DurableInventory& inventory, SessionInfo info, Id pawn,
     info_.epoch = inventory.epoch();
     budgets_.try_emplace(info.host, now_());
     peers_[0] = {host_connection, info.host, pawn, {}, {}};
+    restore_fire_history();
 }
 void HostSession::owner() const {
     require(std::this_thread::get_id() == owner_, Error::InvalidState);

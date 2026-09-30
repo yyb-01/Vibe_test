@@ -18,7 +18,7 @@ public:
     std::uint64_t connection() const;
     bool poll(); // Tick before I/O; false means disconnected (including deadline expiry).
     // At most one request; caller retains suffix. Returns 0 while output is pending.
-    std::size_t receive(std::span<const std::uint8_t>, const InteractionState&);
+    std::size_t receive(std::span<const std::uint8_t>, const InteractionState&, const FireObservation& = {});
     std::span<const std::uint8_t> output() const;
     void sent(std::size_t); // Only bytes accepted by the underlying transport.
     // Separate ordered snapshot stream; revalidate with fresh observations before every write/tick.

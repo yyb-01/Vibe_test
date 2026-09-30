@@ -1,5 +1,6 @@
 #pragma once
 #include "receipt.hpp"
+#include "fire_receipt.hpp"
 #include "snapshot.hpp"
 #include "reconnect.hpp"
 #include <optional>
@@ -23,6 +24,12 @@ public:
     const std::vector<std::uint8_t>& retry_payload(Id request) const;
     bool receive_receipt(const std::vector<std::uint8_t>&);
     void timeout(Id request);
+    void track_fire(const FireIntent&);
+    void forget_fire(std::uint32_t);
+    void timeout_fire(std::uint32_t);
+    const FireIntent& retry_fire(std::uint32_t) const;
+    const FireReceipt& fire_status(std::uint32_t) const;
+    bool receive_fire_receipt(const std::vector<std::uint8_t>&);
     // Call on lease replacement/revocation, even if the root set is unchanged.
     void set_roots(std::set<Id> approvedRoots);
     void begin_snapshot(const SnapshotDescriptor&);
@@ -34,6 +41,8 @@ private:
     struct Tracked { std::vector<std::uint8_t> payload; TransactionReceipt receipt; };
     Tracked& tracked(Id);
     const Tracked& tracked(Id) const;
+    struct TrackedFire { FireIntent intent; FireReceipt receipt; };
+    std::map<std::uint32_t, TrackedFire> fires_;
     std::uint64_t epoch_;
     const Catalog catalog_;
     std::map<Id, Tracked> requests_;

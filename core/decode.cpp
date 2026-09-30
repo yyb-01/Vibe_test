@@ -8,8 +8,9 @@ Request decode(const std::vector<std::uint8_t>& bytes) {
     result.id = r.id(); result.actionSeq = r.get(8);
     result.operation = static_cast<Operation>(r.get(1));
     auto count = r.get(1);
-    require(count && count <= 8 && bytes.size() == 44 + 88 * count, Error::InvalidRequest);
-    require(r.get(2) == 0, Error::InvalidRequest);
+    auto fire = result.operation == Operation::Fire;
+    require(count && count <= 8 && bytes.size() == 44 + 88 * count + (fire ? shot_data_bytes : 0), Error::InvalidRequest);
+    require(r.get(2) == (fire ? 1 : 0), Error::InvalidRequest);
     result.baseline = r.get(8); result.interactionLease = r.get(8);
     for (std::uint64_t i = 0; i < count; ++i) {
         MoveEntry m;
@@ -22,6 +23,7 @@ Request decode(const std::vector<std::uint8_t>& bytes) {
         require(r.get(3) == 0, Error::InvalidRequest);
         result.moves.push_back(m);
     }
+    if (fire) result.shot = decode_shot({bytes.begin() + r.position, bytes.end()});
     check_shape(result);
     return result;
 }

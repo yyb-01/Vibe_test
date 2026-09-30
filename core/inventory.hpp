@@ -28,6 +28,8 @@ public:
     Result apply(const Request&, const Access&);
     // Host-only account binding. Unknown requests never enter prepare().
     std::optional<Result> result_for(const Request&, Id account) const;
+    std::optional<Request> recorded_fire(Id account, std::uint32_t fireSeq) const; // Host-only original payload.
+    std::vector<RecordedFire> recorded_fires() const; // Host-only applied shots for session recovery.
     // Host-only lifecycle. One transaction per account; disjoint roots can wait together.
     Preparation prepare(const Request&, const Access&);
     Result commit(const std::shared_ptr<const WriteSet>&);

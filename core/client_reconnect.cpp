@@ -10,6 +10,7 @@ ClientState::ClientState(const ResumeState& state, Catalog catalog)
 void ClientState::disconnect() {
     connected_ = false; set_roots({});
     for (auto& [id, request] : requests_) { (void)request; timeout(id); }
+    for (auto& [seq, fire] : fires_) { (void)fire; timeout_fire(seq); }
 }
 void ClientState::reconnect(const ResumeState& state) {
     require(!connected_ && identity_ && bool(state.identity.account) && bool(state.identity.world), Error::InvalidState);

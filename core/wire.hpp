@@ -22,6 +22,14 @@ struct Reader {
 };
 inline void check_shape(const Request& r) {
     require(!r.moves.empty() && r.moves.size() <= 8, Error::InvalidRequest);
-    require(static_cast<unsigned>(r.operation) <= static_cast<unsigned>(Operation::Pickup), Error::InvalidRequest);
+    require(static_cast<unsigned>(r.operation) <= static_cast<unsigned>(Operation::Fire), Error::InvalidRequest);
+    require(r.shot.has_value() == (r.operation == Operation::Fire), Error::InvalidRequest);
+    if (r.shot) {
+        validate_shot(*r.shot);
+        require(r.moves.size() == 2 && r.id == Id{fire_request_namespace, r.shot->intent.fireSeq}, Error::InvalidRequest);
+        for (const auto& m : r.moves)
+            require(m.source == m.target && m.quantity == 1 && !m.socketId && !m.x && !m.y && !m.rotation,
+                Error::InvalidRequest);
+    }
 }
 }

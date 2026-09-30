@@ -13,4 +13,5 @@ inline Placement destination(const World& w, const MoveEntry& m, Id item) {
     return p;
 }
 void merge_stack(const Catalog&, World&, const MoveEntry&);
+void consume_shot(const Catalog&, World&, const Request&);
 }

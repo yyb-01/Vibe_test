@@ -15,6 +15,12 @@ Run-Phase 'empty' $crash
 Run-Phase 'crash-after' $crash 73
 Run-Phase 'recover' $crash
 Run-Phase 'recover' $crash
+$fireCrash = Join-Path $fixture 'fire-crash.db'
+Run-Phase 'fire-crash-before' $fireCrash 73
+Run-Phase 'fire-empty' $fireCrash
+Run-Phase 'fire-crash-after' $fireCrash 73
+Run-Phase 'fire-recover' $fireCrash
+Run-Phase 'fire-recover' $fireCrash
 $locked = Join-Path $fixture 'locked.db'
 $holder = Start-Process -FilePath $Executable -ArgumentList @('hold', ('"' + $locked + '"')) -WindowStyle Hidden -PassThru
 try {

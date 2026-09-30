@@ -1,9 +1,19 @@
 #include "checkpoint_wire.hpp"
+#include "chamber.hpp"
+#include <algorithm>
 
 namespace astra {
+static unsigned checkpoint_version(const Checkpoint& c) {
+    if (std::any_of(c.world.containers.begin(), c.world.containers.end(), [](const auto& row) {
+        return row.second.state.flags & (chamber_container | magazine_container);
+    })) return 3; // Older readers must not mutate ammunition containers as ordinary slots.
+    return std::any_of(c.requests.begin(), c.requests.end(), [](const auto& q) {
+        return decode(q.payload).operation == Operation::Fire;
+    }) ? 2 : 1;
+}
 std::vector<std::uint8_t> encode_checkpoint(const Checkpoint& c) {
     validate_checkpoint(c);
-    Writer w; w.put(0x41525453,4); w.put(1,4);
+    Writer w; w.put(0x41525453,4); w.put(checkpoint_version(c),4);
     for(auto n:{c.epoch,c.origin,c.sequence,c.nextId,c.nextEvent}) w.put(n,8);
     w.put(c.catalog.size(),4);
     for(const auto& [id,d]:c.catalog) { (void)id; checkpoint_wire::put(w,d); }
@@ -28,7 +38,8 @@ Checkpoint decode_checkpoint(const std::vector<std::uint8_t>& bytes) {
     Reader tail{bytes,bytes.size()-8};
     require(tail.get(8)==checkpoint_wire::checksum(bytes,bytes.size()-8),Error::InvalidState);
     Reader r{bytes};
-    require(r.get(4)==0x41525453 && r.get(4)==1,Error::InvalidState);
+    require(r.get(4)==0x41525453,Error::InvalidState);
+    auto version = r.get(4); require(version >= 1 && version <= 3, Error::InvalidState);
     Checkpoint c; c.epoch=r.get(8); c.origin=r.get(8); c.sequence=r.get(8); c.nextId=r.get(8); c.nextEvent=r.get(8);
     auto count=[&](std::size_t limit) { auto n=r.get(4); require(n<=limit,Error::LimitExceeded); return n; };
     for(auto n=count(65536);n;--n) { auto d=checkpoint_wire::definition(r); require(c.catalog.emplace(d.id,d).second,Error::InvalidState); }
@@ -45,6 +56,7 @@ Checkpoint decode_checkpoint(const std::vector<std::uint8_t>& bytes) {
     }
     require(r.position==bytes.size()-8,Error::InvalidState);
     validate_checkpoint(c);
+    require(version == checkpoint_version(c), Error::InvalidState);
     return c;
 }
 }

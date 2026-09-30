@@ -16,6 +16,7 @@ std::size_t ClientTransport::receive(std::uint64_t token, std::span<const std::u
             Reader reader{payload}; reader.get(2);
             auto type = static_cast<MessageType>(reader.get(2));
             if (type == MessageType::InventoryReceipt) state_.receive_receipt(payload);
+            else if (type == MessageType::FireReceipt) state_.receive_fire_receipt(payload);
             else if (type == MessageType::SessionClosing) {
                 state_.receive_shutdown(payload); disconnect(token);
             } else throw Violation{Error::Incompatible};

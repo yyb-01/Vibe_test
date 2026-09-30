@@ -1,9 +1,13 @@
 #include "grid.hpp"
+#include "chamber.hpp"
+#include "magazine.hpp"
 
 namespace astra {
 void validate_catalog(const Catalog&);
 static void recalculate(const Catalog& catalog, const World& world, std::map<Id, Container>& containers) {
     validate_catalog(catalog);
+    validate_chambers(catalog, world);
+    validate_magazines(catalog, world);
     require(world.items.size() <= 65536 && world.containers.size() <= 4096, Error::LimitExceeded);
     std::map<Id, Grid> grids;
     std::map<Id, unsigned> counts;

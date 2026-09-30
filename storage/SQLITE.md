@@ -22,6 +22,11 @@ auto result = inventory.apply(request, access);
 
 재시작은 DB/schema/catalog/체크포인트 불변식을 검사한 뒤 epoch와 origin을 증가시킨다. 기존 아이템과 tombstone의 origin도 피해 새 ID를 만든다. 이전 요청 결과와 계정 actionSeq를 복구하므로 재전송이 수량을 다시 바꾸지 않는다. 잘못된 세이브는 오류로 중단하며 seed로 덮어쓰지 않는다.
 
+checkpoint는 일반 저장 v1, 탄약 컨테이너 없이 발사 기록만 있는 기존 저장 v2,
+장전실/탄창이 있는 저장 v3를 지원한다. v3의 행 레이아웃은 같지만 구버전 reader가
+새 위치를 일반 슬롯으로 해석해 덮어쓰지 않도록 버전으로 구분한다. 내용과 맞지 않는
+버전은 거절한다. [장전실·혼합탄 저장 계약](../core/FIRE.md#장전실과-혼합탄-급탄).
+
 검증은 재시작·중복/변조·거절 결과·ID 비재사용, SQL 실패 롤백, 응답 유실의 Pending/resolve, schema/catalog/손상/overflow 거절, 커밋 전후 프로세스 강제 종료, 다른 프로세스의 월드 잠금 및 강제 종료 후 해제를 포함한다. fixture는 매번 `.build/sqlite-tests-<GUID>`에 새로 생성한다.
 
 현재는 기존 binary checkpoint 전체를 `world`의 한 행에 저장한다. 요청 결과도 그 안에 들어 있다. 정상 종료 API와 백업 3개 순환은 [종료·백업 안내](SQLITE_SHUTDOWN.md)에 구현했다. 명세 A.6/E.7의 정규화된 item/container/placement/event 테이블, 변경 행 저장과 손상 자산 격리는 후속 구현이다. 백업을 새 세이브로 여는 [복원 경로](SQLITE_RESTORE.md)는 제공한다. 비동기 worker·한 슬롯/64MiB 메시지 제한은 [AsyncStore](ASYNC.md)로 연결했다. 매 거래 전체 상태 직렬화 비용과 65,536 아이템·64 계정·65,536 요청 기록의 기존 코어 한도가 남는다. 실제 디스크 고장·전원 차단·대규모 성능 및 Windows 외 실행은 미검증이다.

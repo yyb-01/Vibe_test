@@ -22,6 +22,10 @@ public:
     void retry(std::uint64_t token, Id);
     void forget(Id);
     void timeout(std::uint64_t token, Id);
+    void submit_fire(std::uint64_t token, const FireIntent&);
+    void retry_fire(std::uint64_t token, std::uint32_t);
+    void forget_fire(std::uint32_t);
+    void timeout_fire(std::uint64_t token, std::uint32_t);
     std::span<const std::uint8_t> output(std::uint64_t token) const;
     void sent(std::uint64_t token, std::size_t);
     std::size_t receive(std::uint64_t token, std::span<const std::uint8_t>);

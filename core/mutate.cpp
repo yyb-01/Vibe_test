@@ -10,7 +10,9 @@ void mutate(const Catalog& catalog, World& w, const Request& r, Id created, std:
         }
     }
     auto before = w.containers;
+    if (r.operation == Operation::Fire) consume_shot(catalog, w, r);
     for (const auto& m : r.moves) {
+        if (r.operation == Operation::Fire) break;
         auto& item = w.items.at(m.item);
         if (r.operation == Operation::Merge) { merge_stack(catalog, w, m); continue; }
         if (r.operation == Operation::Split) {

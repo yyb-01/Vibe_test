@@ -35,6 +35,21 @@ void transport_deadlines(); void client_transport_deadlines(); void snapshot_tra
 void transport_loop(); void transport_loop_failures();
 void multiplayer_lifecycle(); void multiplayer_transactions();
 void console_input();
+void fixed_math();
+void ballistic_reference();
+void ballistic_collision();
+void ballistic_energy();
+void projectile_loop();
+void projectile_bounds(); void projectile_range();
+void fire_intent_contract(); void fire_validation();
+void fire_commit_checks();
+void fire_session_checks();
+void fire_receipt_checks();
+void client_fire_checks();
+void fire_clock_checks(); void fire_clock_recovery();
+void chamber_validation_checks(); void chamber_transactions();
+void magazine_validation(); void magazine_feed();
+void ammunition_checkpoint_versions();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
@@ -80,7 +95,18 @@ int main() {
         {"transport loop", transport_loop}, {"transport loop failures", transport_loop_failures},
         {"20-player transport lifecycle", multiplayer_lifecycle},
         {"20-player transport transactions", multiplayer_transactions},
-        {"console input tick", console_input}
+        {"console input tick", console_input}, {"fixed integer math", fixed_math},
+        {"ballistic scalar reference", ballistic_reference},
+        {"ballistic continuous box collision", ballistic_collision},
+        {"ballistic energy conservation", ballistic_energy}, {"projectile barrier loop", projectile_loop},
+        {"projectile curvature and radius", projectile_bounds}, {"projectile range limit", projectile_range},
+        {"fire intent contract", fire_intent_contract}, {"fire candidate validation", fire_validation},
+        {"atomic fire commit", fire_commit_checks}, {"fire session admission", fire_session_checks},
+        {"fire receipt codec", fire_receipt_checks}, {"client fire tracking", client_fire_checks},
+        {"server fire clock", fire_clock_checks}, {"server fire clock recovery", fire_clock_recovery},
+        {"chamber ledger validation", chamber_validation_checks}, {"chamber load/fire/recovery", chamber_transactions},
+        {"magazine ledger validation", magazine_validation}, {"mixed magazine feed/fire/recovery", magazine_feed},
+        {"ammunition checkpoint versions", ammunition_checkpoint_versions}
     };
     for (const auto& [name, run] : cases) {
         try { run(); std::cout << "PASS " << name << '\n'; }

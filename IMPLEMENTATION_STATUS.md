@@ -1,5 +1,105 @@
 # 구현 현황
 
+## 2026-09-30 현재 코드 기준
+
+현재 실행 제품은 **C++20 인벤토리 콘솔 샌드박스**다. 현재 루트의 소스·호출 경로·실행 시험을
+명세 v1.1의 G.1/G.6과 대조했다. **UE 연동을 제외해도 전체 게임은 미완성**이다.
+과거 54.2%/62.5%는 2026-09-14 체크리스트 집계이며 현재 개발·출시 완료율로 사용하지 않는다.
+
+| 영역 | 작성·연결된 범위 | 남은 범위 |
+|---|---|---|
+| A 인벤토리 | POD·그리드/슬롯·중첩·질량/부피, 6종 거래, 예약·확정/취소, 권한·버전·중복 방지·불변 뷰 | 조립 Socket/Escrow, 확장 상태 스택, 유연 가방, 낙하 Actor·실제 UI |
+| A/E 저장 | SQLite WAL/FULL, 상태+요청 결과 원자 저장, 비동기 worker, 재시작·epoch 복구, 정상 종료·백업 3개·새 파일 복원 | 전체 checkpoint BLOB 쓰기와 단일 in-flight 작업; 행별 DB delta·게임 부하 |
+| 세션·네트워크 | 방장 포함 20슬롯 정책, lease·페이지·재접속·종료 통지, 양쪽 transport·마감, Windows TCP byte adapter와 loopback | 실제 인증·방 검색/참가·채널 결합·암호화·NAT/relay·LAN/인터넷·다중 PC·종료 수신 ACK |
+| B 발사 | FireIntent 34B/패킷 66B, 권위 후보 검증, 탄약·내구도·ShotData 공동 저장, 세션 시계/sequence 복구, 40/98B 응답·64개 클라이언트 원본 추적 | 실제 net ID↔item/profile/pose/FSM/clock 공급자, 자동 사격·열/고장, 승인 shot의 탄도·피해 소비 |
+| B 장전·탄창 | 실제 1발 장전실, Move/Split 장전, socketId 순서의 혼합탄 급탄·상태 보존, 최대 32발, checkpoint v1/v2/v3 호환 검사 | 탄약 family/profile·조립 소켓 호환·전체 장전 FSM |
+| B 탄도 | 정수 scalar 자유비행·AABB 연속 교차, 수명/사거리·보수적 정지, 도탄 gate/에너지 표·반사, 관통 시간·진행·출구 재개 | 접촉→관통 자동 선택, 겹친 layer의 시간 진행, 움직이는 history/rewind·BVH/triangle·Mach LUT·SIMD parity·실제 전투 tick |
+| C 방어구·생체 | 정적 AABB layer 조회·같은 body 구간 합집합·에너지 계획 | 보호 zone·국소 손상·wound·출혈·사망·대사·섭취·환경 시뮬레이션 |
+| D 차량 | 명세와 기준 산술만 | 부품 조립·COM/관성·휠/동력계·주행/충돌·예측/복제·Chaos |
+| E 제작·전력·하우징 | 저장 기반만 | recipe/job/stage/escrow·원자적 완료/취소·전력/열/소음·구조/설치물 |
+| 월드·좀비 | 명세와 좀비 컨셉 이미지 | 활성 영역·셀 pin·스트리밍·좀비 AI·월드 사건·20인 게임 부하 |
+| F 에셋 | 명세·컨셉 이미지/prompt | manifest validator·socket/PBR/LOD·golden scene·승인 registry·플랫폼 cook |
+| UE | 미설치·미연동 | 리슨 서버·관측·입력/위젯·렌더·PIE/cook·엔진 성능 검증 |
+
+코드 근거: [거래](core/inventory.cpp), [저장](storage/sqlite_save.cpp),
+[세션 발사](core/session_fire.cpp), [장전실](core/chamber.cpp), [탄창](core/magazine.cpp),
+[발사체](core/projectile.cpp), [반사](core/reflection_loop.cpp), [관통 출구](core/volume_resume.cpp),
+[layer 계획](core/layer_energy.cpp), [TCP](net/tcp_stream.cpp).
+
+## 이번 실행 검증
+
+2026-09-30 현재 소스로 Zig 0.15.2/C++20을 다시 빌드해 아래 검사를 통과했다.
+
+| 명령 | 결과·범위 |
+|---|---|
+| `./scripts/build.ps1` | 코어 99그룹 PASS |
+| `./scripts/test-tcp.ps1` | Windows loopback TCP 6그룹 PASS |
+| `./scripts/test-sqlite.ps1` | rollback·lost ACK·혼합탄 순서·재시작·커밋 전후 강제 종료·프로세스 잠금·백업/복원 PASS |
+| `./scripts/test-demo.ps1` / `-ClientMode` | 현재 저장 데모 재빌드 후 기본/ClientMode 저장·재접속·백업 복원 PASS |
+| `./scripts/test-demo-idle.ps1` / 데모 `--smoke` | 부분 입력 중 tick·reconnect·열린 stdin의 quit·메모리 모드 PASS |
+| `verify_spec.py` | 25 POD layout·17 sizeof·기준 산술·문서 SQL PASS; 기능 구현 시험과 구분 |
+
+TCP 시험의 저장소는 ProbeStore이며 **TCP+실제 SQLite 결합 시험은 없다**. 20명 시험은 한 프로세스의
+호스트와 19개 어댑터다. 실제 20대 PC·게임 프레임/메모리 예산·물리적 전원 차단·UE/다른 OS는 미검증이다.
+CMake 타깃은 제공하며 이번 실제 빌드 경로는 Windows Zig다.
+
+GitNexus `Vibe_test`의 등록 경로를 현재 루트와 대조하고 `analyze --pdg --index-only`로 갱신했다.
+변경 영역의 context·100개 함수/메서드 upstream impact·taint/PDG를 소스와 대조했다.
+저장 codec/validator의 HIGH/CRITICAL, 24개 UNKNOWN을 안전 판정으로 해석하지 않았다.
+신규 파일까지 stage한 `detect_changes(scope: all)`은 148개 파일·817개 symbol·31개 흐름,
+위험도 CRITICAL을 보고했으며 partial/truncated는 없었다. 위 소스 검토와 실행 검증으로 보완했다.
+C++ 헤더/가상·멤버 호출 누락, 지역 변수 오탐과 100 execution flow 상한이 있다.
+taint 0건은 결함 부재의 증명이 아니다. [프로젝트 지도](docs/GITNEXUS_PROJECT_MAP.md),
+[남은 작업](docs/IMPLEMENTATION_QUEUE.md)을 다음 작업의 시작점으로 사용한다.
+
+## 이전 구현 기록 — 각 날짜 당시의 상태와 수치
+
+2026-09-30 후속: 장전실의 실제 1발 위치와 혼합탄 탄창을 기존 Slot·아이템 스택에 연결했다.
+장전/급탄은 Move 또는 Split이며 발사 확정 직전에도 장전실을 재검사한다.
+코어 99그룹, TCP 6그룹, SQLite 전체 시험 통과. 장전 취소·혼합탄/상태 순서·응답 유실·
+재시작과 발사 커밋 전후 강제 종료를 검증했다. 현재 탄창은 최대 32발이다.
+새 탄약 컨테이너 저장은 checkpoint v3로 표시하며 기존 v1/v2 읽기와 버전 변조 거절을 검증했다.
+탄약 family/profile·조립 소켓 호환·전체 장전 FSM·자동 발사·피해·UE는 남아 있다.
+
+2026-09-30 후속: 서버가 계정별 발사 sequence와 무기별 steady clock 간격을 유지하고
+applied 발사 기록에서 세션 재시작 이력을 복구한다. 코어 94그룹 통과.
+저장 대기/실패·재접속·clock reset을 검증했다. 장전 FSM·자동 발사 타이머·피해·UE는 남아 있다.
+
+2026-09-30 후속: ClientState/ClientTransport에 발사 상태·원본 입력·재전송을 연결했다.
+코어 92그룹과 TCP 6그룹 통과. 연결 유실 뒤 같은 입력/shotId, 상충 응답 거절,
+탄약 화면 갱신을 검증했다. 실제 무기/FSM·효과/피해 소비·UE 통합은 남아 있다.
+
+2026-09-30 후속: 40/98B FireReceipt와 시각 효과용 ShotAccepted를 HostTransport에 연결했다.
+코어 91그룹과 Windows TCP 6그룹에서 코덱·1바이트 분할·발사 대기·재접속·동일 shotId를 검증했다.
+ClientTransport 발사 추적·실제 관측/FSM·피해 소비·UE 연결은 남아 있다.
+
+2026-09-30 후속: FireIntent 66B 패킷과 HostSession의 로컬/원격 사격 진입점을 추가했다.
+계정/fireSeq 원본 조회로 비동기 대기·재접속 재시도를 연결했고 코어 90그룹이 통과했다.
+실제 무기 관측/FSM·TCP 사격 분기·ShotAccepted wire·피해 소비는 남아 있다.
+
+2026-09-30: 발사 데이터·탄약·내구도 원자적 SQLite 저장을 연결했다. 코어 89그룹, TCP 5그룹,
+SQLite 발사 rollback·응답 유실·재시작·커밋 전후 강제 종료 복구를 통과했다.
+실제 무기 FSM·발사 세션 라우팅·피해 적용과 UE 연결은 남아 있다. [저장 계약](core/FIRE.md).
+
+2026-09-29 현재: 코어 88그룹 통과. 반사·관통 상태 재개, 겹친 layer의 조직 경로 합집합과
+에너지 계획, [FireIntent·서버 후보 검증](core/FIRE.md)을 추가했다. 실제 발사 승인 사건과
+탄약/내구도 영속 커밋, 피해·역사 proxy·UE 통합은 아직 미구현이다. 아래 날짜별 수치는 당시 기록이다.
+
+2026-09-28 후속: 정수 비행과 정적 장애물 충돌을 [발사체 루프](core/PROJECTILES.md)로 연결했다.
+곡률 1/2/4/8분할·반경 여유·동률 순서·6초 수명·2.5km 사거리·재충돌 방지를 검증했고
+코어 86그룹이 통과했다. 불투과 박스의 보수적 정지이며 관통/도탄·피해·저장·UE는 미연결이다.
+정수 나눗셈 최적화와 `std::gcd` 약분으로 자유비행 합성 측정 p50은 17.17→1.92ms였다.
+유효한 비행의 계산 범위 초과는 `Limit` 정지로 처리하며, 잘못된 입력과 구분한다.
+[측정 범위](docs/BALLISTICS_PERFORMANCE.md)는 실제 게임 프레임 성능과 구분한다.
+
+2026-09-28: Windows nonblocking TCP byte transport와 loopback 테스트 5그룹 통과.
+부분 I/O·커널 backpressure·거래/스냅샷/종료·재접속 중복 방지·오류 정리를 검증한다.
+실제 인증·LAN/인터넷 참가·SQLite 소켓 부하·다중 PC 시험은 아직 없다. [TCP](net/TCP.md).
+정수 128bit 중간 곱/반올림/제곱근과 240Hz 자유비행 scalar reference를 추가하여
+정적 박스 연속 충돌과 관통/도탄 에너지 장부까지 포함해 코어 83그룹이 통과했다.
+비행/충돌 루프·역사 proxy·발사 승인·피해·SIMD·UE 연결은 남아 있다.
+[탄도 구현 경계](core/BALLISTICS.md), [전체 작업 큐](docs/IMPLEMENTATION_QUEUE.md).
+
 2026-09-23 입력 대기 tick: 표준 입력만 별도 스레드로 옮기고 소유 스레드에서 약 10ms마다
 기존 transport_tick을 실행한다. 부분 입력 중에도 시간 제한·스냅샷 lease 만료를 감지하며
 연결 해제 후 reconnect로 복구한다. quit/EOF의 기존 저장 정리 순서와 원본 요청을 유지한다.
@@ -93,7 +193,7 @@ EOF/오류 시 슬롯 해제와 새 연결의 원본 요청 재전송을 처리�
 | A 분산 2PC/교차 월드 거래 | 초기 범위 제외 | 월드별 단일 DB 원자적 거래로 처리; 명세 A.7 |
 | 리슨 서버 방 만들기/참가/종료 | 접속 정책 코어 구현, 엔진 통합 미구현 | 방장 1+원격 19명 슬롯·handshake/계정/Pawn 검사·종료 admission/저장 재시도; 실제 인증/NAT/relay·종료 통지는 남음. [정책 계약](core/SESSION.md) |
 | A 네트워크/UI | 기반 codec/명령·lease 정책 구현, 통합 미구현 | 32B 헤더·epoch/MTU·ACK·거래 제한·연결별 lease·거리/LOS 관측값 검사·권한 범위 조회·폐기 후 결과 재확인; 70B 상태 응답/공개 오류 구현; 권한 범위 스냅샷/페이지/재조립 구현; 클라이언트 요청 추적/원자적 게시 구현; 실제 인증·UE 관측값·transport·위젯/이벤트 연결은 남음. [wire 계약](core/NETWORK.md) / [lease](core/INTERACTION.md) |
-| B 총기/탄도 | 미구현 | 조립, fixed-point solver, 충돌/rewind |
+| B 총기/탄도 | 독립 코어 부분 구현 | 정수 탄도·관통/도탄 장부·발사 후보 검증·탄약/내구도/사건 원자 저장; 조립·FSM·세션 사격·피해·rewind·UE는 남음 |
 | C 방어구/생체 | 미구현 | 보호 zone, wound, 대사·환경 |
 | D 차량 | 미구현 | 질량/관성, 구동계, Chaos 및 예측 연결 |
 | E 제작/전력/하우징 | 미구현 | escrow, stage 저장, 구조/환경 사건 |
