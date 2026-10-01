@@ -1,5 +1,6 @@
 #include "inventory.hpp"
 #include "checkpoint_delta.hpp"
+#include "simulation_journal.hpp"
 
 namespace astra {
 CheckpointDelta Inventory::checkpoint_delta(const std::shared_ptr<const WriteSet>& changes) const {
@@ -35,6 +36,7 @@ void apply_checkpoint_delta(Checkpoint& target, const CheckpointDelta& delta) {
     patch(target.world.placements, c.placements);
     target.sequence = delta.sequence; target.nextId = delta.nextId; target.nextEvent = delta.nextEvent;
     target.requests.push_back(delta_record(delta));
+    compact_simulation(target);
     validate_checkpoint(target);
 }
 }

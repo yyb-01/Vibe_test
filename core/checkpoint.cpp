@@ -1,5 +1,6 @@
 #include "inventory.hpp"
 #include <algorithm>
+#include "simulation_journal.hpp"
 
 namespace astra {
 void validate_checkpoint(const Checkpoint& c) {
@@ -8,6 +9,8 @@ void validate_checkpoint(const Checkpoint& c) {
             c.nextEvent && c.nextEvent <= revision_limit + 1, Error::InvalidState);
     verify_world(c.catalog, c.world);
     require(c.requests.size() <= 65536, Error::InvalidState);
+    require(c.retiredCommits<=retired_count(c)&&c.retiredRequests<=revision_limit&&
+        c.retiredCommits<=c.sequence&&request_count(c)<=revision_limit,Error::InvalidState);
     for (const auto& [id, item] : c.world.items) {
         if (id.hi == c.origin) require(id.lo < c.nextId && item.birthEvent < c.nextEvent, Error::InvalidState);
     }
@@ -25,6 +28,7 @@ void validate_checkpoint(const Checkpoint& c) {
                 request.actionSeq == record.actionSeq && record.actionSeq && record.actionSeq <= revision_limit,
                 Error::InvalidState);
         require(accounts[record.account].insert(record.actionSeq).second && accounts.size() <= 64, Error::InvalidState);
+        if(record.account==simulation_account)require(simulation_request(request)&&record.actionSeq>c.retiredRequests,Error::InvalidState);
         require(static_cast<unsigned>(record.result.code) <= static_cast<unsigned>(Error::LimitExceeded) &&
                 record.result.sequence <= c.sequence, Error::InvalidState);
         if (record.result.applied()) {
@@ -33,23 +37,30 @@ void validate_checkpoint(const Checkpoint& c) {
             if (record.result.created) require(c.world.items.contains(record.result.created), Error::InvalidState);
         } else require(!record.result.created, Error::InvalidState);
     }
-    require(sequences.size() == c.sequence, Error::InvalidState);
+    require(sequences.size()+c.retiredCommits == c.sequence, Error::InvalidState);
+    if(c.retiredRequests)require(accounts.contains(simulation_account),Error::InvalidState);
     for (const auto& [account, actions] : accounts) {
-        (void)account;
-        require(*actions.rbegin() == actions.size(), Error::InvalidState);
+        auto retired=account==simulation_account?c.retiredRequests:0;
+        if(c.retiredInputs.contains(account))retired+=c.retiredInputs.at(account).retired;
+        require(*actions.rbegin() == actions.size()+retired, Error::InvalidState);
     }
+    require(c.retiredInputs.size()<=64,Error::InvalidState);
+    for(auto& [account,journal]:c.retiredInputs)require(account&&account!=simulation_account&&accounts.contains(account)&&journal.floors.size()<=64&&!journal.floors.empty(),Error::InvalidState);
 }
 Inventory::Inventory(Checkpoint c) : Inventory(c.catalog, c.world, c.epoch, c.origin) {
     validate_checkpoint(c);
     sequence_ = c.sequence; nextId_ = c.nextId; nextEvent_ = c.nextEvent;
+    retiredRequests_=c.retiredRequests;retiredCommits_=c.retiredCommits;retiredInputs_=std::move(c.retiredInputs);
     for (auto& request : c.requests) {
+        auto isInput=input_request(decode(request.payload));
         accountSeq_[request.account] = std::max(accountSeq_[request.account], request.actionSeq);
         records_.emplace(std::pair{request.account, request.requestId},
-                        Record{std::move(request.payload), request.result, {}});
+                        Record{std::move(request.payload), request.result, {},request.actionSeq,isInput});
     }
 }
 Checkpoint Inventory::checkpoint_locked() const {
-    Checkpoint c{catalog_, world_, epoch_, origin_, sequence_, nextId_, nextEvent_, {}};
+    Checkpoint c{catalog_, world_, epoch_, origin_, sequence_, nextId_, nextEvent_, {},retiredRequests_,retiredCommits_};
+    c.retiredInputs=retiredInputs_;
     c.requests.reserve(records_.size());
     for (const auto& [key, record] : records_) {
         auto request = decode(record.payload);
@@ -82,6 +93,7 @@ Checkpoint Inventory::checkpoint_after(const std::shared_ptr<const WriteSet>& ch
         c.sequence = result.sequence;
     }
     c.requests.push_back({changes->account, changes->requestId, changes->actionSeq, changes->payload, result});
+    compact_simulation(c);
     return c;
 }
 }

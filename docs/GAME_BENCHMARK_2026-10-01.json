@@ -1,0 +1,12 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "players": 1,
+  "ticks": 300,
+  "warmup": 60,
+  "tickAckMs": {"p50": 15.561, "p95": 16.546, "p99": 17.047, "max": 17.402},
+  "viewMs": {"p50": 1.335, "p95": 1.599, "p99": 1.736, "max": 1.736},
+  "maxViewBytes": 4334,
+  "saveBytes": 270336,
+  "tickBudgetPassed": false,
+  "scope": "seed: 1 vehicle, 8 zombies, 20 inventories, native bridge, SQLite WAL/FULL; no UE/render/network latency matrix or G.5 maximum-content scene"
+}

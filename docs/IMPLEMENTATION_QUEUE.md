@@ -1,6 +1,23 @@
 # 전체 구현 작업 큐
 
-2026-09-28 사용자 지정 범위: UE 통합을 포함한 전체 게임 구현.
+## 2026-10-01 현재 범위와 남은 작업
+
+현재 사용자 요청은 **UE 연동 제외 구현**이며, 후속 요청에 따라 지금까지의 소스·검증·한계를 정리해 Git에 업로드한다. [현재 구현 현황](../IMPLEMENTATION_STATUS.md)과 [실행 안내](SURVIVAL_REFERENCE.md)를 기준으로 하고 아래 과거 계획과 구분한다.
+
+| 우선순위 | 후속 작업 | 완료 조건 |
+|---|---|---|
+| 1 | authority/SQLite 비용과 장부 크기 개선 | 현재 1인 seed p99 17.047ms를 16.67ms 이하로 낮추고 20인·최대 콘텐츠·8시간 soak 측정. 전체 checkpoint BLOB/단일 worker와 65,536 item 등 상한 해결 |
+| 2 | 충돌/물리 정확도와 플랫폼 parity | 실제 triangle/BVH·뼈/회전 proxy·방어 범위, SIMD/scalar 및 대상 CPU 일치, 일반 차량 지면/충돌 fixture |
+| 3 | 원격 운전/이동과 실망 검증 | 예측/보정·RTT/손실 조합·다중 PC, 방장 1+19 동시 장시간 실행. NAT/relay와 플랫폼 인증은 별도 서비스 연동 |
+| 4 | 실제 월드 콘텐츠와 스트리밍 | 비동기 cell/terrain/nav 로드, 로드 실패/중단 시 보존, 4×4km 분산/밀집·800 좀비·20 차량·10,000 구조물 부하 |
+| 5 | 승인된 production 에셋 | 실제 인터페이스 datum/전체 skeleton·pose 검사, gold 20~30개와 100개 pilot, 사람의 아트 승인 후 서명 cook. 현재 cube fixture와 pending style은 승인 콘텐츠로 계산하지 않음 |
+| 6 | 저장 콘텐츠 migration·재현 가능한 배포 | catalog v2로의 명시적 migration, CMake 구성/빌드/CTest 실제 실행, 깨끗한 환경에서 설치/실행과 모든 UI 조작 검증 |
+
+UE/Chaos/World Partition·위젯·렌더·엔진 cook·GPU/콘솔 성능은 현재 요청에서 제외한다. 엔진 독립 구현과 명세 전체 완료를 동일하게 계산하지 않는다.
+
+## 과거 계획 — 아래는 당시 요청과 상태
+
+2026-09-28 당시 사용자 지정 범위: UE 통합을 포함한 전체 게임 구현.
 기준은 `SURVIVAL_TECHNICAL_SPECIFICATION.md` v1.1의 G.6이며, 부분 기능을
 전체 게임 완성으로 계산하지 않는다. 현재 UE5는 미설치다.
 

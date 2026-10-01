@@ -1,6 +1,7 @@
 #pragma once
 #include "durable.hpp"
 #include "world_lock.hpp"
+#include "sqlite_db.hpp"
 
 namespace astra {
 // One world per file. Call through DurableInventory, which serializes operations.
@@ -15,5 +16,6 @@ private:
     std::filesystem::path path_;
     std::unique_ptr<WorldLock> lock_;
     std::uint64_t epoch_{};
+    std::unique_ptr<sq::Connection> connection_;
 };
 }

@@ -28,6 +28,6 @@ void SQLiteStore::close() {
         }
         source.exec("COMMIT");
     }
-    lock_.reset();
+    connection_.reset();lock_.reset();
 }
 }

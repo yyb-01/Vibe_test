@@ -1,4 +1,5 @@
 #include "sqlite_db.hpp"
+#include "../core/simulation_journal.hpp"
 
 namespace astra::sq {
 void configure(Connection& db) {
@@ -20,7 +21,7 @@ StoredWorld load(Connection& db) {
     auto data = static_cast<const std::uint8_t*>(sqlite3_column_blob(query.get(), 1));
     require(data != nullptr, Error::StorageUnavailable);
     auto checkpoint = decode_checkpoint({data, data + length});
-    require(version == checkpoint.requests.size() && !query.row(), Error::InvalidState);
+    require(version == request_count(checkpoint) && !query.row(), Error::InvalidState);
     return {std::move(checkpoint), version};
 }
 void write(Connection& db, std::uint64_t version, const std::vector<std::uint8_t>& bytes) {

@@ -8,11 +8,17 @@ struct SavedRequest {
     std::vector<std::uint8_t> payload;
     Result result;
 };
+struct InputJournal {
+    std::uint64_t retired{};
+    std::map<std::uint64_t,std::uint64_t> floors;
+};
 struct Checkpoint {
     Catalog catalog;
     World world;
     std::uint64_t epoch{}, origin{}, sequence{}, nextId{1}, nextEvent{1};
     std::vector<SavedRequest> requests;
+    std::uint64_t retiredRequests{}, retiredCommits{};
+    std::map<Id,InputJournal> retiredInputs{};
 };
 inline constexpr std::size_t checkpoint_byte_limit = 96 * 1024 * 1024;
 void validate_checkpoint(const Checkpoint&);

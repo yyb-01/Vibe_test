@@ -1,6 +1,42 @@
 # 구현 현황
 
-## 2026-09-30 현재 코드 기준
+## 2026-10-01 현재 코드 기준
+
+현재 실행물은 **Windows C++ 권위 시뮬레이션 + Python 실행기 + 브라우저 UI**다. 현재 사용자 범위는 **UE 연동 제외**다. 엔진 독립 reference의 기능을 연결했으며, 명세 전체의 출시·성능·콘텐츠 완료를 의미하지 않는다. 과거 완료율은 현재 상태에 사용하지 않는다.
+
+| 영역 | 구현·연결한 범위 | 남은 주요 조건 |
+|---|---|---|
+| 인벤토리·저장 | 기존 거래/불변 뷰 재사용, 조립 소켓·제작 escrow·도구 lease, 내부 System 권한, 상태+원본 요청 결과 원자 저장, WAL/FULL·비동기 저장·백업·재시작 | 전체 checkpoint BLOB 쓰기, 단일 저장 worker, 대규모 월드의 항목/장부 상한 |
+| 생존 | 8개 신체 영역, wound·출혈·혈액·스태미나·대사·음식/물·병원체·체온·치료·사망/시체·리스폰 | 애니메이션 뼈 기반 충돌 및 전체 생리/콘텐츠 보정 |
+| 전투 | 부품 호환/조립·실제 질량, 혼합탄·장전 FSM·자동 사격·열/고장, 역사 layer·겹침 에너지·국소 방어구 손상·영속 피해, 원격 시계와 발사 입력 검증 | 현재 AABB 신체 proxy, 전체 triangle/BVH·SIMD parity·골격별 방어 범위 |
+| 차량 | 부품 장착/교체/탈락, COM/관성, 휠·엔진·기어·클러치·배터리·연료·브레이크·탑승 | 평면 지면 reference, 일반 차체 충돌·클라이언트 예측/보정 |
+| 제작·전력 | T1~T4 stage DAG, 재료 escrow·도구 임대·완료/취소/회수·연구, 같은 Item ID 수리·해체, 전력 우선순위·열/소음·파괴 시 잔해 | 전체 콘텐츠와 최대 작업 수의 부하 검증 |
+| 건축·월드 | 1cm 설치 snap, 지지/하중/붕괴, 문·잠금·상자·함정·작업대·발전기, 논리 4×4km 셀·활성 영역/pin·loot respawn·좀비 A* | 실제 비동기 셀/지형 스트리밍, 최대 800 좀비·20 차량·10,000 구조물 부하 |
+| 실행·통신·UI | solo/host/join, 최대 20계정 슬롯, TLS 1.3·인증서 pin·재접속 identity, 원본 요청 영속 재시도·ACK 유실 중복 방지, 조회 분리·입력 제한·한국어 2D UI | NAT/relay·플랫폼 SDK·다중 PC·RTT/손실 조합·모든 브라우저 조작의 최종 검증 |
+| 에셋 도구 | datum 정규화, mesh/UV/PBR/색차/소켓 검사, MikkTSpace bake, CPU golden 재렌더 검증, Ed25519 승인·서명, BC7/BC5 mip cook·변조 거절 | 현재 승인 대기 style와 테스트용 cube fixture; 실제 gold asset 20~30개·100개 pilot·전체 skeleton/interface/pose 승인 |
+| UE | 현재 요청에서 제외 | Unreal/Chaos/World Partition·렌더·위젯·엔진 cook·GPU/콘솔 검증 |
+
+실행 경로와 프로토콜은 [사용 안내](docs/SURVIVAL_REFERENCE.md), 소스 위치는 [프로젝트 지도](docs/GITNEXUS_PROJECT_MAP.md), 에셋 도구의 입력/승인 경계는 [에셋 안내](asset_tools/README.md)에 정리했다.
+
+### 실행 검증
+
+| 명령 | 이번 작업에서 확인한 결과 |
+|---|---|
+| `./scripts/build.ps1` | 코어 **113그룹 PASS**. 8영역 ray, 방어구 시간 분할, 2,000 tick 연속 생존/사망/리스폰, 소유권·장전·수리·제작 포함 |
+| `./scripts/build-game.ps1 -Release` | Zig 0.15.2/C++20 네이티브 권위 실행기 빌드 PASS |
+| `./scripts/test-sqlite.ps1` | rollback·ACK 유실·TCP+SQLite·재시작·커밋 전후 강제 종료·백업/복원·잠금·비동기 종료 PASS |
+| `./scripts/test-tcp.ps1` | Windows loopback TCP **6그룹 PASS** |
+| `./scripts/test-game.ps1` | **3그룹 PASS**: HTTP origin/bearer/입력 경계, TLS 발사 시계/rewind/원본 재시도, 네이티브 SQLite 재시작/강제 종료/20계정/조회 비공개 |
+| `./scripts/test-assets.ps1` | datum·mesh/PBR·CIEDE2000·Mikk bake·golden 재렌더·BC7/BC5·서명 cook·변조 거절 PASS |
+| `python verify_spec.py` | 25 POD layout·17 sizeof·packet/기준 산술·문서 SQLite schema PASS. 게임 기능 시험과 구분 |
+
+20계정 검증은 로컬 테스트 프로세스 기준이며 실제 20대 PC 시험이 아니다. 브라우저 화면 확인과 HTTP/권위 기능 검증은 수행했지만 모든 GUI 클릭 경로의 최종 검증을 완료하지 않았다. CMake 타깃은 추가했으며 이 환경에는 CMake가 없어 실제 빌드는 PowerShell 경로로 확인했다.
+
+1인 seed 장면의 SQLite FULL 포함 tick ACK는 p50 **15.561ms**, p95 **16.546ms**, p99 **17.047ms**다. p99가 16.67ms를 넘으므로 **60Hz 시간 예산 미달**이다. 최대 콘텐츠 장면·8시간 soak·렌더/GPU·네트워크 지연을 포함한 결과가 아니다. [측정 방법/원본](docs/GAME_PERFORMANCE.md)을 참고한다.
+
+저장 형식은 inventory checkpoint v6(기존 v1~v6 읽기), gameplay archive v2다. catalog는 v2이며 다른 catalog의 기존 월드는 명시적으로 거절한다. 콘텐츠 migration 도구는 아직 없으므로 기존 세이브를 보존하고 새 WorldId를 사용한다.
+
+## 2026-09-30 기록 — 당시 코드와 검증
 
 현재 실행 제품은 **C++20 인벤토리 콘솔 샌드박스**다. 현재 루트의 소스·호출 경로·실행 시험을
 명세 v1.1의 G.1/G.6과 대조했다. **UE 연동을 제외해도 전체 게임은 미완성**이다.

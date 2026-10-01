@@ -1,6 +1,7 @@
 #include "grid.hpp"
 #include "chamber.hpp"
 #include "magazine.hpp"
+#include "game_flags.hpp"
 
 namespace astra {
 void validate_catalog(const Catalog&);
@@ -15,8 +16,8 @@ static void recalculate(const Catalog& catalog, const World& world, std::map<Id,
     for (auto& [id, c] : containers) {
         auto& s = c.state;
         require(bool(id) && id == s.id && s.revision <= revision_limit, Error::InvalidState);
-        require(c.kind == PlaceKind::Grid || c.kind == PlaceKind::Slot || c.kind == PlaceKind::World,
-                Error::InvalidState);
+        require(static_cast<unsigned>(c.kind) <= static_cast<unsigned>(PlaceKind::World) &&
+                c.gameplay.size() <= 16 * 1024 * 1024, Error::InvalidState);
         require(c.kind == PlaceKind::World || (s.width && s.width <= 32 && s.height && s.height <= 32),
                 Error::InvalidState);
         const auto& chain = chains.emplace(id, ancestry(world, id)).first->second;
@@ -31,7 +32,7 @@ static void recalculate(const Catalog& catalog, const World& world, std::map<Id,
     std::size_t live = 0;
     for (const auto& [id, item] : world.items) {
         require(bool(id) && item.id == id && catalog.contains(item.defId) && !world.containers.contains(id), Error::InvalidState);
-        require(item.revision <= revision_limit && !item.reservedBy && !(item.flags & ~deleted), Error::InvalidState);
+        require(item.revision <= revision_limit && !item.reservedBy && !(item.flags & ~(deleted|leased_tool)), Error::InvalidState);
         if (item.flags & deleted) {
             require(!item.quantity && !world.placements.contains(id), Error::InvalidState);
             continue;

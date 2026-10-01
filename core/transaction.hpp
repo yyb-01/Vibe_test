@@ -5,9 +5,12 @@
 #include <optional>
 #include <set>
 #include <vector>
+#include <functional>
 
 namespace astra {
-enum class Operation : std::uint8_t { Move, Swap, Split, Merge, Drop, Pickup, Fire };
+enum class Operation : std::uint8_t { Move, Swap, Split, Merge, Drop, Pickup, Fire, System };
+struct World;
+inline constexpr std::size_t request_payload_limit = 2048;
 struct MoveEntry {
     Id item, source, target;
     std::uint64_t itemRev{}, sourceRev{}, targetRev{};
@@ -22,6 +25,10 @@ struct Request {
     std::vector<MoveEntry> moves;
     std::uint64_t baseline{}, interactionLease{};
     std::optional<ShotData> shot{}; // Host-only Fire: ammo move first, weapon move second.
+    std::vector<Id> systemRoots{};
+    std::vector<std::uint8_t> command{};
+    std::uint16_t newIds{};
+    std::function<void(World&, Id, std::uint64_t)> mutation{}; // Host code only; never serialized or decoded.
 };
 // Supplied by the authoritative host, never decoded from a client's packet.
 struct Access {
@@ -29,6 +36,7 @@ struct Access {
     std::uint64_t epoch{}, interactionLease{};
     std::set<Id> roots;
     std::vector<std::uint8_t> approvedFire{}; // Exact host-approved request bytes; never from a packet.
+    std::vector<std::uint8_t> approvedSystem{};
 };
 struct Result {
     Error code{Error::Ok};

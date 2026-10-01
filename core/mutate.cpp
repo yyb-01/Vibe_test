@@ -10,6 +10,10 @@ void mutate(const Catalog& catalog, World& w, const Request& r, Id created, std:
         }
     }
     auto before = w.containers;
+    if (r.operation == Operation::System) {
+        r.mutation(w, created, event);
+        touched.insert(r.systemRoots.begin(), r.systemRoots.end());
+    }
     if (r.operation == Operation::Fire) consume_shot(catalog, w, r);
     for (const auto& m : r.moves) {
         if (r.operation == Operation::Fire) break;
@@ -31,10 +35,12 @@ void mutate(const Catalog& catalog, World& w, const Request& r, Id created, std:
     }
     validate(catalog, w);
     for (auto& [id, c] : w.containers) {
+        if (!before.contains(id)) continue;
         const auto& old = before.at(id).state;
         const auto& s = c.state;
         if (touched.contains(id) || old.subtreeMassG != s.subtreeMassG || old.usedVolumeMl != s.usedVolumeMl ||
-            old.entryCount != s.entryCount || old.depth != s.depth) bump(c.state.revision);
+            old.entryCount != s.entryCount || old.depth != s.depth || before.at(id).gameplay != c.gameplay)
+            bump(c.state.revision);
     }
 }
 }

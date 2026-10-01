@@ -2,12 +2,21 @@
 
 namespace astra {
 Request decode(const std::vector<std::uint8_t>& bytes) {
-    require(bytes.size() >= 44 && bytes.size() <= 748, Error::InvalidRequest);
+    require(bytes.size() >= 44 && bytes.size() <= request_payload_limit, Error::InvalidRequest);
     Reader r{bytes};
     Request result;
     result.id = r.id(); result.actionSeq = r.get(8);
     result.operation = static_cast<Operation>(r.get(1));
     auto count = r.get(1);
+    if (result.operation == Operation::System) {
+        require(count && count <= 32 && r.get(2) == 2, Error::InvalidRequest);
+        result.baseline = r.get(8); result.interactionLease = r.get(8);
+        for (std::uint64_t i = 0; i < count; ++i) result.systemRoots.push_back(r.id());
+        result.newIds = r.get(2); auto size = r.get(2);
+        require(size <= 512 && size == bytes.size() - r.position, Error::InvalidRequest);
+        result.command.assign(bytes.begin() + r.position, bytes.end());
+        check_shape(result); return result;
+    }
     auto fire = result.operation == Operation::Fire;
     require(count && count <= 8 && bytes.size() == 44 + 88 * count + (fire ? shot_data_bytes : 0), Error::InvalidRequest);
     require(r.get(2) == (fire ? 1 : 0), Error::InvalidRequest);

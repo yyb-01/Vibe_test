@@ -29,7 +29,7 @@ void checkpoint_deltas() {
         auto sum = checkpoint_wire::checksum(data, data.size() - 8);
         for (unsigned n = 0; n < 8; ++n) data[data.size() - 8 + n] = static_cast<std::uint8_t>(sum >> (8 * n));
     };
-    auto invalid = bytes; invalid[4] = 2; reseal(invalid);
+    auto invalid = bytes; invalid[4] = 255; reseal(invalid);
     rejects([&] { decode_delta(invalid); }, Error::InvalidState);
     invalid = bytes;
     invalid[152 + split.changes.payload.size() + 16 * split.changes.roots.size()] = 0;

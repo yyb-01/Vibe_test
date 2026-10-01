@@ -1,14 +1,35 @@
-# Astra Game — UE5 설치 전 C++ 코어
+# Astra Game — Unreal 없이 실행하는 생존 게임 reference
 
-[기술 명세서](SURVIVAL_TECHNICAL_SPECIFICATION.md)의 A 영역부터 구현했습니다. C++20 표준 라이브러리만 사용하며 Unreal 없이 컴파일·테스트할 수 있습니다. 현재 실행물은 인벤토리를 조작하는 콘솔 샌드박스입니다.
+2026-10-01 기준 C++20 권위 시뮬레이션에 생존·전투·차량·제작·전력·건축·좀비와 SQLite 저장을 연결했습니다. Windows 네이티브 실행기와 Python TLS 방장/참가 실행기, 한국어 브라우저 UI를 제공합니다. 방장 1명과 참가자 최대 19명 정책이며 방장이 종료하면 방도 종료됩니다.
 
-2026-09-30 기준 인벤토리·SQLite 저장·세션/transport와 발사 승인·장전·정수 탄도 일부를 작성했습니다.
-저장 확정 발사를 서버의 240Hz 탄환 처리와 정적 충돌 출력까지 연결했습니다.
-UE를 제외해도 전체 게임은 미완성입니다. 충돌 결과의 영속 피해 처리,
-생체·차량·제작·월드·에셋 검증은 남아 있습니다. 구현/미구현과 실행 검증 범위는
-[현재 구현 현황](IMPLEMENTATION_STATUS.md#2026-09-30-현재-코드-기준)에 정리했습니다.
+사용자가 지정한 현재 범위는 **UE 연동 제외**입니다. 엔진 독립 reference는 실행 가능하지만, 명세 전체의 성능·네트워크·콘텐츠 완료 조건은 아직 충족하지 않았습니다. [현재 구현 현황](IMPLEMENTATION_STATUS.md), [남은 작업](docs/IMPLEMENTATION_QUEUE.md), [성능 측정](docs/GAME_PERFORMANCE.md)에 실제 검증 범위와 한계를 기록했습니다.
 
-v1.1의 목표는 **방장 PC 리슨 서버(방장 1명+참가자 최대 19명)**입니다. 방장이 판정·저장·자기 화면을 함께 실행하고, 로컬 SQLite를 게임에 포함해 별도 DB 서비스 설치를 없앱니다. 방장이 종료하면 세션도 종료되며 자동 방장 이전은 초기 범위에 없습니다. 실제 UE 방 생성/참가는 아직 미구현입니다. SQLite 체크포인트 저장·재시작 복구와 [정상 종료·백업 3개 순환](storage/SQLITE_SHUTDOWN.md)을 구현했으며 [실행과 한계](storage/SQLITE.md)를 별도로 기록했습니다.
+## 생존 게임 실행
+
+Windows PowerShell과 Python 3.12 이상이 필요합니다. 처음 준비할 때:
+
+```powershell
+./scripts/setup-toolchain.ps1
+./scripts/setup-sqlite.ps1
+python -m pip install -r requirements.txt
+./scripts/play-game.ps1 -Mode solo -WorldId survival -Rebuild
+```
+
+방장은 `-Mode host -Address <참가자가 접속할 방장 IP>`로 실행하고 화면의 초대 링크를 전달합니다. 참가자는 `-Mode join -Invitation '<초대 링크>'`로 실행합니다. `-Python <python.exe 경로>`로 실행 환경을 지정할 수 있습니다. 기본값은 설치된 Codex Python 런타임, 없으면 PATH의 Python입니다.
+
+[실행·조작·저장 안내](docs/SURVIVAL_REFERENCE.md), [에셋 도구](asset_tools/README.md)를 참고하세요. UE 설치는 필요하지 않습니다. 일반 실행의 세이브는 `%LOCALAPPDATA%/AstraGame/Saves/<WorldId>/world.sqlite3`에 저장됩니다. 기존 SQLite의 [정상 종료·백업](storage/SQLITE_SHUTDOWN.md)과 [복원](storage/SQLITE_RESTORE.md) 정책을 재사용합니다.
+
+```powershell
+./scripts/build.ps1
+./scripts/test-sqlite.ps1
+./scripts/test-tcp.ps1
+./scripts/test-game.ps1
+./scripts/test-assets.ps1
+```
+
+## 기존 인벤토리 콘솔과 API
+
+아래는 독립 인벤토리 데모와 기존 `HostSession` API의 설명입니다. 새 게임 경로의 조립·피해·인증·UI와 검증 범위는 위 문서가 기준입니다.
 
 ## 실행
 

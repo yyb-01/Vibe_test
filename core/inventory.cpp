@@ -1,5 +1,6 @@
 #include "inventory.hpp"
 #include <algorithm>
+#include "simulation_journal.hpp"
 
 namespace astra {
 Inventory::Inventory(Catalog catalog, World initial, std::uint64_t epoch, std::uint64_t idOrigin)
@@ -49,6 +50,7 @@ Preparation Inventory::prepare_locked(const Request& r, const Access& access) {
     try {
         require(access.epoch == epoch_, Error::EpochMismatch);
         require(bool(access.account), Error::NotAccessible);
+        require(access.account != simulation_account || simulation_request(r), Error::NotAccessible);
         auto bytes = encode(r);
         auto key = std::pair{access.account, r.id};
         if (auto found = records_.find(key); found != records_.end()) {
@@ -68,6 +70,7 @@ Preparation Inventory::prepare_locked(const Request& r, const Access& access) {
         for (const auto& [id, pending] : pending_) {
             (void)id;
             if (!pending.account.empty()) ++newAccounts;
+            reservedItems += decode(pending.changes->payload).newIds;
             if (pending.changes->outcome.created) ++reservedItems;
             if (pending.changes->outcome.applied()) ++reservedCommits;
         }
@@ -84,9 +87,19 @@ Preparation Inventory::prepare_locked(const Request& r, const Access& access) {
         Result result;
         std::set<Id> roots;
         Pending pending;
+        auto isInput=input_request(r);
+        if(isInput){
+            require(r.id.lo,Error::InvalidRequest);auto journal=retiredInputs_.find(access.account);
+            if(journal==retiredInputs_.end()){
+                InputMap nodes;nodes.emplace(access.account,InputJournal{0,{{r.id.hi,0}}});pending.inputJournal=nodes.extract(access.account);
+            }else if(!journal->second.floors.contains(r.id.hi)){
+                require(journal->second.floors.size()<64,Error::LimitExceeded);pending.inputFloors.emplace(r.id.hi,0);
+            }
+        }
         try {
             require(r.baseline <= sequence_, Error::RevisionConflict);
             check_request(world_, r, access);
+            if (r.operation == Operation::System) roots.insert(r.systemRoots.begin(), r.systemRoots.end());
             for (const auto& m : r.moves)
                 for (auto endpoint : {m.source, m.target})
                     roots.insert(ancestry(world_, endpoint).back());
@@ -101,6 +114,12 @@ Preparation Inventory::prepare_locked(const Request& r, const Access& access) {
             if (r.operation == Operation::Split) {
                 require(nextId_ < revision_limit && world_.items.size() < 65536, Error::LimitExceeded);
                 if (world_.items.size() + reservedItems >= 65536)
+                    return {{Error::Busy, sequence_, {}}, {}};
+            }
+            if (r.newIds) {
+                require(r.newIds <= revision_limit - nextId_ && world_.items.size() + r.newIds <= 65536,
+                        Error::LimitExceeded);
+                if (world_.items.size() + r.newIds + reservedItems > 65536)
                     return {{Error::Busy, sequence_, {}}, {}};
             }
             auto before = copy_roots(roots_, roots);
@@ -118,6 +137,8 @@ Preparation Inventory::prepare_locked(const Request& r, const Access& access) {
             if (r.operation == Operation::Split) result.created = created;
             changes->event = nextEvent_;
         } catch (const Violation& error) {
+            if(error.code==Error::Busy||error.code==Error::Pending||error.code==Error::StorageUnavailable)
+                return {{error.code,sequence_,{}},{}};
             result.code = error.code;
             // A final rejection has no state to protect while its result waits.
             roots.clear();
@@ -129,7 +150,7 @@ Preparation Inventory::prepare_locked(const Request& r, const Access& access) {
 
         // Allocate result/account map nodes before exposing the prepared handle.
         RecordMap recordNodes;
-        recordNodes.emplace(key, Record{std::move(bytes), result, changes});
+        recordNodes.emplace(key, Record{std::move(bytes), result, changes,r.actionSeq,isInput});
         pending.record = recordNodes.extract(key);
         if (account == accountSeq_.end()) {
             AccountMap accountNodes;
@@ -140,6 +161,7 @@ Preparation Inventory::prepare_locked(const Request& r, const Access& access) {
         auto inserted = pending_.emplace(access.account, std::move(pending)).first;
         // IDs exposed to a worker are never reused, even after a definite abort.
         if (result.created) ++nextId_;
+        if (result.applied()) nextId_ += r.newIds;
         if (result.applied()) ++nextEvent_;
         return {{Error::Pending, sequence_, {}}, inserted->second.changes};
     } catch (const Violation& error) { return {{error.code, sequence_, {}}, {}}; }

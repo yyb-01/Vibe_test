@@ -1,6 +1,39 @@
 # Project Overview
 
-## 2026-09-30 현재 루트 감사 결과
+## 2026-10-01 현재 루트
+
+작업 대상은 `astra_game` 루트다. `.upload-repo/`는 별도 복사본이며 수정·분석·이번 업로드에서 제외한다. GitNexus 등록 이름은 `Vibe_test`다. 현재 사용자 범위는 UE 연동 제외이며 [현재 구현 현황](../IMPLEMENTATION_STATUS.md)과 [남은 작업](IMPLEMENTATION_QUEUE.md)이 기준이다.
+
+```mermaid
+flowchart LR
+  UI[game_ui] --> Client[LocalClient 또는 TLS Client]
+  Client --> Host[인증된 slot / native Host]
+  Host --> Runtime[GameRuntime]
+  Runtime --> Prepare[Inventory System prepare]
+  Prepare --> DB[AsyncStore / SQLite WAL FULL]
+  DB --> Publish[저장 확정 후 상태 공개]
+```
+
+| 경로 | 현재 책임·핵심 소스 |
+|---|---|
+| `game_launcher/` | CLI·TLS room/client·clock challenge·identity·원본 요청 재시도·local HTTP bearer UI·native bridge |
+| `game/` | 비공개 pipe 입력, 계정 슬롯/권한·remote fire·command 변환·접근 가능한 공개 view·SQLite 시작/종료 |
+| `core/game_runtime.cpp`, `game_execute.cpp`, `game_tick.cpp` | 요청 승인/중복 기록, 불변 상태 검증 cache, 게임 상태와 inventory 변경의 단일 저장 거래 |
+| `core/game_*`, `survival_*`, `beam_*`, `weapon_*` | 생존·피해/사망·조립/장전·역사 탄도·국소 방어구·경제 행위 |
+| `core/vehicle_*`, `craft_*`, `power.cpp`, `structures.cpp`, `world_*` | 차량, 제작 escrow/lease, 전력, 건축/지지, 논리 셀·loot·좀비/경로 |
+| `storage/sqlite_*`, `core/checkpoint*`, `state_*` | WAL/FULL 연결 재사용·rollback·백업·checkpoint v6·gameplay archive v2 |
+| `asset_tools/`, `tools/mikk.cpp`, `assets/style_pack.json` | readonly 정규화·검사·bake/golden·서명 cook, native Mikk adapter, 승인 대기 style fixture |
+| `tests/game_*`, `game_tests/` | 코어 불변식, SQLite/native/TLS/HTTP 통합, 에셋 변조, tick ACK benchmark |
+
+브라우저는 공개 view와 허용된 사용자 명령만 받는다. `tick/online/sync/r-fire`는 공개 명령으로 전달하지 않는다. 원격 발사는 인증된 시계와 epoch/life/revision/sequence를 native 경로에서 검사한다. 저장 전 실패/대기는 상태를 공개하지 않으며 확정된 요청 재전송은 원래 결과를 반환한다.
+
+편집 전 GitNexus query/context/upstream impact를 사용하고 실제 C++ 호출 위치·테스트와 대조했다. HIGH/CRITICAL은 공유 검증/저장·시계·에셋 경계에 있어 사전 보고했으며 UNKNOWN은 빈 caller로 안전 판정하지 않았다. 2026-10-01에 인덱스를 갱신했다(523 files, 16,844 nodes, 67,471 edges, 128 clusters, 143 flows). 등록 경로는 현재 루트다.
+
+새 파일까지 stage한 `detect_changes(scope: all)`은 193개 파일·72개 흐름·CRITICAL을 보고했다. CLI의 기본 1,000 symbol 목록 상한에 걸려, 원본 도구를 보존한 임시 사본에서 목록 상한을 100,000으로 늘리고 DB batch 조회를 직렬 실행해 재검사했다. `partial/truncated` 없이 전체 목록을 받았다. 공유 거래/codec/저장과 신규 게임·실행기·에셋 흐름을 관련 회귀 시험 및 실제 호출 위치와 대조했다. 개별 검사에서 symbol 수에 차이가 있어 그 수치를 완료율이나 완전성 증명으로 사용하지 않는다. 임시 도구/DB/검사 출력은 배포 소스에 포함하지 않는다.
+
+C++ header/가상·멤버 호출과 지역 변수 parsing에는 누락/오탐이 있다. analyzer의 ADL/flow/callee budget 경고도 고려해야 한다. `partial/truncated` 없는 변경 분석도 완전한 프로그램 증명이 아니며 실행 시험과 소스 검토가 필요하다.
+
+## 2026-09-30 감사 기록 — 당시 기준
 
 현재 제품은 C++20 인벤토리 콘솔이다. **UE를 제외해도 전체 게임은 미완성**이다.
 소스·호출 위치·실행 시험을 명세 G.1/G.6과 대조한 상세 결과는

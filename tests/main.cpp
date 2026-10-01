@@ -1,5 +1,13 @@
 #include <iostream>
 #include "check.hpp"
+void game_transactions();
+void game_systems();void game_beam();void game_runtime_checks();
+void game_journal_ownership();
+void game_input_retention();
+void game_utilities_and_mounts();
+void game_reload_guards();
+void game_repair_and_dismantle();
+void game_injury_endurance();
 void transactions(); void swaps_and_world(); void rejections();
 void capacity_and_conditions(); void concurrent_loot(); void randomized_conservation(); void wire_contract();
 void grid_and_tree_boundaries(); void overflow_and_state();
@@ -53,6 +61,16 @@ void ammunition_checkpoint_versions();
 void combat_publication(); void combat_failure(); void combat_recovery(); void shot_simulation();
 int main() {
     const std::pair<const char*, void(*)()> cases[]{
+        {"atomic game authority state", game_transactions},
+        {"survival vehicle power world", game_systems},
+        {"overlapping timed penetration", game_beam},
+        {"durable survival game loop", game_runtime_checks},
+        {"game journal ownership and tool reuse", game_journal_ownership},
+        {"game input expiry and durable cursors", game_input_retention},
+        {"constructed storage, workbench and vehicle mounting", game_utilities_and_mounts},
+        {"reload reservations and state corruption", game_reload_guards},
+        {"repair identity, cancellation and disassembly", game_repair_and_dismantle},
+        {"bounded injuries and continuous survival ticks", game_injury_endurance},
         {"transactions", transactions}, {"swaps and world", swaps_and_world},
         {"rejections", rejections}, {"capacity and conditions", capacity_and_conditions},
         {"20 concurrent looters", concurrent_loot}, {"1000 conserved transactions", randomized_conservation},

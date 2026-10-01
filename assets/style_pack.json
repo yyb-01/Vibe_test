@@ -1,0 +1,27 @@
+{
+  "schema": 1, "id": "mil_apoc_v1", "version": 1, "approvalState": "pending",
+  "basis": "RH_Xforward_Yleft_Zup", "units": "metre",
+  "masters": ["OpaqueMetalRough", "Cloth", "Foliage", "Glass", "Decal", "Water"],
+  "materials": {
+    "painted_steel_olive_v1": {"master": "OpaqueMetalRough", "metallic": 0, "roughness": [0.35, 0.65], "baseColor": [84, 92, 68]},
+    "weathered_steel_v1": {"master": "OpaqueMetalRough", "metallic": 1, "roughness": [0.25, 0.55], "baseColor": [110, 112, 108]},
+    "rubber_v1": {"master": "OpaqueMetalRough", "metallic": 0, "roughness": [0.65, 0.9], "baseColor": [38, 39, 37]},
+    "cloth_v1": {"master": "Cloth", "metallic": 0, "roughness": [0.7, 0.95], "baseColor": [76, 84, 59]}
+  },
+  "classes": {
+    "weapon.first_person": {"triangles": 80000, "materials": 6, "textureMax": 2048, "density": 2048},
+    "weapon.remote": {"triangles": 25000, "materials": 4, "textureMax": 2048, "density": 1024},
+    "part": {"triangles": 8000, "materials": 2, "textureMax": 1024, "density": 2048},
+    "character": {"triangles": 120000, "materials": 8, "textureMax": 2048, "density": 1024},
+    "vehicle": {"triangles": 150000, "materials": 8, "textureMax": 4096, "density": 1024},
+    "building": {"triangles": 10000, "materials": 2, "textureMax": 2048, "density": 512}
+  },
+  "skeleton": ["root", "pelvis", "spine", "chest", "neck", "head", "upperarm_l", "lowerarm_l", "hand_l", "upperarm_r", "lowerarm_r", "hand_r", "thigh_l", "calf_l", "foot_l", "thigh_r", "calf_r", "foot_r"],
+  "templates": {
+    "datum_fixture_v1": {
+      "radiusM": 0.1, "landmarks": {"origin": [0, 0, 0], "axis_x": [0.1, 0, 0], "axis_y": [0, 0.1, 0]},
+      "sockets": [{"id": "00000000-0000-0000-0000-000000000001", "positionNm": [0, 0, 0], "rotationXYZW": [0, 0, 0, 1], "profileId": 1, "gender": 1, "keyVariant": 0}]
+    }
+  },
+  "golden": {"whitePoint": "D65", "autoExposure": false, "grayCardLinear": 0.18, "views": ["front", "side", "top", "perspective", "grazing", "assembly", "gameplay", "wet", "night"]}
+}

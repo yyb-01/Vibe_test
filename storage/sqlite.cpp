@@ -1,6 +1,7 @@
 #include "sqlite.hpp"
 #include "sqlite_db.hpp"
 #include <algorithm>
+#include "../core/simulation_journal.hpp"
 
 namespace astra {
 SQLiteStore::SQLiteStore(const std::filesystem::path& path)
@@ -19,7 +20,7 @@ StoredWorld SQLiteStore::acquire(const Checkpoint& seed) {
                 "version INTEGER NOT NULL CHECK(version>=0),"
                 "checkpoint BLOB NOT NULL CHECK(length(checkpoint) BETWEEN 76 AND 100663296)) STRICT;"
                 "PRAGMA application_id=1095976018; PRAGMA user_version=1");
-        sq::write(db, seed.requests.size(), encode_checkpoint(seed));
+        sq::write(db, request_count(seed), encode_checkpoint(seed));
     }
     auto loaded = sq::load(db);
     auto& c = loaded.checkpoint;

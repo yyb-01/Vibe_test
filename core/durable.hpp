@@ -27,6 +27,8 @@ public:
     DurableInventory(std::unique_ptr<DurableStore>, const Checkpoint& seed);
     Result apply(const Request&, const Access&);
     std::optional<Result> result_for(const Request&, Id account);
+    std::optional<Request> recorded_request(Id account, Id requestId);
+    bool expired_input(Id account,Id requestId) const {return inventory_->expired_input(account,requestId);}
     std::optional<Request> recorded_fire(Id account, std::uint32_t fireSeq);
     std::vector<RecordedFire> recorded_fires();
     Result resolve();

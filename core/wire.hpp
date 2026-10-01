@@ -21,6 +21,14 @@ struct Reader {
     Id id() { auto hi = get(8); return {hi, get(8)}; }
 };
 inline void check_shape(const Request& r) {
+    if (r.operation == Operation::System) {
+        require(r.moves.empty() && !r.shot && !r.systemRoots.empty() && r.systemRoots.size() <= 32 &&
+                r.command.size() <= 512 && r.newIds <= 4096, Error::InvalidRequest);
+        Id previous{};
+        for (auto root : r.systemRoots) { require(previous < root, Error::InvalidRequest); previous = root; }
+        return;
+    }
+    require(r.systemRoots.empty() && r.command.empty() && !r.newIds && !r.mutation, Error::InvalidRequest);
     require(!r.moves.empty() && r.moves.size() <= 8, Error::InvalidRequest);
     require(static_cast<unsigned>(r.operation) <= static_cast<unsigned>(Operation::Fire), Error::InvalidRequest);
     require(r.shot.has_value() == (r.operation == Operation::Fire), Error::InvalidRequest);

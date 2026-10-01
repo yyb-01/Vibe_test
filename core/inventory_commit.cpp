@@ -1,4 +1,5 @@
 #include "inventory.hpp"
+#include "simulation_identity.hpp"
 
 namespace astra {
 namespace {
@@ -53,6 +54,9 @@ Result Inventory::commit_locked(const std::shared_ptr<const WriteSet>& changes) 
     }
     result.sequence = sequence_ + (result.applied() ? 1 : 0);
     pending.record.mapped().result = result;
+    auto isInput=pending.record.mapped().input;
+    if(!pending.inputJournal.empty())retiredInputs_.insert(std::move(pending.inputJournal));
+    if(!pending.inputFloors.empty())retiredInputs_.at(changes->account).floors.merge(pending.inputFloors);
     records_.insert(std::move(pending.record));
     if (!pending.account.empty()) accountSeq_.insert(std::move(pending.account));
     else accountSeq_.find(changes->account)->second = changes->actionSeq;
@@ -66,6 +70,24 @@ Result Inventory::commit_locked(const std::shared_ptr<const WriteSet>& changes) 
         flatSnapshot_.reset();
     }
     pending_.erase(found);
+    if(changes->account==simulation_account) {
+        auto old=records_.lower_bound({simulation_account,{}});
+        while(old!=records_.end()&&old->first.first==simulation_account) {
+            if(old->first.second==changes->requestId){++old;continue;}
+            ++retiredRequests_;retiredCommits_+=old->second.result.applied();old=records_.erase(old);
+        }
+    }
+    if(isInput){
+        for(;;){
+            auto old=records_.lower_bound({changes->account,{}}),first=records_.end();unsigned count=0;
+            for(;old!=records_.end()&&old->first.first==changes->account;++old)if(old->second.input){
+                ++count;if(first==records_.end()||old->second.actionSeq<first->second.actionSeq)first=old;
+            }
+            if(count<=32)break;
+            auto& journal=retiredInputs_.at(changes->account);auto& floor=journal.floors.at(first->first.second.hi);
+            floor=std::max(floor,first->first.second.lo);++journal.retired;retiredCommits_+=first->second.result.applied();records_.erase(first);
+        }
+    }
     return result;
 }
 }

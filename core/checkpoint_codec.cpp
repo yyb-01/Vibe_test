@@ -1,9 +1,17 @@
 #include "checkpoint_wire.hpp"
 #include "chamber.hpp"
+#include "game_persistence.hpp"
 #include <algorithm>
 
 namespace astra {
 static unsigned checkpoint_version(const Checkpoint& c) {
+    if(!c.retiredInputs.empty())return 6;
+    if(c.retiredRequests)return 5;
+    if (std::any_of(c.world.containers.begin(), c.world.containers.end(), [](const auto& row) {
+        return !row.second.gameplay.empty() || row.second.kind == PlaceKind::Socket || row.second.kind == PlaceKind::Escrow;
+    }) || std::any_of(c.requests.begin(), c.requests.end(), [](const auto& q) {
+        return decode(q.payload).operation == Operation::System;
+    })) return 4;
     if (std::any_of(c.world.containers.begin(), c.world.containers.end(), [](const auto& row) {
         return row.second.state.flags & (chamber_container | magazine_container);
     })) return 3; // Older readers must not mutate ammunition containers as ordinary slots.
@@ -13,14 +21,18 @@ static unsigned checkpoint_version(const Checkpoint& c) {
 }
 std::vector<std::uint8_t> encode_checkpoint(const Checkpoint& c) {
     validate_checkpoint(c);
-    Writer w; w.put(0x41525453,4); w.put(checkpoint_version(c),4);
+    auto version = checkpoint_version(c);
+    Writer w; w.put(0x41525453,4); w.put(version,4);
     for(auto n:{c.epoch,c.origin,c.sequence,c.nextId,c.nextEvent}) w.put(n,8);
     w.put(c.catalog.size(),4);
     for(const auto& [id,d]:c.catalog) { (void)id; checkpoint_wire::put(w,d); }
     w.put(c.world.items.size(),4);
     for(const auto& [id,i]:c.world.items) { (void)id; checkpoint_wire::put(w,i); }
     w.put(c.world.containers.size(),4);
-    for(const auto& [id,container]:c.world.containers) { (void)id; checkpoint_wire::put(w,container); }
+    for(const auto& [id,container]:c.world.containers) {
+        (void)id;
+        if (version >= 4) checkpoint_wire::put_game(w,container); else checkpoint_wire::put(w,container);
+    }
     w.put(c.world.placements.size(),4);
     for(const auto& [id,p]:c.world.placements) { (void)id; checkpoint_wire::put(w,p); }
     w.put(c.requests.size(),4);
@@ -29,6 +41,10 @@ std::vector<std::uint8_t> encode_checkpoint(const Checkpoint& c) {
         w.bytes.insert(w.bytes.end(),q.payload.begin(),q.payload.end());
         w.put(static_cast<unsigned>(q.result.code),4); w.put(q.result.sequence,8); w.id(q.result.created);
     }
+    if(version>=5){w.put(c.retiredRequests,8);w.put(c.retiredCommits,8);}
+    if(version>=6){w.put(c.retiredInputs.size(),4);for(auto& [account,journal]:c.retiredInputs){
+        w.id(account);w.put(journal.retired,8);w.put(journal.floors.size(),4);for(auto [nonce,floor]:journal.floors){w.put(nonce,8);w.put(floor,8);}
+    }}
     w.put(checkpoint_wire::checksum(w.bytes,w.bytes.size()),8);
     require(w.bytes.size()<=checkpoint_byte_limit,Error::LimitExceeded);
     return std::move(w.bytes);
@@ -39,20 +55,26 @@ Checkpoint decode_checkpoint(const std::vector<std::uint8_t>& bytes) {
     require(tail.get(8)==checkpoint_wire::checksum(bytes,bytes.size()-8),Error::InvalidState);
     Reader r{bytes};
     require(r.get(4)==0x41525453,Error::InvalidState);
-    auto version = r.get(4); require(version >= 1 && version <= 3, Error::InvalidState);
+    auto version = r.get(4); require(version >= 1 && version <= 6, Error::InvalidState);
     Checkpoint c; c.epoch=r.get(8); c.origin=r.get(8); c.sequence=r.get(8); c.nextId=r.get(8); c.nextEvent=r.get(8);
     auto count=[&](std::size_t limit) { auto n=r.get(4); require(n<=limit,Error::LimitExceeded); return n; };
     for(auto n=count(65536);n;--n) { auto d=checkpoint_wire::definition(r); require(c.catalog.emplace(d.id,d).second,Error::InvalidState); }
     for(auto n=count(65536);n;--n) { auto i=checkpoint_wire::item(r); require(c.world.items.emplace(i.id,i).second,Error::InvalidState); }
-    for(auto n=count(4096);n;--n) { auto v=checkpoint_wire::container(r); require(c.world.containers.emplace(v.state.id,v).second,Error::InvalidState); }
+    for(auto n=count(4096);n;--n) { auto v=version >= 4 ? checkpoint_wire::game_container(r) : checkpoint_wire::container(r); require(c.world.containers.emplace(v.state.id,v).second,Error::InvalidState); }
     for(auto n=count(65536);n;--n) { auto p=checkpoint_wire::placement(r); require(c.world.placements.emplace(p.item,p).second,Error::InvalidState); }
     for(auto n=count(65536);n;--n) {
         SavedRequest q; q.account=r.id(); q.requestId=r.id(); q.actionSeq=r.get(8);
-        auto length=count(748);
+        auto length=count(request_payload_limit);
         require(length<=bytes.size()-r.position,Error::InvalidState);
         q.payload.assign(bytes.begin()+r.position,bytes.begin()+r.position+length); r.position+=length;
         q.result.code=static_cast<Error>(r.get(4)); q.result.sequence=r.get(8); q.result.created=r.id();
         c.requests.push_back(std::move(q));
+    }
+    if(version>=5){c.retiredRequests=r.get(8);c.retiredCommits=r.get(8);}
+    if(version>=6)for(auto n=count(64);n;--n){
+        auto account=r.id();InputJournal journal;journal.retired=r.get(8);
+        for(auto k=count(64);k;--k){auto nonce=r.get(8),floor=r.get(8);require(journal.floors.emplace(nonce,floor).second,Error::InvalidState);}
+        require(c.retiredInputs.emplace(account,std::move(journal)).second,Error::InvalidState);
     }
     require(r.position==bytes.size()-8,Error::InvalidState);
     validate_checkpoint(c);

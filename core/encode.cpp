@@ -6,8 +6,15 @@ std::vector<std::uint8_t> encode(const Request& r) {
     Writer w;
     w.bytes.reserve(44 + 88 * r.moves.size());
     w.id(r.id); w.put(r.actionSeq, 8);
-    w.put(static_cast<unsigned>(r.operation), 1); w.put(r.moves.size(), 1);
-    w.put(r.shot ? 1 : 0, 2); w.put(r.baseline, 8); w.put(r.interactionLease, 8);
+    auto system = r.operation == Operation::System;
+    w.put(static_cast<unsigned>(r.operation), 1); w.put(system ? r.systemRoots.size() : r.moves.size(), 1);
+    w.put(system ? 2 : r.shot ? 1 : 0, 2); w.put(r.baseline, 8); w.put(r.interactionLease, 8);
+    if (system) {
+        for (auto root : r.systemRoots) w.id(root);
+        w.put(r.newIds, 2); w.put(r.command.size(), 2);
+        w.bytes.insert(w.bytes.end(), r.command.begin(), r.command.end());
+        return w.bytes;
+    }
     for (const auto& m : r.moves) {
         w.id(m.item); w.id(m.source); w.id(m.target);
         w.put(m.itemRev, 8); w.put(m.sourceRev, 8); w.put(m.targetRev, 8);

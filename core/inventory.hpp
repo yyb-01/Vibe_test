@@ -28,6 +28,8 @@ public:
     Result apply(const Request&, const Access&);
     // Host-only account binding. Unknown requests never enter prepare().
     std::optional<Result> result_for(const Request&, Id account) const;
+    std::optional<Request> recorded_request(Id account, Id requestId) const;
+    bool expired_input(Id account,Id requestId) const;
     std::optional<Request> recorded_fire(Id account, std::uint32_t fireSeq) const; // Host-only original payload.
     std::vector<RecordedFire> recorded_fires() const; // Host-only applied shots for session recovery.
     // Host-only lifecycle. One transaction per account; disjoint roots can wait together.
@@ -44,15 +46,19 @@ private:
         std::vector<std::uint8_t> payload;
         Result result;
         std::weak_ptr<const WriteSet> handle;
+        std::uint64_t actionSeq{};bool input{};
     };
     using RecordMap = std::map<std::pair<Id, Id>, Record>;
     using AccountMap = std::map<Id, std::uint64_t>;
+    using InputMap = std::map<Id,InputJournal>;
     struct Pending {
         std::shared_ptr<const WriteSet> changes;
         World rows; // Preallocated replacement/insertion nodes; no allocation at commit.
         RootViews roots; // Immutable post-transaction versions of affected roots.
         RecordMap::node_type record;
         AccountMap::node_type account;
+        InputMap::node_type inputJournal;
+        std::map<std::uint64_t,std::uint64_t> inputFloors;
     };
     Preparation prepare_locked(const Request&, const Access&);
     Result commit_locked(const std::shared_ptr<const WriteSet>&);
@@ -60,6 +66,8 @@ private:
     const Catalog catalog_;
     const std::uint64_t epoch_, origin_;
     std::uint64_t sequence_{}, nextId_{1}, nextEvent_{1};
+    std::uint64_t retiredRequests_{}, retiredCommits_{};
+    InputMap retiredInputs_;
     World world_; // Private mutable index, protected by mutex_; never returned to readers.
     RootViews roots_;
     mutable std::weak_ptr<const World> flatSnapshot_;

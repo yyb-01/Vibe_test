@@ -1,5 +1,6 @@
 #include "sqlite.hpp"
 #include "sqlite_db.hpp"
+#include "../core/simulation_journal.hpp"
 
 namespace astra {
 SaveOutcome SQLiteStore::save(std::uint64_t version, const Checkpoint& target, const SavedRequest& record) {
@@ -13,23 +14,27 @@ SaveOutcome SQLiteStore::save(std::uint64_t version, const Checkpoint& target, c
     auto bytes = encode_checkpoint(target);
     bool committing = false;
     try {
-        sq::Connection db(path_); sq::configure(db);
+        if(!connection_){auto opened=std::make_unique<sq::Connection>(path_);sq::configure(*opened);connection_=std::move(opened);}
+        auto& db=*connection_;
         db.exec("BEGIN IMMEDIATE");
         auto current = sq::load(db);
-        if (current.checkpoint.epoch != epoch_) return SaveOutcome::Fenced;
+        if (current.checkpoint.epoch != epoch_){connection_.reset();return SaveOutcome::Fenced;}
         if (current.version != version) {
-            if (current.version == version + 1 && encode_checkpoint(current.checkpoint) == bytes)
-                return SaveOutcome::Committed;
-            return SaveOutcome::Fenced;
+            auto outcome=current.version==version+1&&encode_checkpoint(current.checkpoint)==bytes?SaveOutcome::Committed:SaveOutcome::Fenced;
+            connection_.reset();return outcome;
         }
         require(current.checkpoint.origin == target.origin && current.checkpoint.catalog == target.catalog &&
-                target.requests.size() == current.checkpoint.requests.size() + 1, Error::InvalidState);
+                request_count(target) == request_count(current.checkpoint)+1 &&
+                target.retiredRequests>=current.checkpoint.retiredRequests &&
+                target.retiredCommits>=current.checkpoint.retiredCommits, Error::InvalidState);
         sq::write(db, version + 1, bytes);
         committing = true;
         db.exec("COMMIT");
         return SaveOutcome::Committed;
     } catch (...) {
-        // Connection close rolls back any unfinished write before inspect can reopen it.
+        // Keep successful connections open to avoid a last-connection WAL checkpoint every tick.
+        // On any failure, closing still rolls back before inspect can determine the durable outcome.
+        connection_.reset();
         return committing ? SaveOutcome::Unknown : SaveOutcome::Aborted;
     }
 }

@@ -7,11 +7,11 @@ using Grid = std::array<std::uint32_t, 32>;
 inline void occupy(Grid& grid, const Container& c, const ItemDef& d, const Placement& p) {
     require(p.rotation <= 1 && p.reserved == 0, Error::InvalidPlacement);
     require(p.kind == c.kind, Error::InvalidPlacement);
-    if (c.kind == PlaceKind::World) {
+    if (c.kind == PlaceKind::World || c.kind == PlaceKind::Escrow) {
         require(!p.x && !p.y && !p.rotation && !p.socketId, Error::InvalidPlacement);
         return;
     }
-    if (c.kind == PlaceKind::Slot) {
+    if (c.kind == PlaceKind::Slot || c.kind == PlaceKind::Socket) {
         require(!p.x && !p.y && !p.rotation, Error::InvalidPlacement);
         require(p.socketId > 0 && p.socketId <= c.state.width, Error::InvalidPlacement);
         auto bit = std::uint32_t{1} << (p.socketId - 1);
